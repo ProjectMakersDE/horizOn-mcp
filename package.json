@@ -35,7 +35,10 @@
     "type": "git",
     "url": "https://github.com/ProjectMakersDE/horizOn-mcp.git"
   },
-  "homepage": "https://horizon.pm",
+  "homepage": "https://www.npmjs.com/package/horizon-mcp",
+  "bugs": {
+    "url": "https://github.com/ProjectMakersDE/horizOn-mcp/issues"
+  },
   "engines": {
     "node": ">=18.0.0"
   },

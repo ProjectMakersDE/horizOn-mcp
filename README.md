@@ -1,5 +1,9 @@
 # horizOn MCP Server
 
+[![npm version](https://img.shields.io/npm/v/horizon-mcp)](https://www.npmjs.com/package/horizon-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/horizon-mcp)](https://www.npmjs.com/package/horizon-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 **MCP server for horizOn Backend-as-a-Service** -- gives AI coding assistants documentation, live API tools, and workflow prompts for game and app development.
 
 ---
@@ -105,7 +109,7 @@ Core features:
 - User Feedback
 - User Logs
 
-Learn more at [horizon.pm](https://horizon.pm).
+Learn more at [horizon.pm](https://horizon.pm). Install this MCP server via [npm](https://www.npmjs.com/package/horizon-mcp).
 
 ## Supported Engines
 
