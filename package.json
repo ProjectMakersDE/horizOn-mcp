@@ -1,16 +1,43 @@
 {
   "name": "horizon-mcp",
-  "version": "0.1.0",
-  "description": "horizOn MCP server",
+  "version": "0.0.0-development",
+  "description": "MCP server for horizOn Backend-as-a-Service — documentation, live API tools, and workflow prompts for Godot, Unity, and Unreal Engine integration.",
   "type": "module",
+  "main": "dist/index.js",
   "bin": {
     "horizon-mcp": "dist/index.js"
   },
+  "files": [
+    "dist",
+    "src/resources/**/*.md"
+  ],
   "scripts": {
     "build": "tsc",
+    "prepublishOnly": "npm run build",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest"
+  },
+  "keywords": [
+    "mcp",
+    "horizon",
+    "baas",
+    "gamedev",
+    "godot",
+    "unity",
+    "unreal",
+    "backend-as-a-service",
+    "model-context-protocol"
+  ],
+  "author": "ProjectMakers <contact@projectmakers.de> (https://projectmakers.de)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ProjectMakersDE/horizOn-mcp.git"
+  },
+  "homepage": "https://horizon.pm",
+  "engines": {
+    "node": ">=18.0.0"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
