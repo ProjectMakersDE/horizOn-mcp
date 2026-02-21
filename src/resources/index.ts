@@ -217,6 +217,27 @@ export function registerAllResources(server: McpServer): void {
     }),
   );
 
+  // Crash Reporting
+  server.registerResource(
+    "docs-crash-reporting",
+    "horizon://docs/crash-reporting",
+    {
+      title: "Crash Reporting",
+      description:
+        "Crash report submission, session tracking, fingerprinting, breadcrumbs, and auto-regression detection. SDK examples.",
+      mimeType: "text/markdown",
+    },
+    () => ({
+      contents: [
+        {
+          uri: "horizon://docs/crash-reporting",
+          mimeType: "text/markdown",
+          text: loadDoc("docs/crash-reporting.md"),
+        },
+      ],
+    }),
+  );
+
   // API Reference
   server.registerResource(
     "api-reference",
