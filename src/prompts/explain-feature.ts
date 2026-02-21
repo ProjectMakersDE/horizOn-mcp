@@ -16,6 +16,7 @@ export function registerExplainFeaturePrompt(server: McpServer): void {
           "gift-codes",
           "feedback",
           "user-logs",
+          "crash-reporting",
         ])
         .describe("The feature to explain"),
     },

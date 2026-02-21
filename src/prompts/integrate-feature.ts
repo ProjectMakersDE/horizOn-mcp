@@ -17,6 +17,7 @@ export function registerIntegrateFeaturePrompt(server: McpServer): void {
           "gift-codes",
           "feedback",
           "user-logs",
+          "crash-reporting",
         ])
         .describe("The horizOn feature to integrate"),
       engine: z
