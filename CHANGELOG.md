@@ -1,3 +1,13 @@
+# [1.1.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.0.0...v1.1.0) (2026-02-22)
+
+
+### Features
+
+* **crash-reporting:** add crash report and session tools ([564b49f](https://github.com/ProjectMakersDE/horizOn-mcp/commit/564b49f1a2fb154a79be770937763f14aee89cfe))
+* **crash-reporting:** add crash-reporting to prompt feature enums ([0bba821](https://github.com/ProjectMakersDE/horizOn-mcp/commit/0bba8215842941c67fae734c91429267e259f43f))
+* **crash-reporting:** register documentation resource ([c032486](https://github.com/ProjectMakersDE/horizOn-mcp/commit/c03248670bf62859411e351dfb4343be99eb5b0c))
+* **crash-reporting:** register tools in server ([477fe49](https://github.com/ProjectMakersDE/horizOn-mcp/commit/477fe492cd9f0b786b25fc00676785186c7d933f))
+
 # 1.0.0 (2026-02-20)
 
 
