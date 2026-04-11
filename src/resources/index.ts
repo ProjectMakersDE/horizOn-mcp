@@ -301,6 +301,27 @@ export function registerAllResources(server: McpServer): void {
     }),
   );
 
+  // Email Sending
+  server.registerResource(
+    "docs-email-sending",
+    "horizon://docs/email-sending",
+    {
+      title: "Email Sending",
+      description:
+        "Transactional and event-based email delivery to registered users. Templates, scheduling, status tracking, and SMTP integration. SDK examples.",
+      mimeType: "text/markdown",
+    },
+    () => ({
+      contents: [
+        {
+          uri: "horizon://docs/email-sending",
+          mimeType: "text/markdown",
+          text: loadDoc("docs/email-sending.md"),
+        },
+      ],
+    }),
+  );
+
   // Quickstart: Unreal
   server.registerResource(
     "quickstart-unreal",

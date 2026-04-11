@@ -70,6 +70,23 @@ export class HorizonApiClient {
 
     return (await response.json()) as T;
   }
+
+  async delete<T>(path: string): Promise<T> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "DELETE",
+      headers: {
+        "X-API-Key": this.apiKey,
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      const responseBody = await response.text();
+      throw new HorizonApiError(response.status, responseBody);
+    }
+
+    return (await response.json()) as T;
+  }
 }
 
 /**

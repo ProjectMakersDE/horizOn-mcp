@@ -9,6 +9,7 @@ import { registerGiftCodeTools } from "./gift-codes.js";
 import { registerFeedbackTools } from "./feedback.js";
 import { registerUserLogTools } from "./user-logs.js";
 import { registerCrashReportingTools } from "./crash-reporting.js";
+import { registerEmailSendingTools } from "./email-sending.js";
 
 /**
  * Registers all horizOn MCP tools on the given server.
@@ -24,4 +25,5 @@ export function registerAllTools(server: McpServer): void {
   registerFeedbackTools(server);
   registerUserLogTools(server);
   registerCrashReportingTools(server);
+  registerEmailSendingTools(server);
 }
