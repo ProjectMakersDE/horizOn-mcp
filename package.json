@@ -1,6 +1,6 @@
 {
   "name": "horizon-mcp",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "MCP server for horizOn Backend-as-a-Service — documentation, live API tools, and workflow prompts for Godot, Unity, and Unreal Engine integration.",
   "type": "module",
   "main": "dist/index.js",

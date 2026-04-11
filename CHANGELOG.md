@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.1.0...v1.2.0) (2026-04-11)
+
+
+### Features
+
+* add email-sending MCP tools and documentation resource ([8eb293d](https://github.com/ProjectMakersDE/horizOn-mcp/commit/8eb293d9b3ecc8d9e2900c8b1ee3aae575540ba3))
+
 # [1.1.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.0.0...v1.1.0) (2026-02-22)
 
 
