@@ -98,6 +98,16 @@ Resources (documentation) work without an API key. Only the live API tools requi
 
 With an **Account-API-Key** (creatable in your horizOn Dashboard -> API Keys -> Create -> **MCP Account Key**), the MCP server exposes additional tools that let Claude manage your entire dashboard -- projects, remote config, news, email templates, gift codes, users, leaderboards, cloud-save data, crash reports, feedback, user logs, and SMTP.
 
+### How to get your Account API Key
+
+1. Log in to your [horizOn Dashboard](https://horizon.pm/dashboard)
+2. Navigate to **API Keys** in the sidebar
+3. Click **Create API Key**
+4. Select **MCP Account Key** as the key type
+5. Give your key a name (e.g. "My MCP Server")
+6. Click **Create** -- your key will be shown **once**. Copy it immediately.
+7. Add the key to your MCP configuration (see Setup below)
+
 ### Setup
 
 Add both keys to your MCP client configuration:
