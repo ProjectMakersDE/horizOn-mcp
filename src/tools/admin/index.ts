@@ -17,6 +17,7 @@ import { registerAdminUsersTools } from "./users.js";
 import { registerAdminLeaderboardTools } from "./leaderboard.js";
 import { registerAdminCloudSaveTools } from "./cloud-save.js";
 import { registerAdminFeedbackTools } from "./feedback.js";
+import { registerAdminUserLogsTools } from "./user-logs.js";
 
 export function registerAllAdminTools(server: McpServer): boolean {
   const client = createAdminApiClientFromEnv();
@@ -33,6 +34,7 @@ export function registerAllAdminTools(server: McpServer): boolean {
   registerAdminLeaderboardTools(server);
   registerAdminCloudSaveTools(server);
   registerAdminFeedbackTools(server);
+  registerAdminUserLogsTools(server);
 
   return true;
 }
