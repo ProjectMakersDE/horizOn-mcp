@@ -10,6 +10,7 @@ import { registerFeedbackTools } from "./feedback.js";
 import { registerUserLogTools } from "./user-logs.js";
 import { registerCrashReportingTools } from "./crash-reporting.js";
 import { registerEmailSendingTools } from "./email-sending.js";
+import { registerAllAdminTools } from "./admin/index.js";
 
 /**
  * Registers all horizOn MCP tools on the given server.
@@ -26,4 +27,11 @@ export function registerAllTools(server: McpServer): void {
   registerUserLogTools(server);
   registerCrashReportingTools(server);
   registerEmailSendingTools(server);
+
+  const adminEnabled = registerAllAdminTools(server);
+  if (adminEnabled) {
+    console.error(
+      "[horizon-mcp] Admin tools enabled (HORIZON_ACCOUNT_API_KEY set)",
+    );
+  }
 }
