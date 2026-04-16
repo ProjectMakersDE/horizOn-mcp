@@ -5,8 +5,8 @@
  * were registered. Returns false otherwise so the server can stay quiet
  * about an unconfigured admin surface.
  *
- * Further register*Tools() calls (cloud-save, feedback, user-logs,
- * crashes, SMTP, ...) will be added in M11-M15.
+ * Further register*Tools() calls (feedback, user-logs, crashes, SMTP,
+ * ...) will be added in M12-M15.
  */
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -18,6 +18,7 @@ import { registerAdminEmailTemplatesTools } from "./email-templates.js";
 import { registerAdminGiftCodesTools } from "./gift-codes.js";
 import { registerAdminUsersTools } from "./users.js";
 import { registerAdminLeaderboardTools } from "./leaderboard.js";
+import { registerAdminCloudSaveTools } from "./cloud-save.js";
 
 export function registerAllAdminTools(server: McpServer): boolean {
   const client = createAdminApiClientFromEnv();
@@ -32,6 +33,7 @@ export function registerAllAdminTools(server: McpServer): boolean {
   registerAdminGiftCodesTools(server);
   registerAdminUsersTools(server);
   registerAdminLeaderboardTools(server);
+  registerAdminCloudSaveTools(server);
 
   return true;
 }
