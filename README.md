@@ -94,6 +94,52 @@ Workflow prompts that guide AI assistants through common horizOn tasks.
 
 Resources (documentation) work without an API key. Only the live API tools require authentication.
 
+## Admin Tools (v1.2+)
+
+With an **Account-API-Key** (creatable in your horizOn Dashboard -> API Keys -> Create -> **MCP Account Key**), the MCP server exposes additional tools that let Claude manage your entire dashboard -- projects, remote config, news, email templates, gift codes, users, leaderboards, cloud-save data, crash reports, feedback, user logs, and SMTP.
+
+### Setup
+
+Add both keys to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "horizOn": {
+      "command": "npx",
+      "args": ["-y", "horizon-mcp"],
+      "env": {
+        "HORIZON_API_KEY": "your-project-key (for player-facing tools)",
+        "HORIZON_ACCOUNT_API_KEY": "your-account-key (for dashboard tools)"
+      }
+    }
+  }
+}
+```
+
+Both can be set together or individually. Admin tools only register when the account key is set -- otherwise the server exposes only the original player-facing tools.
+
+### Scope
+
+Admin tools inherit your account's tier (FREE/BASIC/PRO/ENTERPRISE) -- they grant no extra privileges. Platform-admin-only endpoints (Blog, Banner, System-Config) are automatically unreachable. A handful of ultra-sensitive endpoints (account deletion, credentials change, key management itself, subscription cancel) require a dashboard session and cannot be called via the account key.
+
+### Tool Groups
+
+| Prefix | Description |
+|--------|-------------|
+| `horizon_admin_projects_*` | Project API key management (create/update/regenerate/revoke/delete) |
+| `horizon_admin_remoteconfig_*` | Remote config CRUD |
+| `horizon_admin_news_*` | Multilingual news (titles/messages as `{lang: content}`) |
+| `horizon_admin_emailtemplates_*` | Multilingual email templates with variables |
+| `horizon_admin_giftcodes_*` | Gift code CRUD + revoke |
+| `horizon_admin_users_*` | User management + statistics (no full-list needed) |
+| `horizon_admin_leaderboard_*` | Leaderboard entries + statistics |
+| `horizon_admin_cloudsave_*` | Cloud save data + statistics |
+| `horizon_admin_crashes_*` | Crash groups, reports, statistics |
+| `horizon_admin_feedback_*` | Read user feedback |
+| `horizon_admin_userlogs_*` | Read user logs |
+| `horizon_admin_smtp_*` | Account SMTP configuration (password always returned masked) |
+
 ## What is horizOn?
 
 horizOn is a multi-tenant Backend-as-a-Service platform built for game and app developers. It provides a managed backend so developers can focus on building their game or app instead of server infrastructure.
