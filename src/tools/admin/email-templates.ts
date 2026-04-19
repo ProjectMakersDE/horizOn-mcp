@@ -82,7 +82,7 @@ export function registerAdminEmailTemplatesTools(server: McpServer): void {
     {
       title: "Create Email Template",
       description:
-        "Creates a new email template for a project API key. Slug must be unique per project and match /^[a-z0-9][a-z0-9_-]*$/. Subject and body are multilingual maps.",
+        "Creates a new email template for a project API key. Slug must be unique per project and match /^_?[a-z0-9][a-z0-9_-]*$/ (optional leading underscore is reserved for system templates like _user_password_reset). Subject and body are multilingual maps.",
       inputSchema: {
         projectApiKeyId: z
           .string()
@@ -90,9 +90,9 @@ export function registerAdminEmailTemplatesTools(server: McpServer): void {
           .describe("UUID of the project API key this template belongs to"),
         slug: z
           .string()
-          .regex(/^[a-z0-9][a-z0-9_-]*$/)
+          .regex(/^_?[a-z0-9][a-z0-9_-]*$/)
           .describe(
-            "Unique slug per project (lowercase alphanumeric with - and _)",
+            "Unique slug per project (lowercase alphanumeric with - and _; optional leading _ reserved for system templates)",
           ),
         name: z.string().min(1).describe("Human-readable template name"),
         subject: translationsSchema,
@@ -158,9 +158,9 @@ export function registerAdminEmailTemplatesTools(server: McpServer): void {
         id: z.string().uuid().describe("UUID of the email template to update"),
         slug: z
           .string()
-          .regex(/^[a-z0-9][a-z0-9_-]*$/)
+          .regex(/^_?[a-z0-9][a-z0-9_-]*$/)
           .optional()
-          .describe("New slug (lowercase alphanumeric with - and _)"),
+          .describe("New slug (lowercase alphanumeric with - and _; optional leading _ reserved for system templates)"),
         name: z.string().min(1).optional(),
         subject: translationsSchema.optional(),
         body: translationsSchema.optional(),
