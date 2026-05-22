@@ -36,6 +36,28 @@ function aroundPath(leaderboardKey?: string): string {
 }
 
 export function registerLeaderboardTools(server: McpServer): void {
+  // --- List leaderboard boards ---
+  server.registerTool(
+    "horizon_list_leaderboards",
+    {
+      title: "List Leaderboard Boards",
+      description:
+        "Lists the available horizOn leaderboard boards for the configured app API key, including each board key for multi-board calls.",
+      inputSchema: {},
+    },
+    async () => {
+      const client = createApiClientFromEnv();
+      if (!client) return noApiKeyResponse();
+
+      try {
+        const result = await client.get("/api/v1/app/leaderboards");
+        return jsonResponse(result);
+      } catch (error) {
+        return errorResponse(error);
+      }
+    },
+  );
+
   // --- Submit score ---
   server.registerTool(
     "horizon_submit_score",
@@ -61,7 +83,10 @@ export function registerLeaderboardTools(server: McpServer): void {
         const path = leaderboardKey
           ? `/api/v1/app/leaderboards/${encodeURIComponent(leaderboardKey)}/submit`
           : "/api/v1/app/leaderboard/submit";
-        const result = await client.post(path, { userId, score });
+        const body = leaderboardKey
+          ? { userId, score, leaderboardKey }
+          : { userId, score };
+        const result = await client.post(path, body);
         return jsonResponse(result);
       } catch (error) {
         return errorResponse(error);
