@@ -96,15 +96,15 @@ Resources (documentation) work without an API key. Only the live API tools requi
 
 ## Admin Tools (v1.2+)
 
-With an **Account-API-Key** (creatable in your horizOn Dashboard -> API Keys -> Create -> **MCP Account Key**), the MCP server exposes additional tools that let Claude manage your entire dashboard -- projects, remote config, news, email templates, gift codes, users, leaderboards, cloud-save data, crash reports, feedback, user logs, and SMTP.
+With an **Account Key** (creatable in your horizOn Dashboard -> API Keys -> Create -> **Account Key**), the MCP server exposes additional tools that let Claude manage your dashboard -- projects, remote config, news, email templates, gift codes, users, leaderboards, cloud-save data, crash reports, feedback, user logs, and SMTP.
 
-### How to get your Account API Key
+### How to get your Account Key
 
 1. Log in to your [horizOn Dashboard](https://horizon.pm/dashboard)
 2. Navigate to **API Keys** in the sidebar
 3. Click **Create API Key**
-4. Select **MCP Account Key** as the key type
-5. Give your key a name (e.g. "My MCP Server")
+4. Select **Account Key** as the key type
+5. Choose whether the key can access the entire account, a single Project API Key, or selected feature groups
 6. Click **Create** -- your key will be shown **once**. Copy it immediately.
 7. Add the key to your MCP configuration (see Setup below)
 
@@ -131,7 +131,9 @@ Both can be set together or individually. Admin tools only register when the acc
 
 ### Scope
 
-Admin tools inherit your account's tier (FREE/BASIC/PRO/ENTERPRISE) -- they grant no extra privileges. Platform-admin-only endpoints (Blog, Banner, System-Config) are automatically unreachable. A handful of ultra-sensitive endpoints (account deletion, credentials change, key management itself, subscription cancel) require a dashboard session and cannot be called via the account key.
+Account Keys inherit your account's tier (FREE/BASIC/PRO/ENTERPRISE) -- they grant no extra privileges. A key can be full-account, limited to a single Project API Key, limited to selected feature groups, or both. Platform-admin-only endpoints (Blog, Banner, System-Config) are automatically unreachable. A handful of ultra-sensitive endpoints (account deletion, credentials change, key management itself, subscription cancel) require a dashboard session and cannot be called via an Account Key.
+
+When a key is project-scoped, the backend enforces that scope on direct HTTP calls too. Account-wide endpoints or ID-only endpoints that cannot prove project context are rejected for project-scoped keys.
 
 ### Tool Groups
 

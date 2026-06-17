@@ -1,7 +1,7 @@
 /**
  * Admin API client factory.
  *
- * Uses HORIZON_ACCOUNT_API_KEY (account-level API key) and sends it as
+ * Uses HORIZON_ACCOUNT_API_KEY (Account Key) and sends it as
  * X-Account-API-Key so the backend routes the request to the
  * AccountApiKeyAuthenticationFilter.
  *

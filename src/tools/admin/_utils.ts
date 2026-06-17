@@ -26,7 +26,7 @@ export function noAdminClientResponse(): ToolResult {
       {
         type: "text" as const,
         text:
-          "HORIZON_ACCOUNT_API_KEY is not configured. Admin tools require an account-level API key.",
+          "HORIZON_ACCOUNT_API_KEY is not configured. Admin tools require an Account Key.",
       },
     ],
     isError: true,
