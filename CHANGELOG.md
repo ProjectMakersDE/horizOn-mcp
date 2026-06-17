@@ -1,3 +1,10 @@
+# [1.4.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.3.1...v1.4.0) (2026-05-09)
+
+
+### Features
+
+* **leaderboard:** add optional leaderboardKey to score tools ([28bbefe](https://github.com/ProjectMakersDE/horizOn-mcp/commit/28bbefe72fd9bbb1e95b126498032b2eb2a68a7a))
+
 ## [1.3.1](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.3.0...v1.3.1) (2026-04-19)
 
 

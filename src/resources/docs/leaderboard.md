@@ -6,6 +6,42 @@ horizOn leaderboards provide global rankings for your app. Scores are submitted 
 
 ## Endpoints
 
+The legacy singular endpoints target the default board. For multiple boards, first list available boards and pass the returned board `key` to the V2 endpoints.
+
+### List Boards
+
+**`GET /api/v1/app/leaderboards`**
+
+Returns the leaderboard boards configured for the app API key.
+
+**Response (200):**
+
+```json
+{
+  "boards": [
+    {
+      "key": "weekly",
+      "name": "Weekly",
+      "sortOrder": "DESC",
+      "isActive": true,
+      "scoreCount": 10
+    }
+  ],
+  "totalElements": 1
+}
+```
+
+### Multi-Board Endpoints
+
+Use these endpoints with a board key from `GET /api/v1/app/leaderboards`:
+
+| Operation | Endpoint |
+|-----------|----------|
+| Submit score | `POST /api/v1/app/leaderboards/{boardKey}/submit` |
+| Top entries | `GET /api/v1/app/leaderboards/{boardKey}/top?userId={userId}&limit={limit}` |
+| User rank | `GET /api/v1/app/leaderboards/{boardKey}/rank?userId={userId}` |
+| Around user | `GET /api/v1/app/leaderboards/{boardKey}/around?userId={userId}&range={range}` |
+
 ### Submit Score
 
 **`POST /api/v1/app/leaderboard/submit`**
@@ -18,6 +54,7 @@ Submits a score for the authenticated user. Only updates if the score is higher 
 |-------|------|----------|-------------|
 | `userId` | string | Yes | The user's ID |
 | `score` | number | Yes | Score value (positive integer) |
+| `leaderboardKey` | string | No | Optional named board key for V2 calls |
 
 **Response (200):**
 
@@ -114,6 +151,9 @@ Returns entries around the user's position (players ranked near them).
 # Submit a score (only updates if higher than previous best)
 await Horizon.leaderboard.submitScore(1000)
 
+# Submit to a named board
+await Horizon.leaderboard.submitScore(1000, "weekly")
+
 # Get top 10 players
 var top: Array[HorizonLeaderboardEntry] = await Horizon.leaderboard.getTop(10)
 for entry in top:
@@ -125,6 +165,9 @@ print("My rank: #%d (Score: %d)" % [myRank.position, myRank.score])
 
 # Get entries around the user's position
 var around: Array[HorizonLeaderboardEntry] = await Horizon.leaderboard.getAround(5)
+
+# List boards
+var boards: Array[Dictionary] = await Horizon.leaderboard.listBoards()
 
 # Use caching (enabled by default)
 var cached_top = await Horizon.leaderboard.getTop(10, true)  # uses cache
@@ -146,6 +189,9 @@ using PM.horizOn.Cloud.Manager;
 // Submit score
 await LeaderboardManager.Instance.SubmitScore(12500);
 
+// Submit to a named board
+await LeaderboardManager.Instance.SubmitScore(12500, boardKey: "weekly");
+
 // Get top 10 players
 var top = await LeaderboardManager.Instance.GetTop(10);
 foreach (var entry in top)
@@ -160,6 +206,9 @@ Debug.Log($"My rank: #{rank.position} (Score: {rank.score})");
 // Get entries around user
 var around = await LeaderboardManager.Instance.GetAround(5);
 
+// List boards
+var boards = await LeaderboardManager.Instance.ListBoards();
+
 // Clear cache
 LeaderboardManager.Instance.ClearCache();
 ```
@@ -172,6 +221,12 @@ curl -X POST https://horizon.pm/api/v1/app/leaderboard/submit \
   -H "X-API-Key: YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"userId": "user123", "score": 12500}'
+
+# Submit to a named board
+curl -X POST https://horizon.pm/api/v1/app/leaderboards/weekly/submit \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"userId": "user123", "score": 12500, "leaderboardKey": "weekly"}'
 
 # Get top 10
 curl "https://horizon.pm/api/v1/app/leaderboard/top?userId=user123&limit=10" \

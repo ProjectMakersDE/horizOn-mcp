@@ -60,10 +60,11 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 | `horizon_signin_email` | Sign in with email and password |
 | `horizon_signin_anonymous` | Sign in with an anonymous token |
 | `horizon_check_auth` | Check whether a user session is still valid |
+| `horizon_list_leaderboards` | List available leaderboard boards for multi-board calls |
 | `horizon_submit_score` | Submit a score to the leaderboard |
-| `horizon_get_leaderboard_top` | Get the top leaderboard entries |
-| `horizon_get_user_rank` | Get a user's leaderboard rank |
-| `horizon_get_leaderboard_around` | Get leaderboard entries around a user's position |
+| `horizon_get_leaderboard_top` | Get the top leaderboard entries, optionally by board key |
+| `horizon_get_user_rank` | Get a user's leaderboard rank, optionally by board key |
+| `horizon_get_leaderboard_around` | Get leaderboard entries around a user's position, optionally by board key |
 | `horizon_save_cloud_data` | Save cloud data for a user |
 | `horizon_load_cloud_data` | Load cloud save data for a user |
 | `horizon_get_remote_config` | Get a single remote config value by key |

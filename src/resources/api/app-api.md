@@ -188,6 +188,37 @@ Reset password with a reset token.
 
 ## Leaderboard
 
+### GET /api/v1/app/leaderboards
+
+List the leaderboard boards configured for the app API key.
+
+**Response (200):**
+```json
+{
+  "boards": [
+    {
+      "key": "weekly",
+      "name": "Weekly",
+      "sortOrder": "DESC",
+      "isActive": true,
+      "scoreCount": 10
+    }
+  ],
+  "totalElements": 1
+}
+```
+
+Use the returned `key` with the V2 board endpoints:
+
+- `POST /api/v1/app/leaderboards/{boardKey}/submit`
+- `GET /api/v1/app/leaderboards/{boardKey}/top?userId={userId}&limit={limit}`
+- `GET /api/v1/app/leaderboards/{boardKey}/rank?userId={userId}`
+- `GET /api/v1/app/leaderboards/{boardKey}/around?userId={userId}&range={range}`
+
+Omit `boardKey` and use the legacy singular endpoints below for the default board.
+
+---
+
 ### POST /api/v1/app/leaderboard/submit
 
 Submit a score (only updates if higher than previous best).
@@ -196,7 +227,8 @@ Submit a score (only updates if higher than previous best).
 ```json
 {
   "userId": "string",
-  "score": "number (positive integer)"
+  "score": "number (positive integer)",
+  "leaderboardKey": "string (optional)"
 }
 ```
 
