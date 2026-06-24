@@ -325,6 +325,45 @@ void GetAllRemoteConfigs()
 }
 ```
 
+### Get Localizations
+
+```cpp
+// SetLanguage simply means appending ?lang=xx to the request (en, de, es,
+// fr, it, pt, nl, pl, ru, ja, zh, ar, ko, tr, id).
+void GetLocalization(const FString& Key, const FString& Lang)
+{
+    FHorizonAPI::Get(FString::Printf(TEXT("/api/v1/app/localization/%s?lang=%s"), *Key, *Lang),
+        [](bool bSuccess, TSharedPtr<FJsonObject> Response)
+        {
+            if (bSuccess && Response.IsValid() && Response->GetBoolField(TEXT("found")))
+            {
+                UE_LOG(LogTemp, Log, TEXT("Localization: %s"),
+                    *Response->GetStringField(TEXT("value")));
+            }
+        });
+}
+
+void GetAllLocalizations(const FString& Lang)
+{
+    FHorizonAPI::Get(FString::Printf(TEXT("/api/v1/app/localization/all?lang=%s"), *Lang),
+        [](bool bSuccess, TSharedPtr<FJsonObject> Response)
+        {
+            if (bSuccess && Response.IsValid())
+            {
+                const TSharedPtr<FJsonObject>* Translations;
+                if (Response->TryGetObjectField(TEXT("translations"), Translations))
+                {
+                    for (const auto& Pair : (*Translations)->Values)
+                    {
+                        UE_LOG(LogTemp, Log, TEXT("Localization: %s = %s"),
+                            *Pair.Key, *Pair.Value->AsString());
+                    }
+                }
+            }
+        });
+}
+```
+
 ## REST Examples (cURL)
 
 These cURL examples show the raw HTTP requests. Translate them to your preferred Unreal HTTP method.
@@ -344,6 +383,10 @@ curl -X POST https://horizon.pm/api/v1/app/leaderboard/submit \
 
 # Get remote config
 curl "https://horizon.pm/api/v1/app/remote-config/all" \
+  -H "X-API-Key: YOUR_API_KEY"
+
+# Get all localizations (German)
+curl "https://horizon.pm/api/v1/app/localization/all?lang=de" \
   -H "X-API-Key: YOUR_API_KEY"
 
 # Save cloud data

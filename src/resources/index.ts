@@ -133,6 +133,27 @@ export function registerAllResources(server: McpServer): void {
     }),
   );
 
+  // Localization
+  server.registerResource(
+    "docs-localization",
+    "horizon://docs/localization",
+    {
+      title: "Localization",
+      description:
+        "Server-side localized strings across 15 languages: per-key translations, single/all fetch, available languages. SDK examples.",
+      mimeType: "text/markdown",
+    },
+    () => ({
+      contents: [
+        {
+          uri: "horizon://docs/localization",
+          mimeType: "text/markdown",
+          text: loadDoc("docs/localization.md"),
+        },
+      ],
+    }),
+  );
+
   // News
   server.registerResource(
     "docs-news",

@@ -4,6 +4,7 @@ import { registerAuthTools } from "./auth.js";
 import { registerLeaderboardTools } from "./leaderboard.js";
 import { registerCloudSaveTools } from "./cloud-save.js";
 import { registerRemoteConfigTools } from "./remote-config.js";
+import { registerLocalizationTools } from "./localization.js";
 import { registerNewsTools } from "./news.js";
 import { registerGiftCodeTools } from "./gift-codes.js";
 import { registerFeedbackTools } from "./feedback.js";
@@ -21,6 +22,7 @@ export function registerAllTools(server: McpServer): void {
   registerLeaderboardTools(server);
   registerCloudSaveTools(server);
   registerRemoteConfigTools(server);
+  registerLocalizationTools(server);
   registerNewsTools(server);
   registerGiftCodeTools(server);
   registerFeedbackTools(server);

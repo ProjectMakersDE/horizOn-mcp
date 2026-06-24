@@ -153,6 +153,24 @@ string version = await RemoteConfigManager.Instance.GetString("game_version", "1
 var configs = await RemoteConfigManager.Instance.GetAllConfigs();
 ```
 
+### Localization
+
+```csharp
+using PM.horizOn.Cloud.Manager;
+
+// Set the active language (en, de, es, fr, it, pt, nl, pl, ru, ja, zh, ar, ko, tr, id)
+LocalizationManager.Instance.SetLanguage("de");
+
+// Get a single localized string in the active language
+string label = await LocalizationManager.Instance.GetLocalization("ui.play_button");
+
+// Get a string for a specific language
+string enLabel = await LocalizationManager.Instance.GetLocalization("ui.play_button", "en");
+
+// Get all localizations at once (recommended at startup)
+var translations = await LocalizationManager.Instance.GetAllLocalizations();
+```
+
 ### News
 
 ```csharp

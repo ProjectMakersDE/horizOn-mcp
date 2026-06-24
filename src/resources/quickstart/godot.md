@@ -127,6 +127,22 @@ var maintenance: bool = await Horizon.remoteConfig.getBool("maintenance_mode", f
 var all_configs: Dictionary = await Horizon.remoteConfig.getAllConfigs()
 ```
 
+### Localization
+
+```gdscript
+# Set the active language (en, de, es, fr, it, pt, nl, pl, ru, ja, zh, ar, ko, tr, id)
+Horizon.localization.setLanguage("de")
+
+# Get a single localized string in the active language
+var label: String = await Horizon.localization.getLocalization("ui.play_button")
+
+# Get a string for a specific language
+var en_label: String = await Horizon.localization.getLocalization("ui.play_button", "en")
+
+# Get all localizations at once (recommended at startup)
+var all_translations: Dictionary = await Horizon.localization.getAllLocalizations()
+```
+
 ### News
 
 ```gdscript

@@ -10,6 +10,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { createAdminApiClientFromEnv } from "../admin-api-client.js";
 import { registerAdminProjectsTools } from "./projects.js";
 import { registerAdminRemoteConfigTools } from "./remote-config.js";
+import { registerAdminLocalizationTools } from "./localization.js";
 import { registerAdminNewsTools } from "./news.js";
 import { registerAdminEmailTemplatesTools } from "./email-templates.js";
 import { registerAdminGiftCodesTools } from "./gift-codes.js";
@@ -29,6 +30,7 @@ export function registerAllAdminTools(server: McpServer): boolean {
 
   registerAdminProjectsTools(server);
   registerAdminRemoteConfigTools(server);
+  registerAdminLocalizationTools(server);
   registerAdminNewsTools(server);
   registerAdminEmailTemplatesTools(server);
   registerAdminGiftCodesTools(server);
