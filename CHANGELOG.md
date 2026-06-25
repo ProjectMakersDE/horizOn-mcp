@@ -1,3 +1,26 @@
+# [1.5.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.4.0...v1.5.0) (2026-06-25)
+
+
+### Features
+
+* add multi-board leaderboard tools ([bfc178b](https://github.com/ProjectMakersDE/horizOn-mcp/commit/bfc178bcecd9fe90bd2dffe8719e23325c9694c3))
+* **localization:** add localization MCP tools, docs resource and quickstarts ([14b638d](https://github.com/ProjectMakersDE/horizOn-mcp/commit/14b638dd630476c60057ae9e81b5fca9a5e2aaa1))
+* **mcp:** add admin api client for account api key auth ([f6b76ca](https://github.com/ProjectMakersDE/horizOn-mcp/commit/f6b76ca33bebf71bec7f7ffab6fb40315307bc14))
+* **mcp:** add admin tool for user logs (read-only) ([5e363a7](https://github.com/ProjectMakersDE/horizOn-mcp/commit/5e363a7e773801c34a0b360774ce7f69646f0e27))
+* **mcp:** add admin tool utilities ([bfd3f6f](https://github.com/ProjectMakersDE/horizOn-mcp/commit/bfd3f6f3b31892e1a3529306a50ba8520eceb1ec))
+* **mcp:** add admin tools for cloud save and statistics ([b1debc4](https://github.com/ProjectMakersDE/horizOn-mcp/commit/b1debc4fb043e1053f25e75af49365d0d3692801))
+* **mcp:** add admin tools for crash reporting ([428635f](https://github.com/ProjectMakersDE/horizOn-mcp/commit/428635f25d9fd8523430c38749b536c6d3f0f88d))
+* **mcp:** add admin tools for email templates (multilingual) ([fde2188](https://github.com/ProjectMakersDE/horizOn-mcp/commit/fde2188020080750598b86d90398a35b797477a4))
+* **mcp:** add admin tools for gift codes ([adf067b](https://github.com/ProjectMakersDE/horizOn-mcp/commit/adf067b2fbcc1ab88a7a7cf94b7b25c16d6fe4eb))
+* **mcp:** add admin tools for leaderboard and statistics ([cce7e4f](https://github.com/ProjectMakersDE/horizOn-mcp/commit/cce7e4fee648788feacc44fa28b98f16c7bba94f))
+* **mcp:** add admin tools for news management (multilingual) ([e6a31b8](https://github.com/ProjectMakersDE/horizOn-mcp/commit/e6a31b8dfe648e97161fa1df13e88799436803b9))
+* **mcp:** add admin tools for project api key management ([c08d97f](https://github.com/ProjectMakersDE/horizOn-mcp/commit/c08d97fe096b7e63da238bda6d38e058f915ab9e))
+* **mcp:** add admin tools for remote config ([f299ae1](https://github.com/ProjectMakersDE/horizOn-mcp/commit/f299ae11cbe5ef045922447655c0aa3345dbb91a))
+* **mcp:** add admin tools for smtp settings ([f769d52](https://github.com/ProjectMakersDE/horizOn-mcp/commit/f769d526b732dcad061718f6c612e0e811ac33e2))
+* **mcp:** add admin tools for user feedback (read-only) ([2996cbb](https://github.com/ProjectMakersDE/horizOn-mcp/commit/2996cbb405d9cbc4319bf04c515587405799ecce))
+* **mcp:** add admin tools for user management and statistics ([d6ef4ec](https://github.com/ProjectMakersDE/horizOn-mcp/commit/d6ef4ec12011d60aeb27d92035d7c4d95231767f))
+* **mcp:** conditional admin tools registration based on account key ([4a91c1e](https://github.com/ProjectMakersDE/horizOn-mcp/commit/4a91c1eb1b9a1a81e3c70ac55845bbc7f875b3d8))
+
 # [1.4.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.3.1...v1.4.0) (2026-05-09)
 
 
