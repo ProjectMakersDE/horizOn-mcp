@@ -126,6 +126,10 @@ export function registerAdminNewsTools(server: McpServer): void {
           .boolean()
           .optional()
           .describe("Whether to publish on creation (default false)"),
+        isScheduled: z
+          .boolean()
+          .optional()
+          .describe("Publish automatically when releaseDate is due (default false). Cannot be true with isPublished."),
       },
     },
     async ({
@@ -134,10 +138,14 @@ export function registerAdminNewsTools(server: McpServer): void {
       messages,
       releaseDate,
       isPublished,
+      isScheduled,
     }) => {
       const client = getAdminClient();
       if (!client) return noAdminClientResponse();
       try {
+        if (isPublished && isScheduled) {
+          return errorResponse(new Error("isPublished and isScheduled cannot both be true"));
+        }
         const body: Record<string, unknown> = {
           apiKeyId: projectApiKeyId,
           titles,
@@ -145,6 +153,7 @@ export function registerAdminNewsTools(server: McpServer): void {
           releaseDate,
         };
         if (isPublished !== undefined) body.isPublished = isPublished;
+        if (isScheduled !== undefined) body.isScheduled = isScheduled;
         const result = await client.post("/api/v1/admin/news", body);
         return jsonResponse(result);
       } catch (e) {
@@ -169,18 +178,23 @@ export function registerAdminNewsTools(server: McpServer): void {
           .optional()
           .describe("New release date as ISO-8601 LocalDateTime"),
         isPublished: z.boolean().optional(),
+        isScheduled: z.boolean().optional().describe("Enable or cancel scheduled publication. Cannot be true with isPublished."),
         isActive: z.boolean().optional(),
       },
     },
-    async ({ id, titles, messages, releaseDate, isPublished, isActive }) => {
+    async ({ id, titles, messages, releaseDate, isPublished, isScheduled, isActive }) => {
       const client = getAdminClient();
       if (!client) return noAdminClientResponse();
       try {
+        if (isPublished && isScheduled) {
+          return errorResponse(new Error("isPublished and isScheduled cannot both be true"));
+        }
         const body: Record<string, unknown> = {};
         if (titles !== undefined) body.titles = titles;
         if (messages !== undefined) body.messages = messages;
         if (releaseDate !== undefined) body.releaseDate = releaseDate;
         if (isPublished !== undefined) body.isPublished = isPublished;
+        if (isScheduled !== undefined) body.isScheduled = isScheduled;
         if (isActive !== undefined) body.isActive = isActive;
         const result = await client.put(`/api/v1/admin/news/${id}`, body);
         return jsonResponse(result);
