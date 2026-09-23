@@ -1,3 +1,10 @@
+## [1.5.1](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.5.0...v1.5.1) (2026-09-23)
+
+
+### Bug Fixes
+
+* forward scheduled news state through admin MCP tools ([3be7e02](https://github.com/ProjectMakersDE/horizOn-mcp/commit/3be7e02cbeb192b2b0b3496c2820c6bdb9cdcf9e))
+
 # [1.5.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.4.0...v1.5.0) (2026-06-25)
 
 
