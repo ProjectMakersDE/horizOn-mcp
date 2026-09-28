@@ -1,0 +1,42 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.ProjectMakersDE/horizon-mcp",
+  "title": "horizOn",
+  "description": "Docs, live API tools and prompts for the horizOn game backend in Godot, Unity and Unreal.",
+  "websiteUrl": "https://horizon.pm",
+  "repository": {
+    "url": "https://github.com/ProjectMakersDE/horizOn-mcp",
+    "source": "github"
+  },
+  "version": "1.5.3",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "horizon-mcp",
+      "version": "1.5.3",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "HORIZON_API_KEY",
+          "description": "horizOn project API key for the live API tools. The documentation works without it.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "HORIZON_ACCOUNT_API_KEY",
+          "description": "horizOn account key for the dashboard admin tools.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "HORIZON_BASE_URL",
+          "description": "API base URL.",
+          "isRequired": false,
+          "default": "https://horizon.pm"
+        }
+      ]
+    }
+  ]
+}
