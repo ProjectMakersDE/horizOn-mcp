@@ -17,18 +17,21 @@ The App API (used by SDKs and this MCP server) operates on behalf of **Users** w
 
 ## Core Features
 
-horizOn provides 8 core features:
+horizOn provides 11 core features:
 
 | # | Feature | Description |
 |---|---------|-------------|
-| 1 | **Authentication** | Anonymous, email/password, and Google OAuth sign-in/sign-up |
+| 1 | **Authentication** | Anonymous, email/password, Google OAuth, and Apple sign-in/sign-up |
 | 2 | **Cloud Save** | Persist player data across devices (JSON or binary) |
 | 3 | **Leaderboards** | Global rankings with score submission and queries |
 | 4 | **Remote Config** | Server-side key-value configuration (feature flags, balancing) |
-| 5 | **News** | In-game news and announcements with language filtering |
-| 6 | **Gift Codes** | Promotional code validation and redemption |
-| 7 | **User Feedback** | Bug reports, feature requests, and general feedback |
-| 8 | **User Logs** | Server-side event and error tracking per user |
+| 5 | **Localization** | Server-side localized strings in 15 languages |
+| 6 | **News** | In-game news and announcements with language filtering |
+| 7 | **Gift Codes** | Promotional code validation and redemption |
+| 8 | **User Feedback** | Bug reports, feature requests, and general feedback |
+| 9 | **User Logs** | Server-side event and error tracking per user |
+| 10 | **Crash Reporting** | Crash reports grouped by fingerprint, sessions, breadcrumbs, and regression detection |
+| 11 | **Email Sending** | Transactional emails to registered users from templates, immediate or scheduled |
 
 ## Tier System
 
