@@ -1,0 +1,30 @@
+name: MCP Registry
+
+# Manual retry for the registry step of the release workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish (default: version in package.json)'
+        required: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Publish to MCP Registry
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: bash scripts/publish-mcp-registry.sh "${INPUT_VERSION:-$(jq -r .version package.json)}"
