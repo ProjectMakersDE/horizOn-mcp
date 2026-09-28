@@ -234,7 +234,7 @@ Horizon->EmailSending->SendEmail(TEXT("user-uuid"), TEXT("welcome"), Variables, 
 
 ## Blueprints
 
-Get the subsystem with the **Get HorizonSubsystem** node or use the async nodes directly. Examples of node names:
+Get the subsystem with the **Get Horizon Subsystem** node or use the async nodes directly. Examples of node names:
 
 - **Connect to horizOn Server**
 - **Sign Up Anonymous**, **Sign In Email**, **Restore Anonymous Session**, **Sign In With Apple (Native)**
