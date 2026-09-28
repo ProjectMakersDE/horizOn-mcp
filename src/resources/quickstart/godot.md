@@ -7,18 +7,19 @@
 
 ## Step 1: Install the SDK
 
-### Option A: Asset Library (Recommended)
+### Option A: GitHub Release ZIP (Recommended)
 
-1. Open Godot and go to **AssetLib**
-2. Search for "horizOn SDK"
-3. Download and install
-4. Enable the plugin: **Project > Project Settings > Plugins > horizOn SDK**
+1. Download `horizOn-SDK-vX.Y.Z.zip` from the [latest release](https://github.com/ProjectMakersDE/horizOn-SDK-Godot/releases/latest)
+2. Unzip it and move the `horizon_sdk` folder into your project's `addons/` directory, so the plugin lives at `res://addons/horizon_sdk/`
+3. Enable the plugin: **Project > Project Settings > Plugins > horizOn SDK**
 
-### Option B: Manual Installation
+### Option B: Manual Copy from the Repository
 
-1. Download the latest release from [GitHub Releases](https://github.com/ProjectMakersDE/horizOn-SDK-Godot/releases)
+1. Clone or download the [horizOn-SDK-Godot repository](https://github.com/ProjectMakersDE/horizOn-SDK-Godot)
 2. Copy the `addons/horizon_sdk` folder to your project's `addons/` directory
 3. Enable the plugin: **Project > Project Settings > Plugins > horizOn SDK**
+
+The SDK is not listed in the Godot Asset Library at the moment. Install it with one of the options above.
 
 ## Step 2: Import Configuration
 
