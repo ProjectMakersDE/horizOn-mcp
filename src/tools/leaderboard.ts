@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
-import { createApiClientFromEnv } from "./api-client.js";
-import { noApiKeyResponse, errorResponse, jsonResponse } from "./tool-helpers.js";
+import { createApiClientFromEnv, sessionHeaders } from "./api-client.js";
+import { noApiKeyResponse, errorResponse, jsonResponse, READ_ONLY, API_ERRORS } from "./tool-helpers.js";
 
 /**
  * Slug constraint mirrors the server-side validator on
@@ -42,8 +42,12 @@ export function registerLeaderboardTools(server: McpServer): void {
     {
       title: "List Leaderboard Boards",
       description:
-        "Lists the available horizOn leaderboard boards for the configured app API key, including each board key for multi-board calls.",
+        "Lists the leaderboard boards configured for this API key. Call it first when a game has several boards, " +
+        "then pass a board's key as leaderboardKey to the submit, top, rank and around tools; without a key they use the default board. " +
+        "Returns {boards: [{key, name, sortOrder, isActive, scoreCount}], totalElements}. " +
+        API_ERRORS,
       inputSchema: {},
+      annotations: READ_ONLY,
     },
     async () => {
       const client = createApiClientFromEnv();
@@ -64,18 +68,29 @@ export function registerLeaderboardTools(server: McpServer): void {
     {
       title: "Submit Score",
       description:
-        "Submits a score to a horizOn leaderboard for a given user. Pass leaderboardKey to target a specific board; omit it for the default board.",
+        "Submits a player's score to a leaderboard. Needs the player's session: sign in with horizon_signin_email or horizon_signin_anonymous first and pass its accessToken. " +
+        "The board keeps each player's best score (higher wins on DESC boards, lower on ASC boards), so a score that does not beat it changes nothing " +
+        "and sending the same score twice has no further effect. Omit leaderboardKey for the default board or use a key from horizon_list_leaderboards. " +
+        "Returns {success: true}; an expired session gives 401, a session of another user 403. To show the result, call horizon_get_user_rank. " +
+        API_ERRORS,
       inputSchema: {
-        userId: z.string().uuid().describe("User ID (UUID)"),
+        userId: z.string().uuid().describe("User ID (UUID) returned by a horizon_signup_* or horizon_signin_* tool"),
         score: z
           .number()
           .int()
           .min(0)
           .describe("Score to submit (non-negative integer)"),
         leaderboardKey: leaderboardKeySchema,
+        sessionToken: z.string().min(1).max(256).describe("accessToken returned by horizon_signin_email or horizon_signin_anonymous for this user; sent as a Bearer session"),
+      },
+      annotations: {
+        readOnlyHint: false,
+        destructiveHint: false,
+        idempotentHint: true,
+        openWorldHint: true,
       },
     },
-    async ({ userId, score, leaderboardKey }) => {
+    async ({ userId, score, leaderboardKey, sessionToken }) => {
       const client = createApiClientFromEnv();
       if (!client) return noApiKeyResponse();
 
@@ -86,8 +101,9 @@ export function registerLeaderboardTools(server: McpServer): void {
         const body = leaderboardKey
           ? { userId, score, leaderboardKey }
           : { userId, score };
-        const result = await client.post(path, body);
-        return jsonResponse(result);
+        const result = await client.post(path, body, sessionHeaders(sessionToken));
+        // The API answers with an empty body on success
+        return jsonResponse(result ?? { success: true });
       } catch (error) {
         return errorResponse(error);
       }
@@ -100,9 +116,13 @@ export function registerLeaderboardTools(server: McpServer): void {
     {
       title: "Get Leaderboard Top",
       description:
-        "Gets the top entries from a horizOn leaderboard. Pass leaderboardKey to target a specific board.",
+        "Returns the best entries of a leaderboard as {entries: [{position, username, score}]}, in the board's sort order starting at position 1. " +
+        "If the player given by userId is not in that list, their own entry with the real position is added at the end. An unknown leaderboardKey gives 404. " +
+        "Use it for a global top list; use horizon_get_user_rank for one player's position and horizon_get_leaderboard_around for the players near them. " +
+        "Omit leaderboardKey for the default board. " +
+        API_ERRORS,
       inputSchema: {
-        userId: z.string().uuid().describe("User ID (UUID)"),
+        userId: z.string().uuid().describe("User ID (UUID) returned by a horizon_signup_* or horizon_signin_* tool"),
         limit: z
           .number()
           .int()
@@ -112,6 +132,7 @@ export function registerLeaderboardTools(server: McpServer): void {
           .describe("Number of top entries to return (1-100, default 10)"),
         leaderboardKey: leaderboardKeySchema,
       },
+      annotations: READ_ONLY,
     },
     async ({ userId, limit, leaderboardKey }) => {
       const client = createApiClientFromEnv();
@@ -135,11 +156,16 @@ export function registerLeaderboardTools(server: McpServer): void {
     {
       title: "Get User Rank",
       description:
-        "Gets the rank of a specific user on a horizOn leaderboard. Pass leaderboardKey to target a specific board.",
+        "Returns one player's own position on a leaderboard as {position, username, score}, for example after horizon_submit_score. " +
+        "A player without a score on that board gives 404. " +
+        "Use horizon_get_leaderboard_top for the top list and horizon_get_leaderboard_around to include the neighbouring players. " +
+        "Omit leaderboardKey for the default board. " +
+        API_ERRORS,
       inputSchema: {
-        userId: z.string().uuid().describe("User ID (UUID)"),
+        userId: z.string().uuid().describe("User ID (UUID) returned by a horizon_signup_* or horizon_signin_* tool"),
         leaderboardKey: leaderboardKeySchema,
       },
+      annotations: READ_ONLY,
     },
     async ({ userId, leaderboardKey }) => {
       const client = createApiClientFromEnv();
@@ -160,9 +186,12 @@ export function registerLeaderboardTools(server: McpServer): void {
     {
       title: "Get Leaderboard Around User",
       description:
-        "Gets leaderboard entries around a specific user's position on a horizOn leaderboard. Pass leaderboardKey to target a specific board.",
+        "Returns the entries around a player's own position as {entries: [{position, username, score}]}, for views like 'you and your rivals'. " +
+        "range sets how many entries around the player are returned. Use horizon_get_leaderboard_top for the top list and horizon_get_user_rank for the position alone. " +
+        "Omit leaderboardKey for the default board. " +
+        API_ERRORS,
       inputSchema: {
-        userId: z.string().uuid().describe("User ID (UUID)"),
+        userId: z.string().uuid().describe("User ID (UUID) returned by a horizon_signup_* or horizon_signin_* tool"),
         range: z
           .number()
           .int()
@@ -172,6 +201,7 @@ export function registerLeaderboardTools(server: McpServer): void {
           .describe("Number of entries around the user (1-50, default 10)"),
         leaderboardKey: leaderboardKeySchema,
       },
+      annotations: READ_ONLY,
     },
     async ({ userId, range, leaderboardKey }) => {
       const client = createApiClientFromEnv();

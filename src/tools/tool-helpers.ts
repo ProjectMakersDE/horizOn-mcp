@@ -5,7 +5,24 @@
 import { HorizonApiError } from "./api-client.js";
 
 type ToolContent = { type: "text"; text: string };
-type ToolResult = { content: ToolContent[] };
+type ToolResult = { content: ToolContent[]; isError?: boolean };
+
+/**
+ * Tool annotations for the player tools. They all call the horizOn API.
+ */
+export const READ_ONLY = { readOnlyHint: true, openWorldHint: true } as const;
+export const ADDITIVE_WRITE = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: true,
+} as const;
+
+/**
+ * Sentence appended to every player tool description.
+ */
+export const API_ERRORS =
+  "Needs HORIZON_API_KEY. API failures (for example 401 for a wrong key or 429 when the account's per-minute rate limit is reached) return an error result with the HTTP status and body.";
 
 /**
  * Returns a tool result telling the user to set HORIZON_API_KEY.
@@ -18,6 +35,7 @@ export function noApiKeyResponse(): ToolResult {
         text: "HORIZON_API_KEY environment variable is not set. Please set it to your horizOn API key.",
       },
     ],
+    isError: true,
   };
 }
 
@@ -41,6 +59,7 @@ export function errorResponse(error: unknown): ToolResult {
         text: message,
       },
     ],
+    isError: true,
   };
 }
 

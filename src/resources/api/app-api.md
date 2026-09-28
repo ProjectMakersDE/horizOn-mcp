@@ -15,9 +15,15 @@ X-API-Key: your-api-key-here
 Content-Type: application/json
 ```
 
+Leaderboard submit and cloud save also need the player's session from sign-in:
+
+```
+Authorization: Bearer <accessToken>
+```
+
 ## Rate Limit
 
-**10 requests per minute per client** (all tiers).
+Per account, per minute: **FREE 20, BASIC 120, PRO 600, ENTERPRISE 2,000** (defaults). Above the limit the API returns `429` with a `Retry-After` header. Anonymous sign-in has an extra limit of 30 requests per IP address and 5 per token per minute.
 
 ---
 
@@ -221,7 +227,7 @@ Omit `boardKey` and use the legacy singular endpoints below for the default boar
 
 ### POST /api/v1/app/leaderboard/submit
 
-Submit a score (only updates if higher than previous best).
+Submit a score. Only the player's best score is kept (higher wins on DESC boards, lower on ASC boards). Requires `Authorization: Bearer <accessToken>` of the same user.
 
 **Request:**
 ```json
@@ -232,12 +238,7 @@ Submit a score (only updates if higher than previous best).
 }
 ```
 
-**Response (200):**
-```json
-{
-  "success": true
-}
-```
+**Response (200):** empty body. `401` without a valid session, `403` when the session belongs to another user.
 
 ---
 
@@ -304,7 +305,7 @@ Get entries around a user's rank.
 
 ### POST /api/v1/app/cloud-save/save
 
-Save data to the cloud (JSON mode).
+Save data to the cloud (JSON mode). Replaces the previous save. Requires `Authorization: Bearer <accessToken>` of the same user.
 
 **Request:**
 ```json
@@ -326,13 +327,13 @@ Save data to the cloud (JSON mode).
 
 **Status Codes:** `200` success, `403` exceeds tier size limit.
 
-**Tier limits:** FREE=1KB, BASIC=5KB, PRO=20KB, ENTERPRISE=250KB.
+**Tier limits (defaults):** FREE=1KB, BASIC=5KB, PRO=20KB, ENTERPRISE=250KB.
 
 ---
 
 ### POST /api/v1/app/cloud-save/load
 
-Load data from the cloud (JSON mode).
+Load data from the cloud (JSON mode). Requires `Authorization: Bearer <accessToken>` of the same user.
 
 **Request:**
 ```json
@@ -457,6 +458,8 @@ Redeem a gift code.
   "giftData": "string (JSON) | null"
 }
 ```
+
+**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `403` code or user of another API key, `404` unknown code.
 
 ---
 

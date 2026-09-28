@@ -57,6 +57,28 @@ describe("HorizonApiClient", () => {
     expect(options.headers["Content-Type"]).toBe("application/json");
   });
 
+  it("returns null for an empty body and plain text as a string", async () => {
+    const client = new HorizonApiClient("test-key", "https://example.com");
+
+    vi.stubGlobal("fetch", mockFetchResponse(""));
+    await expect(client.post("/api/v1/test")).resolves.toBeNull();
+
+    vi.stubGlobal("fetch", mockFetchResponse("ok"));
+    await expect(client.post("/api/v1/test")).resolves.toBe("ok");
+  });
+
+  it("POST merges extra headers such as a session", async () => {
+    const fakeFetch = mockFetchResponse({ ok: true });
+    vi.stubGlobal("fetch", fakeFetch);
+
+    const client = new HorizonApiClient("test-key", "https://example.com");
+    await client.post("/api/v1/test", { a: 1 }, { Authorization: "Bearer s" });
+
+    const [, options] = fakeFetch.mock.calls[0];
+    expect(options.headers["X-API-Key"]).toBe("test-key");
+    expect(options.headers.Authorization).toBe("Bearer s");
+  });
+
   it("GET appends query params", async () => {
     const fakeFetch = mockFetchResponse({ items: [] });
     vi.stubGlobal("fetch", fakeFetch);

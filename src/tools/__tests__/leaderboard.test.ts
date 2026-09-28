@@ -58,14 +58,16 @@ describe("registerLeaderboardTools", () => {
     const server = createMockServer();
     registerLeaderboardTools(server);
 
-    const mockPost = vi.fn().mockResolvedValue({ success: true });
+    // The API answers with an empty body, which the client turns into null
+    const mockPost = vi.fn().mockResolvedValue(null);
     mockedCreateApiClient.mockReturnValue({ post: mockPost } as any);
 
     const { handler } = registeredTools.get("horizon_submit_score")!;
-    await handler({
+    const result = await handler({
       userId: "550e8400-e29b-41d4-a716-446655440000",
       score: 1200,
       leaderboardKey: "weekly_speed",
+      sessionToken: "session-123",
     });
 
     expect(mockPost).toHaveBeenCalledWith(
@@ -75,7 +77,9 @@ describe("registerLeaderboardTools", () => {
         score: 1200,
         leaderboardKey: "weekly_speed",
       },
+      { Authorization: "Bearer session-123" },
     );
+    expect(JSON.parse(result.content[0].text)).toEqual({ success: true });
   });
 
   it("gets top scores from a named board", async () => {

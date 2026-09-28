@@ -18,6 +18,29 @@ export class HorizonApiError extends Error {
   }
 }
 
+/**
+ * Reads a response body as JSON. Some endpoints answer with an empty body
+ * (leaderboard submit) or plain text (feedback submit), so an empty body
+ * becomes null and non-JSON text is returned as a string.
+ */
+async function parseBody<T>(response: Response): Promise<T> {
+  const text = await response.text();
+  if (!text) return null as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return text as T;
+  }
+}
+
+/**
+ * Authorization header for endpoints that need a player session
+ * (leaderboard submit, cloud save). The token is the accessToken from sign-in.
+ */
+export function sessionHeaders(sessionToken: string): Record<string, string> {
+  return { Authorization: `Bearer ${sessionToken}` };
+}
+
 export class HorizonApiClient {
   private readonly apiKey: string;
   private readonly baseUrl: string;
@@ -59,13 +82,13 @@ export class HorizonApiClient {
       throw new HorizonApiError(response.status, body);
     }
 
-    return (await response.json()) as T;
+    return parseBody<T>(response);
   }
 
-  async post<T>(path: string, body?: unknown): Promise<T> {
+  async post<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: "POST",
-      headers: this.authHeaders(),
+      headers: { ...this.authHeaders(), ...headers },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
@@ -74,7 +97,7 @@ export class HorizonApiClient {
       throw new HorizonApiError(response.status, responseBody);
     }
 
-    return (await response.json()) as T;
+    return parseBody<T>(response);
   }
 
   async put<T>(path: string, body?: unknown): Promise<T> {
@@ -89,7 +112,7 @@ export class HorizonApiClient {
       throw new HorizonApiError(response.status, responseBody);
     }
 
-    return (await response.json()) as T;
+    return parseBody<T>(response);
   }
 
   async patch<T>(path: string, body?: unknown): Promise<T> {
@@ -104,7 +127,7 @@ export class HorizonApiClient {
       throw new HorizonApiError(response.status, responseBody);
     }
 
-    return (await response.json()) as T;
+    return parseBody<T>(response);
   }
 
   async delete<T>(path: string, body?: unknown): Promise<T> {
@@ -119,7 +142,7 @@ export class HorizonApiClient {
       throw new HorizonApiError(response.status, responseBody);
     }
 
-    return (await response.json()) as T;
+    return parseBody<T>(response);
   }
 }
 

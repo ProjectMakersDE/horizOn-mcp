@@ -1,18 +1,22 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { createApiClientFromEnv } from "./api-client.js";
-import { noApiKeyResponse, errorResponse, jsonResponse } from "./tool-helpers.js";
+import { noApiKeyResponse, errorResponse, jsonResponse, READ_ONLY, ADDITIVE_WRITE, API_ERRORS } from "./tool-helpers.js";
 
 export function registerGiftCodeTools(server: McpServer): void {
   // --- Validate gift code ---
   server.registerTool("horizon_validate_gift_code", {
     title: "Validate Gift Code",
     description:
-      "Validates a gift code on horizOn without redeeming it. Checks if the code is valid for the given user.",
+      "Checks whether a gift code can be redeemed by this player, without using it up. " +
+      "Use it before horizon_redeem_gift_code, for example to confirm a code the player typed. " +
+      "Returns {valid}; valid is false when the code does not exist, has expired or has reached its redemption limit for this player or in total. " +
+      API_ERRORS,
     inputSchema: {
       code: z.string().max(50).describe("Gift code to validate (max 50 characters)"),
-      userId: z.string().uuid().describe("User ID (UUID)"),
+      userId: z.string().uuid().describe("User ID (UUID) returned by a horizon_signup_* or horizon_signin_* tool"),
     },
+    annotations: READ_ONLY,
   }, async ({ code, userId }) => {
     const client = createApiClientFromEnv();
     if (!client) return noApiKeyResponse();
@@ -32,11 +36,16 @@ export function registerGiftCodeTools(server: McpServer): void {
   server.registerTool("horizon_redeem_gift_code", {
     title: "Redeem Gift Code",
     description:
-      "Redeems a gift code on horizOn for the given user.",
+      "Redeems a gift code for a player and returns the reward. Each call uses up one redemption and cannot be undone; " +
+      "codes can be limited per player and in total. To check a code without using it, call horizon_validate_gift_code. " +
+      "Returns {success, message, giftData}. giftData is a JSON string with the reward set in the dashboard, which the game must parse and apply. " +
+      "An unknown code gives 404; an expired or revoked code or a reached limit gives 400. " +
+      API_ERRORS,
     inputSchema: {
       code: z.string().max(50).describe("Gift code to redeem (max 50 characters)"),
-      userId: z.string().uuid().describe("User ID (UUID)"),
+      userId: z.string().uuid().describe("User ID (UUID) returned by a horizon_signup_* or horizon_signin_* tool"),
     },
+    annotations: ADDITIVE_WRITE,
   }, async ({ code, userId }) => {
     const client = createApiClientFromEnv();
     if (!client) return noApiKeyResponse();
