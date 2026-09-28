@@ -2,432 +2,261 @@
 
 ## Overview
 
-There is **no official horizOn SDK for Unreal Engine**. Instead, you use the REST API directly via HTTP requests. This guide shows how to integrate horizOn using either:
+horizOn has an **official Unreal Engine SDK**: the horizOn SDK plugin ([ProjectMakersDE/horizOn-SDK-Unreal](https://github.com/ProjectMakersDE/horizOn-SDK-Unreal)). It covers authentication, leaderboards, cloud save, remote config, localization, news, gift codes, feedback, user logs, crash reporting and email sending.
 
-- **VaRest Plugin** — Marketplace plugin for Blueprint-friendly HTTP requests
-- **FHttpModule** — Unreal's built-in C++ HTTP module
+- **C++:** all features are reached through `UHorizonSubsystem`, a Game Instance Subsystem that owns one manager per feature (`Auth`, `Leaderboard`, `CloudSave`, `RemoteConfig`, `Localization`, `News`, `GiftCodes`, `Feedback`, `UserLogs`, `Crashes`, `EmailSending`).
+- **Blueprints:** every call is also available as an async node with **On Success** and **On Failure** pins.
 
 ## Requirements
 
-- **Unreal Engine 5.x**
+- **Unreal Engine 5.5** or later
 - horizOn API key (get one at [horizon.pm](https://horizon.pm))
-- HTTP request capability (VaRest plugin or FHttpModule)
+- Target platforms declared by the plugin: Win64, Mac, Linux, Android, iOS
 
-## API Configuration
+## Step 1: Install the Plugin
 
-All requests use these common settings:
+1. Download `horizOn-SDK-vX.Y.Z.zip` from [GitHub Releases](https://github.com/ProjectMakersDE/horizOn-SDK-Unreal/releases)
+2. Extract the `HorizonSDK/` folder into your project's `Plugins/` directory
+3. Open the project in Unreal Editor
+4. Go to **Edit > Plugins**, search for "horizOn SDK" and enable it
+5. Restart the editor when prompted
 
-| Setting | Value |
-|---------|-------|
-| Base URL | `https://horizon.pm` |
-| API Key Header | `X-API-Key: YOUR_API_KEY` |
-| Content Type | `Content-Type: application/json` |
-| Rate Limit | 10 requests/minute per client |
+To call the SDK from C++, add `"HorizonSDK"` to the dependency module names in your game module's `.Build.cs`.
 
-## Option A: VaRest Plugin (Blueprint-Friendly)
+## Step 2: Configure
 
-Install VaRest from the Unreal Marketplace, then use it in Blueprints or C++.
+Open **Project Settings > Plugins > horizOn SDK**:
 
-### C++ Setup with VaRest
+| Option | Default | Description |
+|--------|---------|-------------|
+| API Key | (empty) | Your horizOn API key |
+| Backend Hosts | (empty) | Backend URL(s), for example `https://horizon.pm`. One host connects directly, several hosts use ping-based selection. |
+| Connection Timeout | 10 | HTTP request timeout in seconds |
+| Max Retries | 3 | Retry count for failed requests |
+| Retry Delay | 1.0 | Delay between retries in seconds |
+| Log Level | Info | SDK log verbosity |
+
+Alternatively, use **Tools > horizOn > Import Config...** to import the JSON config file from the horizOn dashboard. The importer reads `apiKey` plus either `backendDomains` (list) or `backendUrl` (single host). `ConnectToServer()` fails with "No hosts configured" if Backend Hosts is empty.
+
+## Step 3: Connect to Server
 
 ```cpp
-// MyHorizonManager.h
-#pragma once
-#include "CoreMinimal.h"
-#include "VaRestSubsystem.h"
+// MyActor.h: connection handlers are bound to dynamic delegates, so declare them as UFUNCTION()
+UFUNCTION()
+void HandleConnected();
 
-UCLASS()
-class UMyHorizonManager : public UObject
-{
-    GENERATED_BODY()
-
-public:
-    void SetApiKey(const FString& InApiKey) { ApiKey = InApiKey; }
-
-    void SignUpAnonymous(const FString& Username);
-    void SubmitScore(const FString& UserId, int64 Score);
-    void GetRemoteConfig(const FString& Key);
-
-private:
-    FString BaseUrl = TEXT("https://horizon.pm");
-    FString ApiKey;
-
-    UVaRestJsonObject* CreateRequestWithHeaders();
-};
+UFUNCTION()
+void HandleConnectionFailed(const FString& ErrorMessage);
 ```
 
-## Option B: FHttpModule (Built-in C++)
+```cpp
+// MyActor.cpp
+#include "HorizonSubsystem.h"
 
-No plugins required. Uses Unreal's native HTTP module.
+void AMyActor::BeginPlay()
+{
+    Super::BeginPlay();
 
-### Base HTTP Helper
+    UHorizonSubsystem* Horizon = GetGameInstance()->GetSubsystem<UHorizonSubsystem>();
+    Horizon->OnConnected.AddUniqueDynamic(this, &AMyActor::HandleConnected);
+    Horizon->OnConnectionFailed.AddUniqueDynamic(this, &AMyActor::HandleConnectionFailed);
+    Horizon->ConnectToServer();
+}
+```
+
+Other connection calls: `Horizon->IsConnected()`, `Horizon->GetConnectionStatus()`, `Horizon->Disconnect()`.
+
+## Step 4: Authenticate
 
 ```cpp
-// HorizonAPI.h
-#pragma once
-#include "CoreMinimal.h"
-#include "Http.h"
-#include "Json.h"
+#include "Managers/HorizonAuthManager.h"
 
-class FHorizonAPI
+void AMyActor::HandleConnected()
 {
-public:
-    static FString BaseUrl;
-    static FString ApiKey;
+    UHorizonSubsystem* Horizon = GetGameInstance()->GetSubsystem<UHorizonSubsystem>();
 
-    // POST request helper
-    static void Post(
-        const FString& Endpoint,
-        const TSharedRef<FJsonObject>& Body,
-        TFunction<void(bool bSuccess, TSharedPtr<FJsonObject> Response)> Callback)
+    // Anonymous sign-up (guest account)
+    Horizon->Auth->SignUpAnonymous(TEXT("Player1"), FOnAuthComplete::CreateLambda([Horizon](bool bSuccess)
     {
-        FHttpModule& Http = FHttpModule::Get();
-        TSharedRef<IHttpRequest> Request = Http.CreateRequest();
+        if (bSuccess)
+        {
+            FHorizonUserData User = Horizon->Auth->GetCurrentUser();
+            UE_LOG(LogTemp, Log, TEXT("Signed in as %s (%s)"), *User.DisplayName, *User.UserId);
+        }
+    }));
+}
+```
 
-        Request->SetURL(BaseUrl + Endpoint);
-        Request->SetVerb(TEXT("POST"));
-        Request->SetHeader(TEXT("Content-Type"), TEXT("application/json"));
-        Request->SetHeader(TEXT("X-API-Key"), ApiKey);
+### Other Authentication Methods
 
-        FString BodyString;
-        TSharedRef<TJsonWriter<>> Writer = TJsonWriterFactory<>::Create(&BodyString);
-        FJsonSerializer::Serialize(Body, Writer);
-        Request->SetContentAsString(BodyString);
+```cpp
+// Email sign-up and sign-in
+Horizon->Auth->SignUpEmail(TEXT("user@example.com"), TEXT("password"), TEXT("Username"), FOnAuthComplete::CreateLambda([](bool bSuccess) { }));
+Horizon->Auth->SignInEmail(TEXT("user@example.com"), TEXT("password"), FOnAuthComplete::CreateLambda([](bool bSuccess) { }));
 
-        Request->OnProcessRequestComplete().BindLambda(
-            [Callback](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnected)
-            {
-                if (bConnected && Resp.IsValid() && Resp->GetResponseCode() == 200)
-                {
-                    TSharedPtr<FJsonObject> JsonResponse;
-                    TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Resp->GetContentAsString());
-                    FJsonSerializer::Deserialize(Reader, JsonResponse);
-                    Callback(true, JsonResponse);
-                }
-                else
-                {
-                    Callback(false, nullptr);
-                }
-            });
+// Restore the cached anonymous session on the next launch
+Horizon->Auth->RestoreAnonymousSession(FOnAuthComplete::CreateLambda([](bool bSuccess) { }));
 
-        Request->ProcessRequest();
-    }
+// Sign in with Apple (native sheet on iOS, system browser elsewhere)
+Horizon->Auth->SignInWithApple(FOnAuthComplete::CreateLambda([](bool bSuccess) { }));
 
-    // GET request helper
-    static void Get(
-        const FString& Endpoint,
-        TFunction<void(bool bSuccess, TSharedPtr<FJsonObject> Response)> Callback)
+// Session state
+bool bSignedIn = Horizon->Auth->IsSignedIn();
+Horizon->Auth->SignOut();
+```
+
+Google sign-in is available through `SignUpGoogle(AuthCode, RedirectUri, Username, OnComplete)` and `SignInGoogle(AuthCode, RedirectUri, OnComplete)`.
+
+## Step 5: Use Features
+
+Each manager lives in `Managers/Horizon<Feature>Manager.h`. Include the header of the manager you call.
+
+### Leaderboards
+
+```cpp
+// Submit a score (optional Metadata and BoardKey parameters follow the callback)
+Horizon->Leaderboard->SubmitScore(12500, FOnRequestComplete::CreateLambda([](bool bSuccess, const FString& Error) { }));
+
+// Top 10 entries (second argument: use the local cache)
+Horizon->Leaderboard->GetTop(10, false, FOnLeaderboardEntriesComplete::CreateLambda(
+    [](bool bSuccess, const TArray<FHorizonLeaderboardEntry>& Entries)
     {
-        FHttpModule& Http = FHttpModule::Get();
-        TSharedRef<IHttpRequest> Request = Http.CreateRequest();
+        for (const FHorizonLeaderboardEntry& Entry : Entries)
+        {
+            UE_LOG(LogTemp, Log, TEXT("#%d %s: %lld"), Entry.Position, *Entry.Username, Entry.Score);
+        }
+    }));
 
-        Request->SetURL(BaseUrl + Endpoint);
-        Request->SetVerb(TEXT("GET"));
-        Request->SetHeader(TEXT("X-API-Key"), ApiKey);
-
-        Request->OnProcessRequestComplete().BindLambda(
-            [Callback](FHttpRequestPtr Req, FHttpResponsePtr Resp, bool bConnected)
-            {
-                if (bConnected && Resp.IsValid() && Resp->GetResponseCode() == 200)
-                {
-                    TSharedPtr<FJsonObject> JsonResponse;
-                    TSharedRef<TJsonReader<>> Reader = TJsonReaderFactory<>::Create(Resp->GetContentAsString());
-                    FJsonSerializer::Deserialize(Reader, JsonResponse);
-                    Callback(true, JsonResponse);
-                }
-                else
-                {
-                    Callback(false, nullptr);
-                }
-            });
-
-        Request->ProcessRequest();
-    }
-};
-
-// HorizonAPI.cpp
-FString FHorizonAPI::BaseUrl = TEXT("https://horizon.pm");
-FString FHorizonAPI::ApiKey = TEXT("");
+// Own rank and the entries around it
+Horizon->Leaderboard->GetRank(false, FOnLeaderboardRankComplete::CreateLambda([](bool bSuccess, const FHorizonLeaderboardEntry& Entry) { }));
+Horizon->Leaderboard->GetAround(5, false, FOnLeaderboardEntriesComplete::CreateLambda([](bool bSuccess, const TArray<FHorizonLeaderboardEntry>& Entries) { }));
 ```
 
-## Feature Examples
-
-### Anonymous Signup
+### Cloud Saves
 
 ```cpp
-void SignUpAnonymous(const FString& Username)
-{
-    TSharedRef<FJsonObject> Body = MakeShared<FJsonObject>();
-    Body->SetStringField(TEXT("type"), TEXT("ANONYMOUS"));
-    Body->SetStringField(TEXT("username"), Username);
+Horizon->CloudSave->Save(TEXT("{\"level\": 5, \"coins\": 1000}"), FOnRequestComplete::CreateLambda([](bool bSuccess, const FString& Error) { }));
+Horizon->CloudSave->Load(FOnStringComplete::CreateLambda([](bool bSuccess, const FString& Data) { }));
 
-    // Generate a unique anonymous token (max 32 chars)
-    FString Token = FGuid::NewGuid().ToString(EGuidFormats::DigitsLower).Left(32);
-    Body->SetStringField(TEXT("anonymousToken"), Token);
-
-    FHorizonAPI::Post(TEXT("/api/v1/app/user-management/signup"), Body,
-        [](bool bSuccess, TSharedPtr<FJsonObject> Response)
-        {
-            if (bSuccess && Response.IsValid())
-            {
-                FString UserId = Response->GetStringField(TEXT("userId"));
-                FString Name = Response->GetStringField(TEXT("username"));
-                UE_LOG(LogTemp, Log, TEXT("Signed up: %s (%s)"), *Name, *UserId);
-            }
-            else
-            {
-                UE_LOG(LogTemp, Error, TEXT("Signup failed"));
-            }
-        });
-}
+// Binary data
+Horizon->CloudSave->SaveBytes(Bytes, FOnRequestComplete::CreateLambda([](bool bSuccess, const FString& Error) { }));
+Horizon->CloudSave->LoadBytes(FOnBinaryComplete::CreateLambda([](bool bSuccess, const TArray<uint8>& Data) { }));
 ```
 
-### Email Sign-In
+### Remote Config
 
 ```cpp
-void SignInEmail(const FString& Email, const FString& Password)
-{
-    TSharedRef<FJsonObject> Body = MakeShared<FJsonObject>();
-    Body->SetStringField(TEXT("type"), TEXT("EMAIL"));
-    Body->SetStringField(TEXT("email"), Email);
-    Body->SetStringField(TEXT("password"), Password);
+// Typed getters with defaults (Key, Default, bUseCache, callback)
+Horizon->RemoteConfig->GetString(TEXT("welcome_message"), TEXT("Welcome!"), true, FOnConfigComplete::CreateLambda([](bool bSuccess, const FString& Value) { }));
+Horizon->RemoteConfig->GetInt(TEXT("max_level"), 100, true, TDelegate<void(bool, int32)>::CreateLambda([](bool bSuccess, int32 Value) { }));
 
-    FHorizonAPI::Post(TEXT("/api/v1/app/user-management/signin"), Body,
-        [](bool bSuccess, TSharedPtr<FJsonObject> Response)
-        {
-            if (bSuccess && Response.IsValid())
-            {
-                FString Status = Response->GetStringField(TEXT("authStatus"));
-                if (Status == TEXT("AUTHENTICATED"))
-                {
-                    FString AccessToken = Response->GetStringField(TEXT("accessToken"));
-                    UE_LOG(LogTemp, Log, TEXT("Signed in successfully"));
-                }
-            }
-        });
-}
+// All configs at once (recommended at startup)
+Horizon->RemoteConfig->GetAllConfigs(true, FOnAllConfigsComplete::CreateLambda([](bool bSuccess, const TMap<FString, FString>& Configs) { }));
 ```
 
-### Submit Leaderboard Score
+`GetFloat`, `GetBool`, `GetJson` and `HasKey` follow the same pattern.
+
+### Localization
 
 ```cpp
-void SubmitScore(const FString& UserId, int64 Score)
-{
-    TSharedRef<FJsonObject> Body = MakeShared<FJsonObject>();
-    Body->SetStringField(TEXT("userId"), UserId);
-    Body->SetNumberField(TEXT("score"), Score);
+// Active language: en, de, es, fr, it, pt, nl, pl, ru, ja, zh, ar, ko, tr, id
+Horizon->Localization->SetLanguage(TEXT("de"));
 
-    FHorizonAPI::Post(TEXT("/api/v1/app/leaderboard/submit"), Body,
-        [Score](bool bSuccess, TSharedPtr<FJsonObject> Response)
-        {
-            if (bSuccess)
-            {
-                UE_LOG(LogTemp, Log, TEXT("Score submitted: %lld"), Score);
-            }
-        });
-}
+// Empty language uses the active language
+Horizon->Localization->GetLocalization(TEXT("welcome_message"), TEXT(""), FOnLocalizationComplete::CreateLambda([](bool bSuccess, const FString& Value) { }));
+Horizon->Localization->GetAllLocalizations(TEXT("de"), FOnAllLocalizationsComplete::CreateLambda([](bool bSuccess, const TMap<FString, FString>& Translations) { }));
+Horizon->Localization->GetAvailableLanguages(FOnLanguagesComplete::CreateLambda([](bool bSuccess, const TArray<FString>& Languages) { }));
 ```
 
-### Get Top Leaderboard
+### News
 
 ```cpp
-void GetTopLeaderboard(const FString& UserId, int32 Limit)
-{
-    FString Endpoint = FString::Printf(
-        TEXT("/api/v1/app/leaderboard/top?userId=%s&limit=%d"),
-        *UserId, Limit);
-
-    FHorizonAPI::Get(Endpoint,
-        [](bool bSuccess, TSharedPtr<FJsonObject> Response)
+// Limit, language code, bUseCache, callback
+Horizon->News->LoadNews(20, TEXT("en"), true, FOnNewsComplete::CreateLambda(
+    [](bool bSuccess, const TArray<FHorizonNewsEntry>& Entries)
+    {
+        for (const FHorizonNewsEntry& Entry : Entries)
         {
-            if (bSuccess && Response.IsValid())
-            {
-                const TArray<TSharedPtr<FJsonValue>>* Entries;
-                if (Response->TryGetArrayField(TEXT("entries"), Entries))
-                {
-                    for (const auto& Entry : *Entries)
-                    {
-                        auto Obj = Entry->AsObject();
-                        int32 Position = Obj->GetIntegerField(TEXT("position"));
-                        FString Username = Obj->GetStringField(TEXT("username"));
-                        int64 Score = Obj->GetIntegerField(TEXT("score"));
-                        UE_LOG(LogTemp, Log, TEXT("#%d %s: %lld"), Position, *Username, Score);
-                    }
-                }
-            }
-        });
-}
+            UE_LOG(LogTemp, Log, TEXT("%s: %s"), *Entry.Title, *Entry.Message);
+        }
+    }));
 ```
 
-### Save and Load Cloud Data
+### Gift Codes
 
 ```cpp
-void SaveCloudData(const FString& UserId, const FString& SaveData)
-{
-    TSharedRef<FJsonObject> Body = MakeShared<FJsonObject>();
-    Body->SetStringField(TEXT("userId"), UserId);
-    Body->SetStringField(TEXT("saveData"), SaveData);
-
-    FHorizonAPI::Post(TEXT("/api/v1/app/cloud-save/save"), Body,
-        [](bool bSuccess, TSharedPtr<FJsonObject> Response)
-        {
-            if (bSuccess && Response.IsValid())
-            {
-                bool Success = Response->GetBoolField(TEXT("success"));
-                int32 Size = Response->GetIntegerField(TEXT("dataSizeBytes"));
-                UE_LOG(LogTemp, Log, TEXT("Saved: %d bytes"), Size);
-            }
-        });
-}
-
-void LoadCloudData(const FString& UserId)
-{
-    TSharedRef<FJsonObject> Body = MakeShared<FJsonObject>();
-    Body->SetStringField(TEXT("userId"), UserId);
-
-    FHorizonAPI::Post(TEXT("/api/v1/app/cloud-save/load"), Body,
-        [](bool bSuccess, TSharedPtr<FJsonObject> Response)
-        {
-            if (bSuccess && Response.IsValid())
-            {
-                bool Found = Response->GetBoolField(TEXT("found"));
-                if (Found)
-                {
-                    FString Data = Response->GetStringField(TEXT("saveData"));
-                    UE_LOG(LogTemp, Log, TEXT("Loaded: %s"), *Data);
-                }
-            }
-        });
-}
+Horizon->GiftCodes->Validate(TEXT("ABCD-1234"), FOnGiftCodeValidateComplete::CreateLambda([](bool bRequestSuccess, bool bValid) { }));
+Horizon->GiftCodes->Redeem(TEXT("ABCD-1234"), FOnGiftCodeRedeemComplete::CreateLambda([](bool bSuccess, const FString& GiftData, const FString& Message) { }));
 ```
 
-### Get Remote Config
+### Feedback
 
 ```cpp
-void GetAllRemoteConfigs()
-{
-    FHorizonAPI::Get(TEXT("/api/v1/app/remote-config/all"),
-        [](bool bSuccess, TSharedPtr<FJsonObject> Response)
-        {
-            if (bSuccess && Response.IsValid())
-            {
-                const TSharedPtr<FJsonObject>* Configs;
-                if (Response->TryGetObjectField(TEXT("configs"), Configs))
-                {
-                    for (const auto& Pair : (*Configs)->Values)
-                    {
-                        UE_LOG(LogTemp, Log, TEXT("Config: %s = %s"),
-                            *Pair.Key, *Pair.Value->AsString());
-                    }
-                }
-            }
-        });
-}
+Horizon->Feedback->ReportBug(TEXT("Crash on level 5"), TEXT("Game crashes when opening the inventory"), FOnRequestComplete::CreateLambda([](bool bSuccess, const FString& Error) { }));
+Horizon->Feedback->RequestFeature(TEXT("Dark mode"), TEXT("Please add a dark mode option"), FOnRequestComplete::CreateLambda([](bool bSuccess, const FString& Error) { }));
 ```
 
-### Get Localizations
+### User Logs
 
 ```cpp
-// SetLanguage simply means appending ?lang=xx to the request (en, de, es,
-// fr, it, pt, nl, pl, ru, ja, zh, ar, ko, tr, id).
-void GetLocalization(const FString& Key, const FString& Lang)
-{
-    FHorizonAPI::Get(FString::Printf(TEXT("/api/v1/app/localization/%s?lang=%s"), *Key, *Lang),
-        [](bool bSuccess, TSharedPtr<FJsonObject> Response)
-        {
-            if (bSuccess && Response.IsValid() && Response->GetBoolField(TEXT("found")))
-            {
-                UE_LOG(LogTemp, Log, TEXT("Localization: %s"),
-                    *Response->GetStringField(TEXT("value")));
-            }
-        });
-}
-
-void GetAllLocalizations(const FString& Lang)
-{
-    FHorizonAPI::Get(FString::Printf(TEXT("/api/v1/app/localization/all?lang=%s"), *Lang),
-        [](bool bSuccess, TSharedPtr<FJsonObject> Response)
-        {
-            if (bSuccess && Response.IsValid())
-            {
-                const TSharedPtr<FJsonObject>* Translations;
-                if (Response->TryGetObjectField(TEXT("translations"), Translations))
-                {
-                    for (const auto& Pair : (*Translations)->Values)
-                    {
-                        UE_LOG(LogTemp, Log, TEXT("Localization: %s = %s"),
-                            *Pair.Key, *Pair.Value->AsString());
-                    }
-                }
-            }
-        });
-}
+// Requires BASIC tier or higher
+Horizon->UserLogs->Info(TEXT("Tutorial completed"), FOnUserLogComplete::CreateLambda([](bool bSuccess, const FString& LogId, const FString& CreatedAt) { }));
 ```
 
-## REST Examples (cURL)
+`Warn` and `Error` take the same arguments. An optional error code can follow the callback.
 
-These cURL examples show the raw HTTP requests. Translate them to your preferred Unreal HTTP method.
+### Crash Reporting
 
-```bash
-# Anonymous signup
-curl -X POST https://horizon.pm/api/v1/app/user-management/signup \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"type": "ANONYMOUS", "username": "Player1", "anonymousToken": "unique32chartoken"}'
+```cpp
+// Automatic capture of engine errors (call once at game start)
+Horizon->Crashes->StartCapture();
 
-# Submit score
-curl -X POST https://horizon.pm/api/v1/app/leaderboard/submit \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"userId": "user123", "score": 12500}'
+// Context for later reports
+Horizon->Crashes->RecordBreadcrumb(TEXT("navigation"), TEXT("Entered level 5"));
+Horizon->Crashes->SetCustomKey(TEXT("level"), TEXT("5"));
 
-# Get remote config
-curl "https://horizon.pm/api/v1/app/remote-config/all" \
-  -H "X-API-Key: YOUR_API_KEY"
-
-# Get all localizations (German)
-curl "https://horizon.pm/api/v1/app/localization/all?lang=de" \
-  -H "X-API-Key: YOUR_API_KEY"
-
-# Save cloud data
-curl -X POST https://horizon.pm/api/v1/app/cloud-save/save \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"userId": "user123", "saveData": "{\"level\":5}"}'
-
-# Load cloud data
-curl -X POST https://horizon.pm/api/v1/app/cloud-save/load \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"userId": "user123"}'
-
-# Get news
-curl "https://horizon.pm/api/v1/app/news?limit=10&languageCode=en" \
-  -H "X-API-Key: YOUR_API_KEY"
-
-# Redeem gift code
-curl -X POST https://horizon.pm/api/v1/app/gift-codes/redeem \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"code": "ABCD-1234", "userId": "user123"}'
-
-# Submit feedback
-curl -X POST https://horizon.pm/api/v1/app/user-feedback/submit \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Bug Report", "message": "Description", "userId": "user123", "category": "BUG"}'
-
-# Create user log
-curl -X POST https://horizon.pm/api/v1/app/user-logs/create \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Level complete", "type": "INFO", "userId": "user123"}'
+// Non-fatal exception
+Horizon->Crashes->RecordException(TEXT("Failed to load texture"), TEXT("stack trace"));
 ```
 
-## Best Practices for Unreal
+### Email Sending
 
-- **Cache API key** — Store the API key in a config file or game settings, not hardcoded.
-- **Handle async properly** — All HTTP requests are asynchronous. Use delegates or lambdas for responses.
-- **Rate limit** — 10 requests/minute. Cache responses and batch operations.
-- **Error handling** — Always check HTTP status codes and handle 429 (rate limit) with exponential backoff.
-- **Store session tokens** — After sign-in, cache the `accessToken` and `userId` for subsequent requests.
+```cpp
+TMap<FString, FString> Variables;
+Variables.Add(TEXT("username"), TEXT("John"));
+
+// UserId, template slug, variables, language, callback (an overload takes an ISO 8601 ScheduledAt before the callback)
+Horizon->EmailSending->SendEmail(TEXT("user-uuid"), TEXT("welcome"), Variables, TEXT("en"),
+    FOnSendEmailComplete::CreateLambda([](bool bSuccess, const FSendEmailResponse& Response) { }));
+```
+
+`CancelEmail(EmailId, ...)` and `GetEmailStatus(EmailId, ...)` manage emails that were already sent or scheduled.
+
+## Blueprints
+
+Get the subsystem with the **Get HorizonSubsystem** node or use the async nodes directly. Examples of node names:
+
+- **Connect to horizOn Server**
+- **Sign Up Anonymous**, **Sign In Email**, **Restore Anonymous Session**, **Sign In With Apple (Native)**
+- **Submit Leaderboard Score**, **Get Top Scores**, **Get Leaderboard Rank**
+- **Cloud Save Data**, **Cloud Load Data**
+- **Get Remote Config**, **Get All Remote Configs**, **Get Localization**, **Load News**
+- **Validate Gift Code**, **Redeem Gift Code**, **Report Bug**, **Submit Feedback**
+- **Record Exception**, **Report Crash**, **Send Email**
+
+## Hello horizOn Example
+
+The plugin ships `AHelloHorizonActor`. Set the API key and Backend Hosts in Project Settings, drop the actor into a level and press Play. It connects, signs up anonymously, submits a leaderboard score and logs the result. Per-feature example actors (`AHorizonAuthExample`, `AHorizonLeaderboardExample`, `AHorizonCloudSaveExample` and others) live in `Source/HorizonSDK/Public/Examples/`.
+
+## Rate Limit Best Practices
+
+All tiers are limited to **10 requests per minute per client**. The SDK retries HTTP 429 responses automatically.
+
+- Load all remote configs and localizations once at startup
+- Use the `bUseCache` parameters for leaderboards, remote config and news
+- Submit scores only on improvement, not every frame
+- Start crash capture once, not repeatedly
+
+## Without the Plugin
+
+The SDK is the recommended path. If you cannot use the plugin, the App API can be called directly over HTTP with the `X-API-Key` header. See the `horizon://api/reference` resource for all endpoints.

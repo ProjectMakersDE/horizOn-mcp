@@ -64,7 +64,7 @@ Content-Type: application/json
 |--------|-----|----------|
 | **Godot** | [horizOn SDK for Godot](https://github.com/ProjectMakersDE/horizOn-SDK-Godot) | GDScript |
 | **Unity** | [horizOn Cloud SDK for Unity](https://github.com/ProjectMakersDE/horizOn-SDK-Unity) | C# |
-| **Unreal Engine** | No official SDK | Use REST API directly (C++ FHttpModule or VaRest plugin) |
+| **Unreal Engine** | [horizOn SDK for Unreal Engine](https://github.com/ProjectMakersDE/horizOn-SDK-Unreal) | C++ and Blueprints (Unreal Engine 5.5+) |
 
 ## Common HTTP Status Codes
 

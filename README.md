@@ -46,7 +46,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://api/reference` | Complete API reference for all horizOn App API endpoints with request/response schemas |
 | `horizon://quickstart/godot` | Step-by-step guide to integrate horizOn in Godot with GDScript examples |
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
-| `horizon://quickstart/unreal` | Guide to integrate horizOn in Unreal Engine using REST API. C++ and cURL examples |
+| `horizon://quickstart/unreal` | Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples |
 
 ### Tools (19 tools)
 
@@ -174,7 +174,7 @@ Learn more at [horizon.pm](https://horizon.pm). Install this MCP server via [npm
 
 - **Godot 4.5+** -- GDScript SDK
 - **Unity 6** -- C# SDK
-- **Unreal Engine** -- REST API (no official SDK)
+- **Unreal Engine 5.5+** -- C++ and Blueprint SDK
 
 ## Development
 

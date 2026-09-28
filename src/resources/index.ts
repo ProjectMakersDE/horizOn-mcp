@@ -350,7 +350,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "Unreal Engine Quickstart",
       description:
-        "Guide to integrate horizOn in Unreal Engine using REST API (no official SDK). C++ and cURL examples.",
+        "Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples.",
       mimeType: "text/markdown",
     },
     () => ({
