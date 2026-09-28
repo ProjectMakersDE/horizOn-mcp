@@ -4,7 +4,9 @@
 [![npm downloads](https://img.shields.io/npm/dm/horizon-mcp)](https://www.npmjs.com/package/horizon-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**MCP server for horizOn Backend-as-a-Service** -- gives AI coding assistants documentation, live API tools, and workflow prompts for game and app development.
+**MCP server for horizOn Backend-as-a-Service** 
+
+Gives AI coding assistants documentation, live API tools, and workflow prompts for game and app development.
 
 ---
 
