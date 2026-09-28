@@ -2,6 +2,7 @@
   "name": "horizon-mcp",
   "version": "1.5.3",
   "description": "MCP server for horizOn Backend-as-a-Service: documentation, live API tools, and workflow prompts for Godot, Unity, and Unreal Engine integration.",
+  "mcpName": "io.github.ProjectMakersDE/horizon-mcp",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
