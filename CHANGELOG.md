@@ -1,3 +1,12 @@
+## [1.5.3](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.5.2...v1.5.3) (2026-09-28)
+
+
+### Bug Fixes
+
+* **resources:** correct the subsystem Blueprint node name ([99bb713](https://github.com/ProjectMakersDE/horizOn-mcp/commit/99bb713e477a82b1db55a20f4016d85c4bce31d6))
+* **resources:** install the Godot SDK from the release ZIP ([4321d33](https://github.com/ProjectMakersDE/horizOn-mcp/commit/4321d33cb1f472008c2dd16f1d5373fe44d114d7))
+* **resources:** list all core features in the overview ([82586ab](https://github.com/ProjectMakersDE/horizOn-mcp/commit/82586ab32868e2021fc54560e74b1c8062efbc4d))
+
 ## [1.5.2](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.5.1...v1.5.2) (2026-09-28)
 
 
