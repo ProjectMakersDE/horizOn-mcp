@@ -28,7 +28,7 @@ Add to your MCP client configuration (Claude Desktop, Cursor, etc.):
 
 ## Features
 
-### Resources (13 docs)
+### Resources (16 docs)
 
 Documentation resources are served directly from the MCP server. No API key required.
 
@@ -39,16 +39,19 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/leaderboard` | Leaderboard score submission, top entries, user rank, entries around user, with SDK examples |
 | `horizon://docs/cloud-save` | Cloud save/load for JSON and binary data, tier size limits, SDK examples |
 | `horizon://docs/remote-config` | Server-side key-value configuration: feature flags, game balance, A/B testing. SDK examples |
+| `horizon://docs/localization` | Server-side localized strings across 15 languages: per-key translations, single/all fetch, available languages. SDK examples |
 | `horizon://docs/news` | In-game news and announcements with language filtering. SDK examples |
 | `horizon://docs/gift-codes` | Gift code validation and redemption for promotional rewards. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
 | `horizon://docs/user-logs` | Server-side event and error tracking. Requires BASIC tier or higher. SDK examples |
+| `horizon://docs/crash-reporting` | Crash report submission, session tracking, fingerprinting, breadcrumbs, and auto-regression detection. SDK examples |
+| `horizon://docs/email-sending` | Transactional and event-based email delivery to registered users. Templates, scheduling, status tracking, and SMTP integration. SDK examples |
 | `horizon://api/reference` | Complete API reference for all horizOn App API endpoints with request/response schemas |
 | `horizon://quickstart/godot` | Step-by-step guide to integrate horizOn in Godot with GDScript examples |
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
 | `horizon://quickstart/unreal` | Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples |
 
-### Tools (19 tools)
+### Tools (28 tools)
 
 Live API tools that call the horizOn backend. Requires a valid API key.
 
@@ -69,11 +72,19 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 | `horizon_load_cloud_data` | Load cloud save data for a user |
 | `horizon_get_remote_config` | Get a single remote config value by key |
 | `horizon_get_all_remote_configs` | Get all remote config values |
+| `horizon_get_localization` | Get a single localized string by key, optionally for a specific language |
+| `horizon_get_all_localizations` | Get all localized strings, optionally for a specific language |
+| `horizon_get_localization_languages` | List the languages that have localizations for the app |
 | `horizon_get_news` | Get news articles with optional language filtering |
 | `horizon_validate_gift_code` | Validate a gift code without redeeming it |
 | `horizon_redeem_gift_code` | Redeem a gift code for a user |
 | `horizon_submit_feedback` | Submit user feedback (bug reports, feature requests) |
 | `horizon_create_log` | Create a server-side log entry (INFO, WARN, ERROR) |
+| `horizon_create_crash_report` | Submit a crash report (grouped by fingerprint, with regression detection) |
+| `horizon_create_crash_session` | Register a game session for the crash-free rate |
+| `horizon_send_email` | Send a transactional email to a registered user from a template |
+| `horizon_cancel_email` | Cancel a pending or scheduled email |
+| `horizon_get_email_status` | Get the status of a sent or scheduled email |
 
 ### Prompts (4 prompts)
 
@@ -159,14 +170,17 @@ horizOn is a multi-tenant Backend-as-a-Service platform built for game and app d
 
 Core features:
 
-- Authentication (Anonymous, Email, Google)
+- Authentication (Anonymous, Email, Google, Apple)
 - Leaderboards
 - Cloud Save
 - Remote Config
+- Localization
 - News and Announcements
 - Gift Codes
 - User Feedback
 - User Logs
+- Crash Reporting
+- Email Sending
 
 Learn more at [horizon.pm](https://horizon.pm). Install this MCP server via [npm](https://www.npmjs.com/package/horizon-mcp).
 
@@ -180,7 +194,7 @@ Learn more at [horizon.pm](https://horizon.pm). Install this MCP server via [npm
 
 ```bash
 # Clone the repository
-git clone https://github.com/nicokimmel/horizOn-mcp.git
+git clone https://github.com/ProjectMakersDE/horizOn-mcp.git
 cd horizOn-mcp
 
 # Install dependencies
