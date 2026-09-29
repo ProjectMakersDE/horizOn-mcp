@@ -24,12 +24,15 @@ Returns the leaderboard boards configured for the app API key.
       "name": "Weekly",
       "sortOrder": "DESC",
       "isActive": true,
-      "scoreCount": 10
+      "scoreCount": 10,
+      "validatedOnly": false
     }
   ],
   "totalElements": 1
 }
 ```
+
+`validatedOnly: true` marks a board that only accepts server-checked runs (see [Validated only boards](#validated-only-boards)).
 
 ### Multi-Board Endpoints
 
@@ -67,6 +70,12 @@ A score has no `metadata` field; the server ignores unknown fields. Per-player d
   "success": true
 }
 ```
+
+On a board with `validatedOnly: true` this call answers `403` with `"code": "VALIDATED_SUBMIT_REQUIRED"` and writes nothing. Do not retry; submit through Validated Actions instead.
+
+### Validated only boards
+
+A board can be switched to **validated only** in the Dashboard. It then accepts scores only from a server-checked run: the game starts a run (`POST /api/v1/app/validated-actions/runs`, single-use ticket with a server seed), plays, and submits score plus the SHA-256 of its input log (`POST /api/v1/app/validated-actions/submit`). The server checks its rules (score limits, minimum duration, score per second, stage rules) before it writes. The normal submit answers `403 VALIDATED_SUBMIT_REQUIRED`. Details: `horizon://docs/validated-actions`. MCP tools: `horizon_start_run`, `horizon_submit_validated`.
 
 ---
 
@@ -271,5 +280,6 @@ curl "https://horizon.pm/api/v1/app/leaderboard/around?userId=user123&range=5" \
 | Status | Cause | Solution |
 |--------|-------|----------|
 | 401 | Invalid API key | Check `X-API-Key` header |
+| 403 | `VALIDATED_SUBMIT_REQUIRED` | The board is validated only: use Validated Actions (`horizon://docs/validated-actions`) |
 | 404 | User not found on leaderboard | User may not have submitted a score yet |
 | 429 | Rate limit exceeded | Cache data and reduce API calls |

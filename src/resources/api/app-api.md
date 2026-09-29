@@ -207,12 +207,15 @@ List the leaderboard boards configured for the app API key.
       "name": "Weekly",
       "sortOrder": "DESC",
       "isActive": true,
-      "scoreCount": 10
+      "scoreCount": 10,
+      "validatedOnly": false
     }
   ],
   "totalElements": 1
 }
 ```
+
+`validatedOnly: true`: the board accepts scores only through Validated Actions.
 
 Use the returned `key` with the V2 board endpoints:
 
@@ -238,7 +241,7 @@ Submit a score. Only the player's best score is kept (higher wins on DESC boards
 }
 ```
 
-**Response (200):** empty body. `401` without a valid session, `403` when the session belongs to another user.
+**Response (200):** empty body. `401` without a valid session, `403` when the session belongs to another user, `403` with `"code": "VALIDATED_SUBMIT_REQUIRED"` on a validated only board (nothing is written).
 
 ---
 
@@ -514,6 +517,72 @@ Replaces the whole visible profile (a missing, `null` or `""` slot is cleared, m
   "avatarId": "string | null",
   "frameId": "string | null",
   "badges": ["string (0 to 3, distinct)"]
+}
+```
+
+---
+
+## Validated Actions
+
+Server-checked runs (cloud only). Both endpoints need `Authorization: Bearer <accessToken>` of `userId`. Errors carry a `code` and, when known, the `runId`: `SCORE_REQUIRED`, `PLAYER_NAME_REQUIRED` (400), `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN`, `SCORE_LIMIT_REACHED` (403), `PLAYER_NOT_FOUND`, `LEADERBOARD_NOT_FOUND` (404), `TICKET_INVALID`, `TICKET_EXPIRED`, `TICKET_FOREIGN`, `TICKET_CONSUMED`, `LEADERBOARD_MISMATCH`, `STAGE_REQUIRED`, `STAGE_UNKNOWN`, `SCORE_ABOVE_MAX`, `SCORE_BELOW_MIN`, `STAGE_SCORE_ABOVE_MAX`, `STAGE_SCORE_BELOW_MIN`, `DURATION_TOO_SHORT`, `SCORE_RATE_TOO_HIGH` (422), `RUN_RATE_LIMITED`, `RUN_CAPACITY_REACHED` (429, `Retry-After`), `VALIDATED_ACTIONS_UNAVAILABLE` (503). See `horizon://docs/validated-actions`.
+
+### POST /api/v1/app/validated-actions/runs
+
+Start a run: single-use ticket with a server seed. `leaderboardKey` (optional) binds it to a board.
+
+**Request:**
+```json
+{
+  "userId": "string",
+  "leaderboardKey": "string (optional)"
+}
+```
+
+**Response (200):**
+```json
+{
+  "runId": "string",
+  "ticket": "string (opaque, at most 512 characters)",
+  "seed": "number (0 to 2147483646)",
+  "leaderboardKey": "string | null",
+  "issuedAt": "string (ISO 8601 UTC)",
+  "expiresAt": "string (ISO 8601 UTC)",
+  "expiresInSeconds": "number"
+}
+```
+
+---
+
+### POST /api/v1/app/validated-actions/submit
+
+Submit the result of a run. Rules run before any write; the ticket is consumed (also on a rule rejection).
+
+**Request:**
+```json
+{
+  "userId": "string",
+  "ticket": "string",
+  "inputLogHash": "string (SHA-256 of the input log, 64 hex characters)",
+  "score": "number (required when a board is targeted)",
+  "stage": "string (optional)",
+  "leaderboardKey": "string (optional, defaults to the ticket's board)",
+  "earned": [{ "key": "string", "amount": "number" }]
+}
+```
+
+**Response (200):**
+```json
+{
+  "accepted": true,
+  "runId": "string",
+  "leaderboardKey": "string | null",
+  "score": "number | null",
+  "bestScore": "number | null",
+  "isNewHighScore": "boolean",
+  "rank": "number | null",
+  "durationSeconds": "number",
+  "state": null,
+  "evidence": null
 }
 ```
 

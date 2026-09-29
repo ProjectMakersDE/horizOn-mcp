@@ -30,7 +30,7 @@ describe("player tool metadata", () => {
     vi.stubEnv("HORIZON_ACCOUNT_API_KEY", "");
     registerAllTools(createMockServer());
 
-    expect(registeredTools.size).toBe(30);
+    expect(registeredTools.size).toBe(32);
     for (const [name, config] of registeredTools) {
       expect(config.annotations, name).toBeDefined();
       expect(config.annotations?.openWorldHint, name).toBe(true);

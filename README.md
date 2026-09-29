@@ -30,7 +30,7 @@ Add to your MCP client configuration (Claude Desktop, Cursor, etc.):
 
 ## Features
 
-### Resources (17 docs)
+### Resources (18 docs)
 
 Documentation resources are served directly from the MCP server. No API key required.
 
@@ -38,13 +38,14 @@ Documentation resources are served directly from the MCP server. No API key requ
 |-----|-------------|
 | `horizon://overview` | What is horizOn, core concepts (Account vs User), features, tier system, API structure, and SDKs |
 | `horizon://docs/auth` | Authentication methods (Anonymous, Email, Google), endpoints, SDK code examples, and common errors |
-| `horizon://docs/leaderboard` | Leaderboard score submission, top entries, user rank, entries around user, player profile per entry, with SDK examples |
+| `horizon://docs/leaderboard` | Leaderboard score submission, top entries, user rank, entries around user, player profile per entry, validated only boards, with SDK examples |
 | `horizon://docs/cloud-save` | Cloud save/load for JSON and binary data, tier size limits, SDK examples |
 | `horizon://docs/remote-config` | Server-side key-value configuration: feature flags, game balance, A/B testing. SDK examples |
 | `horizon://docs/localization` | Server-side localized strings across 15 languages: per-key translations, single/all fetch, available languages. SDK examples |
 | `horizon://docs/news` | In-game news and announcements with language filtering. SDK examples |
 | `horizon://docs/gift-codes` | Gift code validation and redemption for promotional rewards, including cosmetic unlocks via grants. SDK examples |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
+| `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, rejection codes. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
 | `horizon://docs/user-logs` | Server-side event and error tracking. Requires BASIC tier or higher. SDK examples |
 | `horizon://docs/crash-reporting` | Crash report submission, session tracking, fingerprinting, breadcrumbs, and auto-regression detection. SDK examples |
@@ -54,11 +55,11 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
 | `horizon://quickstart/unreal` | Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples |
 
-### Tools (30 tools)
+### Tools (32 tools)
 
 Live API tools that call the horizOn backend. Requires a valid API key.
 
-`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile` and `horizon_set_profile` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
+`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run` and `horizon_submit_validated` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
 
 | Tool | Description |
 |------|-------------|
@@ -69,7 +70,7 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 | `horizon_signin_anonymous` | Sign in with an anonymous token |
 | `horizon_check_auth` | Check whether a user session is still valid |
 | `horizon_list_leaderboards` | List available leaderboard boards for multi-board calls |
-| `horizon_submit_score` | Submit a score to the leaderboard |
+| `horizon_submit_score` | Submit a score to the leaderboard (403 `VALIDATED_SUBMIT_REQUIRED` on validated only boards) |
 | `horizon_get_leaderboard_top` | Get the top leaderboard entries with each player's profile, optionally by board key |
 | `horizon_get_user_rank` | Get a user's leaderboard rank, optionally by board key |
 | `horizon_get_leaderboard_around` | Get leaderboard entries around a user's position, optionally by board key |
@@ -85,6 +86,8 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 | `horizon_redeem_gift_code` | Redeem a gift code for a user (returns `grantedUnlocks` for codes with cosmetic grants) |
 | `horizon_get_profile` | Get a player's profile (avatar, frame, badges), unlocks and the cosmetics catalog |
 | `horizon_set_profile` | Replace a player's whole profile (avatar, frame, up to 3 badges) |
+| `horizon_start_run` | Start a server-checked run: single-use ticket with a server seed, optionally bound to a board |
+| `horizon_submit_validated` | Submit a run result with the ticket and the SHA-256 input log hash (given, or computed locally from base64 bytes or text); rejections name their `code` |
 | `horizon_submit_feedback` | Submit user feedback (bug reports, feature requests) |
 | `horizon_create_log` | Create a server-side log entry (INFO, WARN, ERROR) |
 | `horizon_create_crash_report` | Submit a crash report (grouped by fingerprint, with regression detection) |

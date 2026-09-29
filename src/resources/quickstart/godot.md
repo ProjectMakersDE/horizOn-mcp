@@ -178,6 +178,21 @@ if updated.is_empty():
 
 Leaderboard entries carry `entry.profile` (`avatarId`, `frameId`, `badges`).
 
+### Validated Actions
+
+```gdscript
+# Server-checked run: single-use ticket with a server seed (cloud only)
+var run: Dictionary = await Horizon.validatedActions.startRun("weekly")
+if not run.is_empty():
+    seed(int(run.seed))
+    # ... play, record the inputs into input_log (PackedByteArray) ...
+    var result: Dictionary = await Horizon.validatedActions.submitValidated(18250, input_log)
+    if result.is_empty():
+        print(Horizon.validatedActions.getLastErrorCode())  # e.g. DURATION_TOO_SHORT
+```
+
+Boards with `validatedOnly` reject `submitScore` with `VALIDATED_SUBMIT_REQUIRED`. See `horizon://docs/validated-actions`.
+
 ### Feedback
 
 ```gdscript

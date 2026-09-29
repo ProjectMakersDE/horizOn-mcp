@@ -225,6 +225,25 @@ if (updated == null)
 
 Leaderboard entries carry `profile` (`avatarId`, `frameId`, `badges`).
 
+### Validated Actions
+
+```csharp
+// Server-checked run: single-use ticket with a server seed (cloud only)
+var run = await ValidatedActionsManager.Instance.StartRun("weekly");
+if (run != null)
+{
+    Random.InitState(run.seed);
+    // ... play, record the inputs into byte[] inputLog ...
+    var result = await ValidatedActionsManager.Instance.SubmitValidated(18250, inputLog);
+    if (result == null)
+    {
+        Debug.LogWarning(ValidatedActionsManager.Instance.LastErrorCode); // e.g. DURATION_TOO_SHORT
+    }
+}
+```
+
+Boards with `validatedOnly` reject `SubmitScore` with `VALIDATED_SUBMIT_REQUIRED`. See `horizon://docs/validated-actions`.
+
 ### Feedback
 
 ```csharp

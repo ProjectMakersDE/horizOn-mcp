@@ -205,6 +205,21 @@ Horizon->PlayerProfile->SetProfile(TEXT("avatar.zombie_07"), TEXT(""), { TEXT("b
 
 Leaderboard entries carry `Profile` (`AvatarId`, `FrameId`, `Badges`).
 
+### Validated Actions
+
+```cpp
+// Server-checked run: single-use ticket with a server seed (cloud only)
+Horizon->ValidatedActions->StartRun(TEXT("weekly"), FOnValidatedRunStarted::CreateLambda(
+    [](bool bSuccess, const FHorizonValidatedRun& Run, const FString& ErrorCode, const FString& ErrorMessage) { /* seed with Run.Seed */ }));
+
+// After the run: InputLog is the recorded TArray<uint8>, hashed with SHA-256 by the SDK
+Horizon->ValidatedActions->SubmitValidated(18250, InputLog, TEXT(""), TEXT("weekly"), {},
+    FOnValidatedSubmitComplete::CreateLambda(
+        [](bool bSuccess, const FHorizonValidatedSubmitResult& Result, const FString& ErrorCode, const FString& ErrorMessage) { }));
+```
+
+Boards with `bValidatedOnly` reject `SubmitScore` with `VALIDATED_SUBMIT_REQUIRED`. See `horizon://docs/validated-actions`.
+
 ### Feedback
 
 ```cpp
@@ -259,6 +274,7 @@ Get the subsystem with the **Get Horizon Subsystem** node or use the async nodes
 - **Get Remote Config**, **Get All Remote Configs**, **Get Localization**, **Load News**
 - **Validate Gift Code**, **Redeem Gift Code**, **Report Bug**, **Submit Feedback**
 - **Get Player Profile**, **Set Player Profile**
+- **Start Run**, **Submit Validated**
 - **Record Exception**, **Report Crash**, **Send Email**
 
 ## Hello horizOn Example

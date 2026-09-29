@@ -77,7 +77,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "Leaderboards",
       description:
-        "Leaderboard score submission, top entries, user rank, entries around user, player profile per entry, with SDK examples.",
+        "Leaderboard score submission, top entries, user rank, entries around user, player profile per entry, validated only boards, with SDK examples.",
       mimeType: "text/markdown",
     },
     () => ({
@@ -212,6 +212,27 @@ export function registerAllResources(server: McpServer): void {
           uri: "horizon://docs/player-profile",
           mimeType: "text/markdown",
           text: loadDoc("docs/player-profile.md"),
+        },
+      ],
+    }),
+  );
+
+  // Validated Actions
+  server.registerResource(
+    "docs-validated-actions",
+    "horizon://docs/validated-actions",
+    {
+      title: "Validated Actions",
+      description:
+        "Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, rejection codes. SDK examples.",
+      mimeType: "text/markdown",
+    },
+    () => ({
+      contents: [
+        {
+          uri: "horizon://docs/validated-actions",
+          mimeType: "text/markdown",
+          text: loadDoc("docs/validated-actions.md"),
         },
       ],
     }),

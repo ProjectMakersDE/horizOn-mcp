@@ -15,6 +15,7 @@ export function registerExplainFeaturePrompt(server: McpServer): void {
           "news",
           "gift-codes",
           "player-profile",
+          "validated-actions",
           "feedback",
           "user-logs",
           "crash-reporting",
