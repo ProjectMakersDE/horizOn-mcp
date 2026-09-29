@@ -55,11 +55,11 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
 | `horizon://quickstart/unreal` | Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples |
 
-### Tools (32 tools)
+### Tools (33 tools)
 
 Live API tools that call the horizOn backend. Requires a valid API key.
 
-`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run` and `horizon_submit_validated` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
+`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated` and `horizon_get_state` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
 
 | Tool | Description |
 |------|-------------|
@@ -87,7 +87,8 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 | `horizon_get_profile` | Get a player's profile (avatar, frame, badges), unlocks and the cosmetics catalog |
 | `horizon_set_profile` | Replace a player's whole profile (avatar, frame, up to 3 badges) |
 | `horizon_start_run` | Start a server-checked run: single-use ticket with a server seed, optionally bound to a board |
-| `horizon_submit_validated` | Submit a run result with the ticket and the SHA-256 input log hash (given, or computed locally from base64 bytes or text); rejections name their `code` |
+| `horizon_submit_validated` | Submit a run result with the ticket and the SHA-256 input log hash (given, or computed locally from base64 bytes or text), optionally with `earned` server-owned values; rejections name their `code` |
+| `horizon_get_state` | Read the player's server-owned values (balance, earned today, daily cap per value key); read only |
 | `horizon_submit_feedback` | Submit user feedback (bug reports, feature requests) |
 | `horizon_create_log` | Create a server-side log entry (INFO, WARN, ERROR) |
 | `horizon_create_crash_report` | Submit a crash report (grouped by fingerprint, with regression detection) |

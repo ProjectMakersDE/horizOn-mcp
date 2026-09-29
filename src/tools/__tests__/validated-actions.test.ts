@@ -4,6 +4,7 @@ import {
   registerValidatedActionsTools,
   computeInputLogHash,
   resolveInputLogHash,
+  findDuplicateEarnedKey,
 } from "../validated-actions.js";
 import { HorizonApiError } from "../api-client.js";
 
@@ -69,6 +70,23 @@ const SUBMIT_RESPONSE = {
   evidence: null,
 };
 
+const STATE_RESPONSE = {
+  userId: USER_ID,
+  day: "2026-09-29",
+  values: [
+    { key: "chest.gold", balance: 2, earnedToday: 0, dailyCap: null },
+    { key: "gold", balance: 1250, earnedToday: 250, dailyCap: 5000 },
+  ],
+};
+
+describe("findDuplicateEarnedKey", () => {
+  it("returns the first repeated key or null", () => {
+    expect(findDuplicateEarnedKey([])).toBeNull();
+    expect(findDuplicateEarnedKey([{ key: "gold" }, { key: "gems" }])).toBeNull();
+    expect(findDuplicateEarnedKey([{ key: "gold" }, { key: "gems" }, { key: "gold" }])).toBe("gold");
+  });
+});
+
 describe("input log hash helpers", () => {
   it("hashes raw bytes as lower case hex SHA-256", () => {
     expect(computeInputLogHash(new Uint8Array())).toBe(HASH_EMPTY);
@@ -99,12 +117,173 @@ describe("registerValidatedActionsTools", () => {
     vi.restoreAllMocks();
   });
 
-  it("registers the Part 1 tools", () => {
+  it("registers the Part 1 and Part 2 tools", () => {
     registerValidatedActionsTools(createMockServer());
 
     expect(registeredTools.has("horizon_start_run")).toBe(true);
     expect(registeredTools.has("horizon_submit_validated")).toBe(true);
-    expect(registeredTools.size).toBe(2);
+    expect(registeredTools.has("horizon_get_state")).toBe(true);
+    expect(registeredTools.size).toBe(3);
+  });
+
+  it("reads the player state with the Bearer session", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const mockGet = vi.fn().mockResolvedValue(STATE_RESPONSE);
+    mockedCreateApiClient.mockReturnValue({ get: mockGet } as any);
+
+    const { handler } = registeredTools.get("horizon_get_state")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "session-887" });
+
+    expect(mockGet).toHaveBeenCalledWith(
+      "/api/v1/app/validated-actions/state",
+      { userId: USER_ID },
+      { Authorization: "Bearer session-887" },
+    );
+    expect(result.isError).toBeUndefined();
+    expect(JSON.parse(result.content[0].text)).toEqual(STATE_RESPONSE);
+  });
+
+  it("names the session code when reading the state fails", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const body = JSON.stringify({ status: 403, code: "SESSION_FORBIDDEN", message: "Session is not authorized for this player" });
+    const mockGet = vi.fn().mockRejectedValue(new HorizonApiError(403, body));
+    mockedCreateApiClient.mockReturnValue({ get: mockGet } as any);
+
+    const { handler } = registeredTools.get("horizon_get_state")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "other" });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("HTTP 403, code SESSION_FORBIDDEN");
+  });
+
+  it("returns the no API key result for the state without a client", async () => {
+    registerValidatedActionsTools(createMockServer());
+    mockedCreateApiClient.mockReturnValue(null);
+
+    const { handler } = registeredTools.get("horizon_get_state")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "s" });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("HORIZON_API_KEY");
+  });
+
+  it("marks the state tool read only and validates its inputs", () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const config = registeredTools.get("horizon_get_state")!.schema as { annotations: { readOnlyHint: boolean } };
+    expect(config.annotations.readOnlyHint).toBe(true);
+
+    const state = inputSchema("horizon_get_state");
+    expect(state.userId.safeParse(USER_ID).success).toBe(true);
+    expect(state.userId.safeParse("not-a-uuid").success).toBe(false);
+    expect(state.sessionToken.safeParse("").success).toBe(false);
+    expect(state.sessionToken.safeParse(undefined).success).toBe(false);
+  });
+
+  it("returns requested and credited of a submit with earned values unchanged", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const response = {
+      ...SUBMIT_RESPONSE,
+      state: {
+        day: "2026-09-29",
+        values: [
+          { key: "chest.gold", balance: 1, earnedToday: 0, dailyCap: null, requested: -1, credited: -1 },
+          { key: "gold", balance: 5000, earnedToday: 5000, dailyCap: 5000, requested: 500, credited: 250 },
+          { key: "gems", balance: 3, earnedToday: 0, dailyCap: null },
+        ],
+      },
+    };
+    const mockPost = vi.fn().mockResolvedValue(response);
+    mockedCreateApiClient.mockReturnValue({ post: mockPost } as any);
+
+    const { handler } = registeredTools.get("horizon_submit_validated")!;
+    const earned = [
+      { key: "gold", amount: 500 },
+      { key: "chest.gold", amount: -1 },
+    ];
+    const result = await handler({
+      userId: USER_ID,
+      sessionToken: "s",
+      ticket: TICKET,
+      inputLogHash: HASH_ABC,
+      score: 18250,
+      earned,
+    });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/v1/app/validated-actions/submit",
+      { userId: USER_ID, ticket: TICKET, inputLogHash: HASH_ABC, score: 18250, earned },
+      { Authorization: "Bearer s" },
+    );
+    expect(JSON.parse(result.content[0].text)).toEqual({ ...response, inputLogHash: HASH_ABC });
+  });
+
+  it("fails locally on a duplicate earned key and keeps the ticket", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const mockPost = vi.fn();
+    mockedCreateApiClient.mockReturnValue({ post: mockPost } as any);
+
+    const { handler } = registeredTools.get("horizon_submit_validated")!;
+    const result = await handler({
+      userId: USER_ID,
+      sessionToken: "s",
+      ticket: TICKET,
+      inputLogHash: HASH_ABC,
+      earned: [
+        { key: "gold", amount: 10 },
+        { key: "gold", amount: 5 },
+      ],
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("DUPLICATE_VALUE_KEY");
+    expect(result.content[0].text).toContain("gold");
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it("omits an empty earned list", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const mockPost = vi.fn().mockResolvedValue(SUBMIT_RESPONSE);
+    mockedCreateApiClient.mockReturnValue({ post: mockPost } as any);
+
+    const { handler } = registeredTools.get("horizon_submit_validated")!;
+    await handler({ userId: USER_ID, sessionToken: "s", ticket: TICKET, inputLogHash: HASH_ABC, score: 1, earned: [] });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/v1/app/validated-actions/submit",
+      { userId: USER_ID, ticket: TICKET, inputLogHash: HASH_ABC, score: 1 },
+      { Authorization: "Bearer s" },
+    );
+  });
+
+  it("names a value rejection code in the error result", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const body = JSON.stringify({
+      status: 422,
+      code: "INSUFFICIENT_BALANCE",
+      message: "earned[0].amount spends more than the balance",
+      runId: RUN_RESPONSE.runId,
+    });
+    const mockPost = vi.fn().mockRejectedValue(new HorizonApiError(422, body));
+    mockedCreateApiClient.mockReturnValue({ post: mockPost } as any);
+
+    const { handler } = registeredTools.get("horizon_submit_validated")!;
+    const result = await handler({
+      userId: USER_ID,
+      sessionToken: "s",
+      ticket: TICKET,
+      inputLogHash: HASH_ABC,
+      earned: [{ key: "gold", amount: -100 }],
+    });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("HTTP 422, code INSUFFICIENT_BALANCE");
   });
 
   it("starts a run bound to a board with the Bearer session", async () => {
@@ -248,6 +427,11 @@ describe("registerValidatedActionsTools", () => {
     expect(submit.earned.safeParse([{ key: "gold", amount: -5 }]).success).toBe(true);
     expect(submit.earned.safeParse([{ key: "Gold", amount: 5 }]).success).toBe(false);
     expect(submit.earned.safeParse(Array.from({ length: 65 }, () => ({ key: "gold", amount: 1 }))).success).toBe(false);
+    expect(submit.earned.safeParse([{ key: "chest.gold", amount: Number.MAX_SAFE_INTEGER }]).success).toBe(true);
+    expect(submit.earned.safeParse([{ key: "gold", amount: -Number.MAX_SAFE_INTEGER }]).success).toBe(true);
+    expect(submit.earned.safeParse([{ key: "gold", amount: Number.MAX_SAFE_INTEGER + 2 }]).success).toBe(false);
+    expect(submit.earned.safeParse([{ key: "gold", amount: 1.5 }]).success).toBe(false);
+    expect(submit.earned.safeParse([{ key: "a".repeat(25), amount: 1 }]).success).toBe(false);
 
     const start = inputSchema("horizon_start_run");
     expect(start.userId.safeParse("not-a-uuid").success).toBe(false);
@@ -263,5 +447,28 @@ describe("registerValidatedActionsTools", () => {
     expect(text).toContain("TICKET_CONSUMED");
     expect(text).toContain("SCORE_RATE_TOO_HIGH");
     expect(description("horizon_start_run")).toContain("RUN_CAPACITY_REACHED");
+  });
+
+  it("describes the Part 2 value codes and the credited result", () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const text = description("horizon_submit_validated");
+    for (const code of [
+      "UNKNOWN_VALUE_KEY",
+      "DUPLICATE_VALUE_KEY",
+      "EARNED_ABOVE_MAX",
+      "EARNED_BELOW_MIN",
+      "INSUFFICIENT_BALANCE",
+    ]) {
+      expect(text).toContain(code);
+    }
+    expect(text).toContain("requested");
+    expect(text).toContain("credited == requested");
+    expect(text).toContain("horizon_get_state");
+
+    const state = description("horizon_get_state");
+    expect(state).toContain("earnedToday");
+    expect(state).toContain("dailyCap");
+    expect(state).toContain("SESSION_FORBIDDEN");
   });
 });

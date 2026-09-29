@@ -524,7 +524,7 @@ Replaces the whole visible profile (a missing, `null` or `""` slot is cleared, m
 
 ## Validated Actions
 
-Server-checked runs (cloud only). Both endpoints need `Authorization: Bearer <accessToken>` of `userId`. Errors carry a `code` and, when known, the `runId`: `SCORE_REQUIRED`, `PLAYER_NAME_REQUIRED` (400), `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN`, `SCORE_LIMIT_REACHED` (403), `PLAYER_NOT_FOUND`, `LEADERBOARD_NOT_FOUND` (404), `TICKET_INVALID`, `TICKET_EXPIRED`, `TICKET_FOREIGN`, `TICKET_CONSUMED`, `LEADERBOARD_MISMATCH`, `STAGE_REQUIRED`, `STAGE_UNKNOWN`, `SCORE_ABOVE_MAX`, `SCORE_BELOW_MIN`, `STAGE_SCORE_ABOVE_MAX`, `STAGE_SCORE_BELOW_MIN`, `DURATION_TOO_SHORT`, `SCORE_RATE_TOO_HIGH` (422), `RUN_RATE_LIMITED`, `RUN_CAPACITY_REACHED` (429, `Retry-After`), `VALIDATED_ACTIONS_UNAVAILABLE` (503). See `horizon://docs/validated-actions`.
+Server-checked runs (cloud only). All three endpoints need `Authorization: Bearer <accessToken>` of `userId`. Errors carry a `code` and, when known, the `runId`: `SCORE_REQUIRED`, `PLAYER_NAME_REQUIRED` (400), `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN`, `SCORE_LIMIT_REACHED` (403), `PLAYER_NOT_FOUND`, `LEADERBOARD_NOT_FOUND` (404), `TICKET_INVALID`, `TICKET_EXPIRED`, `TICKET_FOREIGN`, `TICKET_CONSUMED`, `LEADERBOARD_MISMATCH`, `STAGE_REQUIRED`, `STAGE_UNKNOWN`, `SCORE_ABOVE_MAX`, `SCORE_BELOW_MIN`, `STAGE_SCORE_ABOVE_MAX`, `STAGE_SCORE_BELOW_MIN`, `DURATION_TOO_SHORT`, `SCORE_RATE_TOO_HIGH`, `UNKNOWN_VALUE_KEY`, `DUPLICATE_VALUE_KEY`, `EARNED_ABOVE_MAX`, `EARNED_BELOW_MIN`, `INSUFFICIENT_BALANCE` (422), `RUN_RATE_LIMITED`, `RUN_CAPACITY_REACHED` (429, `Retry-After`), `VALIDATED_ACTIONS_UNAVAILABLE` (503). See `horizon://docs/validated-actions`.
 
 ### POST /api/v1/app/validated-actions/runs
 
@@ -566,7 +566,7 @@ Submit the result of a run. Rules run before any write; the ticket is consumed (
   "score": "number (required when a board is targeted)",
   "stage": "string (optional)",
   "leaderboardKey": "string (optional, defaults to the ticket's board)",
-  "earned": [{ "key": "string", "amount": "number" }]
+  "earned": [{ "key": "string (value key of the rules)", "amount": "number (negative spends, optional, at most 64 entries)" }]
 }
 ```
 
@@ -581,10 +581,34 @@ Submit the result of a run. Rules run before any write; the ticket is consumed (
   "isNewHighScore": "boolean",
   "rank": "number | null",
   "durationSeconds": "number",
-  "state": null,
+  "state": {
+    "day": "string (UTC day, YYYY-MM-DD)",
+    "values": [{ "key": "string", "balance": "number", "earnedToday": "number", "dailyCap": "number | null", "requested": "number (touched keys only)", "credited": "number (touched keys only)" }]
+  },
   "evidence": null
 }
 ```
+
+`state` is `null` when the rules define no values. `credited < requested` on a positive amount means the daily cap or `maxBalance` clamped it; a spend is credited in full or with `0` (grant a purchase only when `credited == requested`).
+
+---
+
+### GET /api/v1/app/validated-actions/state
+
+The player's server-owned values. Read only; only accepted validated runs change them.
+
+**Query:** `userId` (string, UUID)
+
+**Response (200):**
+```json
+{
+  "userId": "string",
+  "day": "string (UTC day, YYYY-MM-DD)",
+  "values": [{ "key": "string", "balance": "number", "earnedToday": "number", "dailyCap": "number | null" }]
+}
+```
+
+Every value key of the rules, sorted by key (balance `0` when never earned). Errors: `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN` (403), `PLAYER_NOT_FOUND` (404), 429 without body.
 
 ---
 
