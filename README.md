@@ -45,7 +45,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/news` | In-game news and announcements with language filtering. SDK examples |
 | `horizon://docs/gift-codes` | Gift code validation and redemption for promotional rewards, including cosmetic unlocks via grants. SDK examples |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
-| `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, rejection codes. SDK examples |
+| `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, evidence upload and admin evidence review, rejection codes. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
 | `horizon://docs/user-logs` | Server-side event and error tracking. Requires BASIC tier or higher. SDK examples |
 | `horizon://docs/crash-reporting` | Crash report submission, session tracking, fingerprinting, breadcrumbs, and auto-regression detection. SDK examples |
@@ -55,11 +55,11 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
 | `horizon://quickstart/unreal` | Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples |
 
-### Tools (33 tools)
+### Tools (34 tools)
 
 Live API tools that call the horizOn backend. Requires a valid API key.
 
-`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated` and `horizon_get_state` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
+`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated`, `horizon_get_state` and `horizon_upload_evidence` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
 
 | Tool | Description |
 |------|-------------|
@@ -89,6 +89,7 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 | `horizon_start_run` | Start a server-checked run: single-use ticket with a server seed, optionally bound to a board |
 | `horizon_submit_validated` | Submit a run result with the ticket and the SHA-256 input log hash (given, or computed locally from base64 bytes or text), optionally with `earned` server-owned values; rejections name their `code` |
 | `horizon_get_state` | Read the player's server-owned values (balance, earned today, daily cap per value key); read only |
+| `horizon_upload_evidence` | Upload the input log (text or base64, encoded locally) of a run whose submit result asked for evidence; rejections name their `code` |
 | `horizon_submit_feedback` | Submit user feedback (bug reports, feature requests) |
 | `horizon_create_log` | Create a server-side log entry (INFO, WARN, ERROR) |
 | `horizon_create_crash_report` | Submit a crash report (grouped by fingerprint, with regression detection) |
@@ -119,7 +120,7 @@ Resources (documentation) work without an API key. Only the live API tools requi
 
 ## Admin Tools (v1.2+)
 
-With an **Account Key** (creatable in your horizOn Dashboard -> API Keys -> Create -> **Account Key**), the MCP server exposes additional tools that let Claude manage your dashboard -- projects, remote config, news, email templates, gift codes, users, leaderboards, cloud-save data, crash reports, feedback, user logs, and SMTP.
+With an **Account Key** (creatable in your horizOn Dashboard -> API Keys -> Create -> **Account Key**), the MCP server exposes additional tools that let Claude manage your dashboard -- projects, remote config, news, email templates, gift codes, users, leaderboards, cloud-save data, crash reports, feedback, user logs, SMTP, and the Validated Actions evidence review.
 
 ### How to get your Account Key
 
@@ -174,6 +175,7 @@ When a key is project-scoped, the backend enforces that scope on direct HTTP cal
 | `horizon_admin_feedback_*` | Read user feedback |
 | `horizon_admin_userlogs_*` | Read user logs |
 | `horizon_admin_smtp_*` | Account SMTP configuration (password always returned masked) |
+| `horizon_admin_validated_evidence_*` | Validated Actions evidence review: list, quota, metadata, log download (base64 or hashes only), delete |
 
 ## What is horizOn?
 

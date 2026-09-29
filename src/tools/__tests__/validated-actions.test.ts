@@ -4,7 +4,9 @@ import {
   registerValidatedActionsTools,
   computeInputLogHash,
   resolveInputLogHash,
+  resolveInputLogBytes,
   findDuplicateEarnedKey,
+  evidencePath,
 } from "../validated-actions.js";
 import { HorizonApiError } from "../api-client.js";
 
@@ -111,19 +113,133 @@ describe("input log hash helpers", () => {
   });
 });
 
+describe("resolveInputLogBytes", () => {
+  it("encodes text and base64 to the same bytes and hash", () => {
+    expect(resolveInputLogBytes({ inputLog: "abc" })).toEqual({ base64: "YWJj", bytes: 3, hash: HASH_ABC });
+    expect(resolveInputLogBytes({ inputLogBase64: "YW\nJj" })).toEqual({ base64: "YWJj", bytes: 3, hash: HASH_ABC });
+  });
+
+  it("rejects none, both, empty or malformed inputs", () => {
+    expect(resolveInputLogBytes({})).toHaveProperty("error");
+    expect(resolveInputLogBytes({ inputLog: "abc", inputLogBase64: "YWJj" })).toHaveProperty("error");
+    expect(resolveInputLogBytes({ inputLog: "" })).toHaveProperty("error");
+    expect(resolveInputLogBytes({ inputLogBase64: "not base64!" })).toHaveProperty("error");
+  });
+
+  it("builds the upload path from the run ID", () => {
+    expect(evidencePath(RUN_RESPONSE.runId)).toBe(
+      `/api/v1/app/validated-actions/runs/${RUN_RESPONSE.runId}/evidence`,
+    );
+  });
+});
+
 describe("registerValidatedActionsTools", () => {
   afterEach(() => {
     registeredTools.clear();
     vi.restoreAllMocks();
   });
 
-  it("registers the Part 1 and Part 2 tools", () => {
+  it("registers the Part 1 to Part 3 tools", () => {
     registerValidatedActionsTools(createMockServer());
 
     expect(registeredTools.has("horizon_start_run")).toBe(true);
     expect(registeredTools.has("horizon_submit_validated")).toBe(true);
     expect(registeredTools.has("horizon_get_state")).toBe(true);
-    expect(registeredTools.size).toBe(3);
+    expect(registeredTools.has("horizon_upload_evidence")).toBe(true);
+    expect(registeredTools.size).toBe(4);
+  });
+
+  it("uploads evidence as base64 of the text bytes with the Bearer session", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const response = { runId: RUN_RESPONSE.runId, status: "UPLOADED", bytes: 3 };
+    const mockPut = vi.fn().mockResolvedValue(response);
+    mockedCreateApiClient.mockReturnValue({ put: mockPut } as any);
+
+    const { handler } = registeredTools.get("horizon_upload_evidence")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "session-888", runId: RUN_RESPONSE.runId, inputLog: "abc" });
+
+    expect(mockPut).toHaveBeenCalledWith(
+      `/api/v1/app/validated-actions/runs/${RUN_RESPONSE.runId}/evidence`,
+      { userId: USER_ID, log: "YWJj" },
+      { Authorization: "Bearer session-888" },
+    );
+    expect(result.isError).toBeUndefined();
+    expect(JSON.parse(result.content[0].text)).toEqual({ ...response, inputLogHash: HASH_ABC });
+  });
+
+  it("uploads given base64 without whitespace", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const mockPut = vi.fn().mockResolvedValue({ runId: RUN_RESPONSE.runId, status: "UPLOADED", bytes: 3 });
+    mockedCreateApiClient.mockReturnValue({ put: mockPut } as any);
+
+    const { handler } = registeredTools.get("horizon_upload_evidence")!;
+    await handler({ userId: USER_ID, sessionToken: "s", runId: RUN_RESPONSE.runId, inputLogBase64: " YW Jj\n" });
+
+    expect(mockPut.mock.calls[0][1]).toEqual({ userId: USER_ID, log: "YWJj" });
+  });
+
+  it("fails locally without a log input and sends nothing", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const mockPut = vi.fn();
+    mockedCreateApiClient.mockReturnValue({ put: mockPut } as any);
+
+    const { handler } = registeredTools.get("horizon_upload_evidence")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "s", runId: RUN_RESPONSE.runId });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("INVALID_INPUT_LOG");
+    expect(mockPut).not.toHaveBeenCalled();
+  });
+
+  it("names the evidence code and the local hash when the upload fails", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const body = JSON.stringify({ status: 422, code: "EVIDENCE_HASH_MISMATCH", message: "The log does not match the input log hash of the run" });
+    const mockPut = vi.fn().mockRejectedValue(new HorizonApiError(422, body));
+    mockedCreateApiClient.mockReturnValue({ put: mockPut } as any);
+
+    const { handler } = registeredTools.get("horizon_upload_evidence")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "s", runId: RUN_RESPONSE.runId, inputLog: "abc" });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("HTTP 422, code EVIDENCE_HASH_MISMATCH");
+    expect(result.content[0].text).toContain(HASH_ABC);
+  });
+
+  it("returns the no API key result for the upload without a client", async () => {
+    registerValidatedActionsTools(createMockServer());
+    mockedCreateApiClient.mockReturnValue(null);
+
+    const { handler } = registeredTools.get("horizon_upload_evidence")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "s", runId: RUN_RESPONSE.runId, inputLog: "abc" });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("HORIZON_API_KEY");
+  });
+
+  it("validates the upload inputs and describes the evidence codes", () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const schema = inputSchema("horizon_upload_evidence");
+    expect(schema.runId.safeParse(RUN_RESPONSE.runId).success).toBe(true);
+    expect(schema.runId.safeParse("run-1").success).toBe(false);
+    expect(schema.inputLogBase64.safeParse("").success).toBe(false);
+
+    const text = description("horizon_upload_evidence");
+    for (const code of [
+      "EVIDENCE_INVALID_ENCODING",
+      "EVIDENCE_NOT_REQUESTED",
+      "EVIDENCE_ALREADY_UPLOADED",
+      "EVIDENCE_EXPIRED",
+      "EVIDENCE_TOO_LARGE",
+      "EVIDENCE_HASH_MISMATCH",
+    ]) {
+      expect(text).toContain(code);
+    }
+    expect(description("horizon_submit_validated")).toContain("horizon_upload_evidence");
   });
 
   it("reads the player state with the Bearer session", async () => {

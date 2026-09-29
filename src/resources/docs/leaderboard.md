@@ -73,6 +73,8 @@ A score has no `metadata` field; the server ignores unknown fields. Per-player d
 
 On a board with `validatedOnly: true` this call answers `403` with `"code": "VALIDATED_SUBMIT_REQUIRED"` and writes nothing. Do not retry; submit through Validated Actions instead.
 
+A player a moderator banned from the board gets `403` with `"code": "PLAYER_BANNED"` (from this submit and from the validated submit). Rows hidden by a ban or a shadow ban stay visible to their own player only: top, around and rank skip them for everyone else and count only the rows the caller sees.
+
 ### Validated only boards
 
 A board can be switched to **validated only** in the Dashboard. It then accepts scores only from a server-checked run: the game starts a run (`POST /api/v1/app/validated-actions/runs`, single-use ticket with a server seed), plays, and submits score plus the SHA-256 of its input log (`POST /api/v1/app/validated-actions/submit`). The server checks its rules (score limits, minimum duration, score per second, stage rules) before it writes. The normal submit answers `403 VALIDATED_SUBMIT_REQUIRED`. Details: `horizon://docs/validated-actions`. MCP tools: `horizon_start_run`, `horizon_submit_validated`.
@@ -281,5 +283,6 @@ curl "https://horizon.pm/api/v1/app/leaderboard/around?userId=user123&range=5" \
 |--------|-------|----------|
 | 401 | Invalid API key | Check `X-API-Key` header |
 | 403 | `VALIDATED_SUBMIT_REQUIRED` | The board is validated only: use Validated Actions (`horizon://docs/validated-actions`) |
+| 403 | `PLAYER_BANNED` | A moderator banned the player from this board; do not retry |
 | 404 | User not found on leaderboard | User may not have submitted a score yet |
 | 429 | Rate limit exceeded | Cache data and reduce API calls |

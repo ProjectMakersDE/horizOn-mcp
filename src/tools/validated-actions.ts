@@ -8,6 +8,11 @@ const RUNS_PATH = "/api/v1/app/validated-actions/runs";
 const SUBMIT_PATH = "/api/v1/app/validated-actions/submit";
 const STATE_PATH = "/api/v1/app/validated-actions/state";
 
+/** Upload path of a requested input log (Part 3, TASK-888). */
+export function evidencePath(runId: string): string {
+  return `${RUNS_PATH}/${encodeURIComponent(runId)}/evidence`;
+}
+
 /** SHA-256 as 64 hex characters (the server accepts upper case and stores it as bytes). */
 export const INPUT_LOG_HASH_PATTERN = /^[0-9a-fA-F]{64}$/;
 
@@ -93,6 +98,48 @@ export function resolveInputLogHash(source: HashSource): { hash: string } | { er
   return { hash: computeInputLogHash(Buffer.from(source.inputLog as string, "utf8")) };
 }
 
+type LogSource = {
+  inputLogBase64?: string;
+  inputLog?: string;
+};
+
+/**
+ * Picks the raw input log bytes for an evidence upload from exactly one of
+ * two inputs: base64 bytes or UTF-8 text. Returns the standard base64 the
+ * server expects (whitespace removed), the decoded byte count and the
+ * SHA-256 of the bytes (the hash the run must have been submitted with), or
+ * an error text when none or both are given or the base64 is malformed.
+ */
+export function resolveInputLogBytes(
+  source: LogSource,
+): { base64: string; bytes: number; hash: string } | { error: string } {
+  const given = (["inputLogBase64", "inputLog"] as const).filter((field) => source[field] !== undefined);
+  if (given.length !== 1) {
+    return {
+      error:
+        "INVALID_INPUT_LOG: pass exactly one of inputLogBase64 or inputLog" +
+        (given.length > 1 ? ` (got ${given.join(", ")})` : ""),
+    };
+  }
+
+  let raw: Buffer;
+  if (source.inputLogBase64 !== undefined) {
+    const compact = source.inputLogBase64.replace(/\s+/g, "");
+    if (!BASE64_PATTERN.test(compact)) {
+      return { error: "INVALID_INPUT_LOG: inputLogBase64 is not valid standard base64" };
+    }
+    raw = Buffer.from(compact, "base64");
+  } else {
+    raw = Buffer.from(source.inputLog as string, "utf8");
+  }
+
+  if (raw.length === 0) {
+    return { error: "INVALID_INPUT_LOG: the input log is empty" };
+  }
+
+  return { base64: raw.toString("base64"), bytes: raw.length, hash: computeInputLogHash(raw) };
+}
+
 const userIdSchema = z.string().uuid().describe("User ID (UUID) returned by a horizon_signup_* or horizon_signin_* tool");
 
 const sessionTokenSchema = z
@@ -120,7 +167,7 @@ const START_ERRORS =
 
 const SUBMIT_ERRORS =
   "Rejections carry a stable code (never the rule values) and the error result names it: " +
-  "400 SCORE_REQUIRED (board targeted without score) or PLAYER_NAME_REQUIRED; 401 SESSION_REQUIRED; 403 SESSION_FORBIDDEN or SCORE_LIMIT_REACHED (ticket used up); " +
+  "400 SCORE_REQUIRED (board targeted without score) or PLAYER_NAME_REQUIRED; 401 SESSION_REQUIRED; 403 SESSION_FORBIDDEN, PLAYER_BANNED (banned from the board by a moderator, final; the ticket is not used) or SCORE_LIMIT_REACHED (ticket used up); " +
   "404 PLAYER_NOT_FOUND or LEADERBOARD_NOT_FOUND; 422 TICKET_INVALID, TICKET_EXPIRED, TICKET_FOREIGN, TICKET_CONSUMED, LEADERBOARD_MISMATCH; " +
   "422 rule codes STAGE_REQUIRED, STAGE_UNKNOWN, SCORE_ABOVE_MAX, SCORE_BELOW_MIN, STAGE_SCORE_ABOVE_MAX, STAGE_SCORE_BELOW_MIN, DURATION_TOO_SHORT, SCORE_RATE_TOO_HIGH " +
   "and value codes UNKNOWN_VALUE_KEY (key not defined in the rules' values, also when the rules define none), DUPLICATE_VALUE_KEY, EARNED_ABOVE_MAX (above maxPerRun), " +
@@ -133,6 +180,17 @@ const STATE_RESULT_NOTE =
   "requested (amount sent) and credited (amount applied) appear only for the keys in earned. credited < requested on a positive amount means dailyCap or maxBalance clamped it (not an error). " +
   "For a spend, credited is either requested or 0 (a concurrent run of the same player used the balance first): grant a purchase only when credited == requested. " +
   "state is null when the rules define no values or the state write failed. ";
+
+const EVIDENCE_RESULT_NOTE =
+  "evidence is null, or {required: true, runId, uploadBefore, maxBytes} when the server asks for the input log (the run became the player's row and is flagged or lands in the board's evidence top N): " +
+  "upload exactly the logged bytes with horizon_upload_evidence before uploadBefore (24 hours); a log that was only hashed via inputLogHash must be kept by the caller. ";
+
+const UPLOAD_ERRORS =
+  "Errors carry a stable code in the body and the error result names it: 400 EVIDENCE_INVALID_ENCODING (not standard base64), 401 SESSION_REQUIRED, 403 SESSION_FORBIDDEN, " +
+  "404 EVIDENCE_NOT_REQUESTED (no request for this run and player; also for a run of another player), 409 EVIDENCE_ALREADY_UPLOADED, " +
+  "410 EVIDENCE_EXPIRED (window passed, slot freed), 413 EVIDENCE_TOO_LARGE (decoded log above maxBytes), " +
+  "422 EVIDENCE_HASH_MISMATCH (SHA-256 of the log differs from the run's inputLogHash; the request stays open, retry with the correct bytes until uploadBefore), 429 without code (account request limit). " +
+  "Only 422 and network errors are worth a retry; the others are final. Local error (no request sent): INVALID_INPUT_LOG when the log input was missing, doubled, empty or not base64. ";
 
 export function registerValidatedActionsTools(server: McpServer): void {
   // --- Start a validated run ---
@@ -186,6 +244,7 @@ export function registerValidatedActionsTools(server: McpServer): void {
       "send it only when the API key's rules define values, and use horizon_get_state to read the balances. " +
       "Returns {accepted, runId, leaderboardKey, score, bestScore, isNewHighScore, rank, durationSeconds, state, evidence} plus inputLogHash (the hash that was sent). " +
       STATE_RESULT_NOTE +
+      EVIDENCE_RESULT_NOTE +
       SUBMIT_ERRORS +
       API_ERRORS,
     inputSchema: {
@@ -311,6 +370,65 @@ export function registerValidatedActionsTools(server: McpServer): void {
       return jsonResponse(result);
     } catch (error) {
       return errorResponse(error);
+    }
+  });
+  // --- Upload evidence (Part 3, TASK-888) ---
+  server.registerTool("horizon_upload_evidence", {
+    title: "Upload Validated Run Evidence",
+    description:
+      "Uploads the input log of a validated run after horizon_submit_validated answered with evidence.required = true (Validated Actions evidence review). " +
+      SESSION_NOTE +
+      "Pass the runId from the submit result and the raw input log as exactly one of inputLogBase64 (the raw bytes as base64) or inputLog (UTF-8 text, sent as its UTF-8 bytes). " +
+      "The tool base64-encodes the bytes locally and sends them; their SHA-256 must equal the inputLogHash sent with the run, so pass the same bytes (or text) that were hashed at submit. " +
+      "The decoded log may be at most evidence.maxBytes (32,768 bytes by default). " +
+      "Returns {runId, status: \"UPLOADED\", bytes} plus inputLogHash (the SHA-256 of the uploaded bytes, for comparison with the submit). " +
+      UPLOAD_ERRORS +
+      API_ERRORS,
+    inputSchema: {
+      userId: userIdSchema,
+      sessionToken: sessionTokenSchema,
+      runId: z.string().uuid().describe("runId from the submit result's evidence (or the submit result itself)"),
+      inputLogBase64: z
+        .string()
+        .min(1)
+        .max(2_000_000)
+        .optional()
+        .describe("Raw input log bytes as standard base64. Use this or inputLog."),
+      inputLog: z
+        .string()
+        .max(1_000_000)
+        .optional()
+        .describe("Input log as UTF-8 text; its UTF-8 bytes are uploaded. Use this or inputLogBase64."),
+    },
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+  }, async ({ userId, sessionToken, runId, inputLogBase64, inputLog }) => {
+    const resolved = resolveInputLogBytes({ inputLogBase64, inputLog });
+    if ("error" in resolved) {
+      return {
+        content: [{ type: "text" as const, text: resolved.error }],
+        isError: true,
+      };
+    }
+
+    const client = createApiClientFromEnv();
+    if (!client) return noApiKeyResponse();
+
+    try {
+      const result = await client.put<Record<string, unknown> | null>(
+        evidencePath(runId),
+        { userId, log: resolved.base64 },
+        sessionHeaders(sessionToken),
+      );
+      return jsonResponse({ ...(result ?? {}), inputLogHash: resolved.hash });
+    } catch (error) {
+      const response = errorResponse(error);
+      response.content[0].text += ` (local SHA-256 of the sent ${resolved.bytes} bytes: ${resolved.hash})`;
+      return response;
     }
   });
 }

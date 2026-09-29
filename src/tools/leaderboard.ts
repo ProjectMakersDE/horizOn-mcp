@@ -81,7 +81,8 @@ export function registerLeaderboardTools(server: McpServer): void {
         "and sending the same score twice has no further effect. Omit leaderboardKey for the default board or use a key from horizon_list_leaderboards. " +
         "Returns {success: true}; an expired session gives 401, a session of another user 403. " +
         "A board marked validatedOnly (see horizon_list_leaderboards) rejects this call with 403 VALIDATED_SUBMIT_REQUIRED and writes nothing: " +
-        "use horizon_start_run and horizon_submit_validated for such boards, do not retry. To show the result, call horizon_get_user_rank. " +
+        "use horizon_start_run and horizon_submit_validated for such boards, do not retry. A player banned from the board by a moderator gets 403 PLAYER_BANNED (final, do not retry). " +
+        "To show the result, call horizon_get_user_rank. " +
         API_ERRORS,
       inputSchema: {
         userId: z.string().uuid().describe("User ID (UUID) returned by a horizon_signup_* or horizon_signin_* tool"),
