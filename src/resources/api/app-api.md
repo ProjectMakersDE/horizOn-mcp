@@ -15,7 +15,7 @@ X-API-Key: your-api-key-here
 Content-Type: application/json
 ```
 
-Leaderboard submit and cloud save also need the player's session from sign-in:
+Leaderboard submit, cloud save and gift code redeem also need the player's session from sign-in:
 
 ```
 Authorization: Bearer <accessToken>
@@ -440,7 +440,8 @@ Validate a gift code without redeeming it.
 
 ### POST /api/v1/app/gift-codes/redeem
 
-Redeem a gift code.
+Redeem a gift code. Needs `Authorization: Bearer <accessToken>`; `userId` must be the session user.
+Requests without any session are only accepted during a transition window for older SDKs (until 1 March 2027 by default) and carry `Deprecation` and `Sunset` headers.
 
 **Request:**
 ```json
@@ -459,7 +460,7 @@ Redeem a gift code.
 }
 ```
 
-**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `403` code or user of another API key, `404` unknown code.
+**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `401` invalid or expired session, `403` code or user of another API key or session of another user, `404` unknown code.
 
 ---
 

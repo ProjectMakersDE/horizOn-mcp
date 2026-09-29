@@ -57,7 +57,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 
 Live API tools that call the horizOn backend. Requires a valid API key.
 
-`horizon_submit_score`, `horizon_save_cloud_data` and `horizon_load_cloud_data` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
+`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data` and `horizon_redeem_gift_code` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
 
 | Tool | Description |
 |------|-------------|

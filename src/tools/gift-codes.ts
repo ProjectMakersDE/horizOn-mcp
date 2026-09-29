@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
-import { createApiClientFromEnv } from "./api-client.js";
+import { createApiClientFromEnv, sessionHeaders } from "./api-client.js";
 import { noApiKeyResponse, errorResponse, jsonResponse, READ_ONLY, ADDITIVE_WRITE, API_ERRORS } from "./tool-helpers.js";
 
 export function registerGiftCodeTools(server: McpServer): void {
@@ -36,25 +36,27 @@ export function registerGiftCodeTools(server: McpServer): void {
   server.registerTool("horizon_redeem_gift_code", {
     title: "Redeem Gift Code",
     description:
-      "Redeems a gift code for a player and returns the reward. Each call uses up one redemption and cannot be undone; " +
-      "codes can be limited per player and in total. To check a code without using it, call horizon_validate_gift_code. " +
+      "Redeems a gift code for a player and returns the reward. Needs the player's session: sign in with horizon_signin_email or horizon_signin_anonymous first and pass its accessToken. " +
+      "Each call uses up one redemption and cannot be undone; codes can be limited per player and in total. To check a code without using it, call horizon_validate_gift_code. " +
       "Returns {success, message, giftData}. giftData is a JSON string with the reward set in the dashboard, which the game must parse and apply. " +
-      "An unknown code gives 404; an expired or revoked code or a reached limit gives 400. " +
+      "An unknown code gives 404; an expired or revoked code or a reached limit gives 400; an expired session gives 401, a session of another user 403. " +
       API_ERRORS,
     inputSchema: {
       code: z.string().max(50).describe("Gift code to redeem (max 50 characters)"),
       userId: z.string().uuid().describe("User ID (UUID) returned by a horizon_signup_* or horizon_signin_* tool"),
+      sessionToken: z.string().min(1).max(256).describe("accessToken returned by horizon_signin_email or horizon_signin_anonymous for this user; sent as a Bearer session"),
     },
     annotations: ADDITIVE_WRITE,
-  }, async ({ code, userId }) => {
+  }, async ({ code, userId, sessionToken }) => {
     const client = createApiClientFromEnv();
     if (!client) return noApiKeyResponse();
 
     try {
-      const result = await client.post("/api/v1/app/gift-codes/redeem", {
-        code,
-        userId,
-      });
+      const result = await client.post(
+        "/api/v1/app/gift-codes/redeem",
+        { code, userId },
+        sessionHeaders(sessionToken),
+      );
       return jsonResponse(result);
     } catch (error) {
       return errorResponse(error);

@@ -42,12 +42,14 @@ Checks if a gift code is valid and can be redeemed by the user, without consumin
 
 Redeems a gift code and returns the associated reward data.
 
+**Headers:** `X-API-Key` and `Authorization: Bearer <accessToken>` of the signed-in player. The server only redeems for the player who owns the session (`401` for an invalid or expired session, `403` for a session of another user). The SDKs send the session automatically.
+
 **Request Body:**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `code` | string | Yes | The gift code to redeem |
-| `userId` | string | Yes | The user's ID |
+| `userId` | string | Yes | The user's ID (must be the session user) |
 
 **Response (200):**
 
@@ -134,6 +136,7 @@ curl -X POST https://horizon.pm/api/v1/app/gift-codes/validate \
 # Redeem
 curl -X POST https://horizon.pm/api/v1/app/gift-codes/redeem \
   -H "X-API-Key: YOUR_API_KEY" \
+  -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
   -H "Content-Type: application/json" \
   -d '{"code": "ABCD-1234", "userId": "user123"}'
 ```
