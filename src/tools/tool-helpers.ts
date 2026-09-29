@@ -5,15 +5,50 @@
 import { HorizonApiError } from "./api-client.js";
 
 type ToolContent = { type: "text"; text: string };
-type ToolResult = { content: ToolContent[]; isError?: boolean };
+type ToolResult = { content: ToolContent[]; isError?: boolean; structuredContent?: Record<string, unknown> };
 
 /**
- * Tool annotations for the player tools. They all call the horizOn API.
+ * MCP tool annotations. Every tool sets all four hints explicitly so clients
+ * (and registries such as Glama) can tell reads from writes without guessing.
+ * All horizOn tools call the horizOn API, so openWorldHint is always true.
  */
-export const READ_ONLY = { readOnlyHint: true, openWorldHint: true } as const;
+
+/** Reads data and changes nothing. */
+export const READ_ONLY = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+} as const;
+
+/** Creates a new record on every call (a repeat creates another one). */
 export const ADDITIVE_WRITE = {
   readOnlyHint: false,
   destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: true,
+} as const;
+
+/** Changes state without losing data; repeating the same call changes nothing more. */
+export const IDEMPOTENT_WRITE = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+} as const;
+
+/** Overwrites or deletes data; repeating the same call changes nothing more. */
+export const DESTRUCTIVE_WRITE = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: true,
+  openWorldHint: true,
+} as const;
+
+/** Overwrites, consumes or deletes data, and a repeat has a further effect. */
+export const DESTRUCTIVE_NON_IDEMPOTENT = {
+  readOnlyHint: false,
+  destructiveHint: true,
   idempotentHint: false,
   openWorldHint: true,
 } as const;
@@ -22,7 +57,59 @@ export const ADDITIVE_WRITE = {
  * Sentence appended to every player tool description.
  */
 export const API_ERRORS =
-  "Needs HORIZON_API_KEY. API failures (for example 401 for a wrong key or 429 when the account's per-minute rate limit is reached) return an error result with the HTTP status and body.";
+  "Needs HORIZON_API_KEY. Every failure returns an error result (isError) with the HTTP status and body: " +
+  "401 means the API key is wrong (check it with horizon_test_connection), 429 means the account's per-minute rate limit was reached (wait a minute, then retry).";
+
+/**
+ * The parts of a tool description. The builder joins them into labelled
+ * lines in a fixed order, so every tool reads the same way: what it does
+ * first, then when to use it, prerequisites, side effects, the result and
+ * the failure cases with their recovery.
+ */
+export interface ToolDoc {
+  /** One sentence: verb + resource, and what sets it apart from its siblings. */
+  summary: string;
+  /** When to call it. */
+  use?: string;
+  /** When not to call it and which sibling to use instead. */
+  avoid?: string;
+  /** Prerequisites: credentials, IDs or tokens from other tools, tiers. */
+  requires?: string;
+  /** Writes and other side effects, or "None (read only)". */
+  effects?: string;
+  /** What a successful call returns. */
+  returns: string;
+  /** Failure cases and how to recover. */
+  errors?: string;
+}
+
+/**
+ * Builds a tool description from its parts. `footer` is appended to the
+ * Errors line (the auth and API failure note of the tool family).
+ */
+export function describeTool(doc: ToolDoc, footer: string = API_ERRORS): string {
+  const lines = [doc.summary.trim()];
+  if (doc.use) lines.push(`Use when: ${doc.use.trim()}`);
+  if (doc.avoid) lines.push(`Not for: ${doc.avoid.trim()}`);
+  if (doc.requires) lines.push(`Requires: ${doc.requires.trim()}`);
+  if (doc.effects) lines.push(`Side effects: ${doc.effects.trim()}`);
+  lines.push(`Returns: ${doc.returns.trim()}`);
+  lines.push(`Errors: ${[doc.errors?.trim(), footer].filter(Boolean).join(" ")}`);
+  return lines.join("\n");
+}
+
+/**
+ * Prerequisite text for the tools that need the player's session.
+ */
+export const SESSION_REQUIRED =
+  "userId and the player's session: sign in with horizon_signin_email or horizon_signin_anonymous and pass its accessToken as sessionToken.";
+
+/**
+ * Recovery text for the session errors the session tools share.
+ */
+export const SESSION_ERRORS =
+  "401 means the session is missing or expired: sign in again and retry with the new accessToken. " +
+  "403 for a session means the token belongs to another user: pass the userId that signed in.";
 
 /**
  * Returns a tool result telling the user to set HORIZON_API_KEY.
@@ -96,4 +183,17 @@ export function jsonResponse(data: unknown): ToolResult {
       },
     ],
   };
+}
+
+/**
+ * Like jsonResponse, but also returns the data as structuredContent for tools
+ * that declare an outputSchema. A value that is not a plain object is
+ * wrapped as {value}, because structuredContent must be an object.
+ */
+export function structuredResponse(data: unknown): ToolResult {
+  const structured =
+    data !== null && typeof data === "object" && !Array.isArray(data)
+      ? (data as Record<string, unknown>)
+      : { value: data };
+  return { ...jsonResponse(data), structuredContent: structured };
 }

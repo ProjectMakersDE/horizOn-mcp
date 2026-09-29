@@ -1,28 +1,32 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { createApiClientFromEnv } from "./api-client.js";
-import { noApiKeyResponse, errorResponse, jsonResponse, READ_ONLY, API_ERRORS } from "./tool-helpers.js";
+import { noApiKeyResponse, errorResponse, structuredResponse, describeTool, READ_ONLY } from "./tool-helpers.js";
+import { LOCALIZATION_OUTPUT, ALL_LOCALIZATIONS_OUTPUT, LOCALIZATION_LANGUAGES_OUTPUT } from "./output-schemas.js";
 
 const SUPPORTED_LANGUAGES_HINT =
-  "One of: en, de, es, fr, it, pt, nl, pl, ru, ja, zh, ar, ko, tr, id.";
+  "One of: en, de, es, fr, it, pt, nl, pl, ru, ja, zh, ar, ko, tr, id. Omit for the app's default language.";
 
 export function registerLocalizationTools(server: McpServer): void {
   // --- Get single localization ---
   server.registerTool("horizon_get_localization", {
     title: "Get Localization",
-    description:
-      "Reads one translated string by key. Without lang, the app's default language is used. " +
-      "Returns {localizationKey, value, language, found}; a missing key is not an error: found is false and value is null. " +
-      "To load a whole language, use horizon_get_all_localizations; to see which languages exist, use horizon_get_localization_languages. " +
-      API_ERRORS,
+    description: describeTool({
+      summary: "Reads one translated string by key in one language (default: the app's default language).",
+      use: "the game needs a single text, for example a dynamic message.",
+      avoid: "loading the UI texts at start (use horizon_get_all_localizations) or finding out which languages exist (use horizon_get_localization_languages).",
+      effects: "None (read only).",
+      returns: "{localizationKey, value, language, found}. A missing key or translation is not an error: found is false and value null, so show a fallback text.",
+    }),
     inputSchema: {
-      key: z.string().max(100).describe("Localization key as defined in the dashboard, e.g. 'ui.play_button' (max 100 characters)"),
+      key: z.string().min(1).max(100).describe("Localization key exactly as defined in the dashboard, for example 'ui.play_button' (max 100 characters)"),
       lang: z
         .string()
         .length(2)
         .optional()
-        .describe(`ISO 639-1 language code (2 characters). ${SUPPORTED_LANGUAGES_HINT}`),
+        .describe(`ISO 639-1 language code (2 lowercase letters). ${SUPPORTED_LANGUAGES_HINT}`),
     },
+    outputSchema: LOCALIZATION_OUTPUT,
     annotations: READ_ONLY,
   }, async ({ key, lang }) => {
     const client = createApiClientFromEnv();
@@ -32,7 +36,7 @@ export function registerLocalizationTools(server: McpServer): void {
       const encodedKey = encodeURIComponent(key);
       const params = lang ? { lang } : undefined;
       const result = await client.get(`/api/v1/app/localization/${encodedKey}`, params);
-      return jsonResponse(result);
+      return structuredResponse(result);
     } catch (error) {
       return errorResponse(error);
     }
@@ -41,18 +45,21 @@ export function registerLocalizationTools(server: McpServer): void {
   // --- Get all localizations ---
   server.registerTool("horizon_get_all_localizations", {
     title: "Get All Localizations",
-    description:
-      "Reads all translated strings of one language as a key-value map, for example to load the UI texts at game start. " +
-      "Without lang, the app's default language is used. Returns {translations, language, total}. " +
-      "For a single key, use horizon_get_localization. " +
-      API_ERRORS,
+    description: describeTool({
+      summary: "Reads all translated strings of one language as a key to text map (default: the app's default language).",
+      use: "at game start or on a language switch, to load every UI text at once.",
+      avoid: "a single key (use horizon_get_localization).",
+      effects: "None (read only).",
+      returns: "{translations, language, total}; translations is empty (total 0) when the language has no strings.",
+    }),
     inputSchema: {
       lang: z
         .string()
         .length(2)
         .optional()
-        .describe(`ISO 639-1 language code (2 characters). ${SUPPORTED_LANGUAGES_HINT}`),
+        .describe(`ISO 639-1 language code (2 lowercase letters). ${SUPPORTED_LANGUAGES_HINT}`),
     },
+    outputSchema: ALL_LOCALIZATIONS_OUTPUT,
     annotations: READ_ONLY,
   }, async ({ lang }) => {
     const client = createApiClientFromEnv();
@@ -61,7 +68,7 @@ export function registerLocalizationTools(server: McpServer): void {
     try {
       const params = lang ? { lang } : undefined;
       const result = await client.get("/api/v1/app/localization/all", params);
-      return jsonResponse(result);
+      return structuredResponse(result);
     } catch (error) {
       return errorResponse(error);
     }
@@ -70,11 +77,14 @@ export function registerLocalizationTools(server: McpServer): void {
   // --- Get available languages ---
   server.registerTool("horizon_get_localization_languages", {
     title: "Get Localization Languages",
-    description:
-      "Lists the languages that have at least one translation for the app. " +
-      "Returns {languages, total}, where languages holds ISO 639-1 codes such as 'en' or 'de'. " +
-      "Call it before horizon_get_localization or horizon_get_all_localizations to pick a valid lang. " +
-      API_ERRORS,
+    description: describeTool({
+      summary: "Lists the languages that have at least one translation for the app.",
+      use: "before horizon_get_localization or horizon_get_all_localizations, to pick a valid lang or build a language menu.",
+      avoid: "the texts themselves (use horizon_get_all_localizations).",
+      effects: "None (read only).",
+      returns: "{languages, total}, where languages holds ISO 639-1 codes such as 'en' or 'de'; empty when the app has no translations.",
+    }),
+    outputSchema: LOCALIZATION_LANGUAGES_OUTPUT,
     annotations: READ_ONLY,
   }, async () => {
     const client = createApiClientFromEnv();
@@ -82,7 +92,7 @@ export function registerLocalizationTools(server: McpServer): void {
 
     try {
       const result = await client.get("/api/v1/app/localization/languages");
-      return jsonResponse(result);
+      return structuredResponse(result);
     } catch (error) {
       return errorResponse(error);
     }
