@@ -58,7 +58,7 @@ export const DESTRUCTIVE_NON_IDEMPOTENT = {
  */
 export const API_ERRORS =
   "Needs HORIZON_API_KEY. Every failure returns an error result (isError) with the HTTP status and body: " +
-  "401 means the API key is wrong (check it with horizon_test_connection), 429 means the account's per-minute rate limit was reached (wait a minute, then retry).";
+  "a 401 that horizon_test_connection also returns means HORIZON_API_KEY is wrong, 429 means the account's per-minute rate limit was reached (wait a minute, then retry).";
 
 /**
  * The parts of a tool description. The builder joins them into labelled

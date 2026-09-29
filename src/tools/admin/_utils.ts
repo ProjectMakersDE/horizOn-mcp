@@ -7,11 +7,11 @@
  *  - getAdminClient()        — lazy factory, returns null when unconfigured
  *  - noAdminClientResponse() — consistent error when the key is missing
  *  - jsonResponse()          — pretty-print arbitrary JSON payloads
- *  - errorResponse()         — surface thrown errors to the caller
+ *  - errorResponse()         — surface thrown errors to the caller (names the error code)
+ *  - describeTool, ADMIN_AUTH and the annotation presets for tool metadata
  */
 
 import { createAdminApiClientFromEnv } from "../admin-api-client.js";
-import { HorizonApiError } from "../api-client.js";
 
 type ToolContent = { type: "text"; text: string };
 type ToolResult = { content: ToolContent[]; isError?: boolean };
@@ -44,23 +44,26 @@ export function jsonResponse<T>(data: T): ToolResult {
   };
 }
 
-export function errorResponse(error: unknown): ToolResult {
-  let message: string;
-  if (error instanceof HorizonApiError) {
-    message = `horizOn API error (HTTP ${error.status}): ${error.body}`;
-  } else if (error instanceof Error) {
-    message = `Error: ${error.message}`;
-  } else {
-    message = `Unknown error: ${String(error)}`;
-  }
+/**
+ * Error results name the stable server error code when the body has one
+ * (same helper as the player tools).
+ */
+export { errorResponse } from "../tool-helpers.js";
 
-  return {
-    content: [
-      {
-        type: "text" as const,
-        text: message,
-      },
-    ],
-    isError: true,
-  };
-}
+export {
+  describeTool,
+  READ_ONLY,
+  ADDITIVE_WRITE,
+  IDEMPOTENT_WRITE,
+  DESTRUCTIVE_WRITE,
+  DESTRUCTIVE_NON_IDEMPOTENT,
+} from "../tool-helpers.js";
+
+/**
+ * Auth and failure note appended to every admin tool description (pass it
+ * as the footer of describeTool).
+ */
+export const ADMIN_AUTH =
+  "Needs HORIZON_ACCOUNT_API_KEY (an Account Key from the horizOn dashboard; admin tools are only registered when it is set). " +
+  "Every failure returns an error result (isError) with the HTTP status and body: 401 means the Account Key is wrong or revoked, " +
+  "403 means the key's scope (single project or feature groups) does not cover this call, 429 means the rate limit was reached (wait a minute, then retry).";
