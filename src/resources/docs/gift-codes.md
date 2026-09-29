@@ -71,7 +71,7 @@ Redeems a gift code and returns the associated reward data.
 When `giftData` is a JSON object with a `grants` array, the server unlocks those player profile cosmetics (see `horizon://docs/player-profile`) for the redeeming player, in the same transaction as the redemption:
 
 - `grants` holds 1 to 10 distinct cosmetic IDs from the catalog of the code's API key. The Dashboard and the admin API reject other values with 400 (`Invalid Grants` or `COSMETIC_NOT_FOUND`).
-- Grants are only written for a redemption with the player's session. A code with grants redeemed without `Authorization` is rejected with 401 and not used up.
+- Grants go to the player who owns the session. Like every redemption, a request without `Authorization` is rejected with 401 and the code is not used up.
 - IDs removed from the catalog after the code was created are skipped.
 - A redemption that would give the player more than 25 unlocks fails as a whole with 409 `UNLOCK_LIMIT_REACHED`; the code is not used up.
 - Other keys (currency, items) stay in the same object and are applied by your game as before.
@@ -167,7 +167,7 @@ curl -X POST https://horizon.pm/api/v1/app/gift-codes/redeem \
 | Status | Cause | Solution |
 |--------|-------|----------|
 | 401 | Invalid API key | Check `X-API-Key` header |
-| 401 | Missing, invalid or expired session (always for a code with `grants`) | Sign in again and send `Authorization: Bearer <accessToken>` |
+| 401 | Missing, invalid or expired session | Sign in again and send `Authorization: Bearer <accessToken>` |
 | 403 | Session belongs to another user | Redeem with the session of `userId` |
 | 404 | Code does not exist | Verify the code spelling |
 | 409 | `UNLOCK_LIMIT_REACHED`: the player would hold more than 25 unlocks | Revoke unlocks in the Dashboard; the code stays unused |

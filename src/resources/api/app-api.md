@@ -457,7 +457,7 @@ Validate a gift code without redeeming it.
 ### POST /api/v1/app/gift-codes/redeem
 
 Redeem a gift code. Needs `Authorization: Bearer <accessToken>`; `userId` must be the session user.
-Requests without any session are only accepted during a transition window for older SDKs (until 1 March 2027 by default) and carry `Deprecation` and `Sunset` headers.
+A request without a session is rejected with `401` (no transition window).
 
 **Request:**
 ```json
@@ -477,9 +477,9 @@ Requests without any session are only accepted during a transition window for ol
 }
 ```
 
-`grantedUnlocks`: cosmetic IDs from `giftData.grants` the player owns after the redemption, `[]` without grants. A code with grants always needs the session.
+`grantedUnlocks`: cosmetic IDs from `giftData.grants` the player owns after the redemption, `[]` without grants.
 
-**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `401` invalid or expired session (or no session for a code with grants), `403` code or user of another API key or session of another user, `404` unknown code, `409` `UNLOCK_LIMIT_REACHED` (more than 25 unlocks, code not used up).
+**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `401` missing, invalid or expired session, `403` code or user of another API key or session of another user, `404` unknown code, `409` `UNLOCK_LIMIT_REACHED` (more than 25 unlocks, code not used up).
 
 ---
 
