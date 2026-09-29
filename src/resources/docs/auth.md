@@ -25,7 +25,7 @@ Creates a new user account.
 | `type` | string | Yes | `ANONYMOUS`, `EMAIL`, or `GOOGLE` |
 | `username` | string | No | Display name (1-50 chars) |
 | `email` | string | Email only | User's email address |
-| `password` | string | Email only | Password (4-32 chars) |
+| `password` | string | Email only | Password (8-128 chars; common passwords are rejected) |
 | `anonymousToken` | string | Anonymous only | Unique token (max 32 chars). Auto-generated if omitted. |
 | `googleAuthorizationCode` | string | Google only | OAuth authorization code |
 | `googleRedirectUri` | string | No | Redirect URI used in OAuth flow |

@@ -42,7 +42,7 @@ export function registerAuthTools(server: McpServer): void {
       API_ERRORS,
     inputSchema: {
       email: z.string().email().max(40).describe("Email address (max 40 characters)"),
-      password: z.string().min(4).max(32).describe("Password (4-32 characters)"),
+      password: z.string().min(8).max(128).describe("Password (8-128 characters; common passwords are rejected)"),
       displayName: z.string().max(30).describe("Display name (max 30 characters)"),
     },
     annotations: ADDITIVE_WRITE,
@@ -73,8 +73,8 @@ export function registerAuthTools(server: McpServer): void {
       "A wrong password or unknown email gives 401, an unverified email 403. Signing in again does not end older sessions. " +
       API_ERRORS,
     inputSchema: {
-      email: z.string().email().describe("Email address"),
-      password: z.string().describe("Password"),
+      email: z.string().email().max(40).describe("Email address (max 40 characters)"),
+      password: z.string().max(128).describe("Password (max 128 characters)"),
     },
     annotations: ADDITIVE_WRITE,
   }, async ({ email, password }) => {
@@ -102,7 +102,11 @@ export function registerAuthTools(server: McpServer): void {
       "An unknown token gives 404. Besides the account rate limit, anonymous sign-in allows 5 attempts per token and 30 per IP address per minute. " +
       API_ERRORS,
     inputSchema: {
-      anonymousToken: z.string().max(32).describe("anonymousToken returned by horizon_signup_anonymous (max 32 characters)"),
+      anonymousToken: z
+        .string()
+        .length(32)
+        .regex(/^[A-Za-z0-9_-]+$/, "32 characters: letters, digits, _ and -")
+        .describe("anonymousToken returned by horizon_signup_anonymous (exactly 32 characters)"),
     },
     annotations: ADDITIVE_WRITE,
   }, async ({ anonymousToken }) => {

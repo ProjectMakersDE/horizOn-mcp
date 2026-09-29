@@ -39,7 +39,7 @@ Create a new user account.
   "type": "ANONYMOUS | EMAIL | GOOGLE",
   "username": "string (optional, 1-50 chars)",
   "email": "string (required for EMAIL)",
-  "password": "string (required for EMAIL, 4-32 chars)",
+  "password": "string (required for EMAIL, 8-128 chars)",
   "anonymousToken": "string (required for ANONYMOUS, max 32 chars)",
   "googleAuthorizationCode": "string (required for GOOGLE)",
   "googleRedirectUri": "string (optional)"
