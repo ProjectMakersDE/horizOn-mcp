@@ -61,6 +61,8 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 
 `horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated`, `horizon_get_state` and `horizon_upload_evidence` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
 
+Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), so clients can tell reads from writes. Destructive tools are `horizon_save_cloud_data` (replaces the save), `horizon_set_profile` (replaces the whole profile), `horizon_submit_validated` (consumes the ticket, can spend balances) and `horizon_cancel_email`. The read tools that return an object also declare an `outputSchema` and return `structuredContent` next to the JSON text. Each description names when to use the tool, which sibling to use instead, what it returns and how to recover from its errors.
+
 | Tool | Description |
 |------|-------------|
 | `horizon_test_connection` | Test connection to the horizOn API (health check) |
@@ -161,6 +163,8 @@ When a key is project-scoped, the backend enforces that scope on direct HTTP cal
 
 ### Tool Groups
 
+Admin tools carry the same annotations as the player tools: list, get and statistics tools are read only, update and delete tools are marked destructive.
+
 | Prefix | Description |
 |--------|-------------|
 | `horizon_admin_projects_*` | Project API key management (create/update/regenerate/revoke/delete) |
@@ -190,6 +194,8 @@ Core features:
 - Localization
 - News and Announcements
 - Gift Codes
+- Player Profile (avatar, frame, badges)
+- Validated Actions (server-checked runs, validated only leaderboards, server-owned currency)
 - User Feedback
 - User Logs
 - Crash Reporting
