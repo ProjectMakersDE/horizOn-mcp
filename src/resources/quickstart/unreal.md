@@ -114,7 +114,7 @@ Each manager lives in `Managers/Horizon<Feature>Manager.h`. Include the header o
 ### Leaderboards
 
 ```cpp
-// Submit a score (optional Metadata and BoardKey parameters follow the callback)
+// Submit a score (optional BoardKey follows the callback; the Metadata parameter before it is deprecated and ignored, pass TEXT(""))
 Horizon->Leaderboard->SubmitScore(12500, FOnRequestComplete::CreateLambda([](bool bSuccess, const FString& Error) { }));
 
 // Top 10 entries (second argument: use the local cache)
