@@ -40,12 +40,33 @@ export function noApiKeyResponse(): ToolResult {
 }
 
 /**
- * Returns a formatted error tool result.
+ * Reads the stable error `code` from a JSON error body (player profile
+ * errors and simpleServer errors carry one). Returns null when there is none.
+ */
+export function errorCode(body: string): string | null {
+  try {
+    const parsed: unknown = JSON.parse(body);
+    if (parsed && typeof parsed === "object" && "code" in parsed) {
+      const code = (parsed as { code: unknown }).code;
+      return typeof code === "string" && code.length > 0 ? code : null;
+    }
+  } catch {
+    // not JSON
+  }
+  return null;
+}
+
+/**
+ * Returns a formatted error tool result. When the body carries a stable
+ * error `code` (for example COSMETIC_LOCKED), it is named in the text.
  */
 export function errorResponse(error: unknown): ToolResult {
   let message: string;
   if (error instanceof HorizonApiError) {
-    message = `horizOn API error (HTTP ${error.status}): ${error.body}`;
+    const code = errorCode(error.body);
+    message = code
+      ? `horizOn API error (HTTP ${error.status}, code ${code}): ${error.body}`
+      : `horizOn API error (HTTP ${error.status}): ${error.body}`;
   } else if (error instanceof Error) {
     message = `Error: ${error.message}`;
   } else {

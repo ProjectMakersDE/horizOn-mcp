@@ -17,7 +17,7 @@ The App API (used by SDKs and this MCP server) operates on behalf of **Users** w
 
 ## Core Features
 
-horizOn provides 11 core features:
+horizOn provides 12 core features:
 
 | # | Feature | Description |
 |---|---------|-------------|
@@ -32,6 +32,7 @@ horizOn provides 11 core features:
 | 9 | **User Logs** | Server-side event and error tracking per user |
 | 10 | **Crash Reporting** | Crash reports grouped by fingerprint, sessions, breadcrumbs, and regression detection |
 | 11 | **Email Sending** | Transactional emails to registered users from templates, immediate or scheduled |
+| 12 | **Player Profile** | Avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift codes, shown in leaderboards |
 
 ## Tier System
 

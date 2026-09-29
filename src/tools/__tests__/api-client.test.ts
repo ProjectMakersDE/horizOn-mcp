@@ -79,6 +79,33 @@ describe("HorizonApiClient", () => {
     expect(options.headers.Authorization).toBe("Bearer s");
   });
 
+  it("GET merges extra headers such as a session", async () => {
+    const fakeFetch = mockFetchResponse({ ok: true });
+    vi.stubGlobal("fetch", fakeFetch);
+
+    const client = new HorizonApiClient("test-key", "https://example.com");
+    await client.get("/api/v1/test", { userId: "u" }, { Authorization: "Bearer s" });
+
+    const [url, options] = fakeFetch.mock.calls[0];
+    expect(url).toBe("https://example.com/api/v1/test?userId=u");
+    expect(options.headers["X-API-Key"]).toBe("test-key");
+    expect(options.headers.Authorization).toBe("Bearer s");
+  });
+
+  it("PUT merges extra headers such as a session", async () => {
+    const fakeFetch = mockFetchResponse({ ok: true });
+    vi.stubGlobal("fetch", fakeFetch);
+
+    const client = new HorizonApiClient("test-key", "https://example.com");
+    await client.put("/api/v1/test", { a: 1 }, { Authorization: "Bearer s" });
+
+    const [, options] = fakeFetch.mock.calls[0];
+    expect(options.method).toBe("PUT");
+    expect(options.headers["X-API-Key"]).toBe("test-key");
+    expect(options.headers.Authorization).toBe("Bearer s");
+    expect(options.body).toBe(JSON.stringify({ a: 1 }));
+  });
+
   it("GET appends query params", async () => {
     const fakeFetch = mockFetchResponse({ items: [] });
     vi.stubGlobal("fetch", fakeFetch);

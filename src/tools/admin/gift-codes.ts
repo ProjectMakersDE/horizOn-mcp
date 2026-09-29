@@ -113,7 +113,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
         giftData: z
           .string()
           .describe(
-            'JSON string with the reward payload, e.g. {"gold":100,"crystals":50}',
+            'JSON string with the reward payload, e.g. {"gold":100,"crystals":50}. An optional "grants" array (1 to 10 distinct cosmetic IDs from the catalog of the code\'s API key) unlocks player profile cosmetics on redeem; the server rejects unknown IDs with 400.',
           ),
         maxTotalRedemptions: z
           .number()
@@ -191,7 +191,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
         giftData: z
           .string()
           .optional()
-          .describe("New gift data JSON string"),
+          .describe("New gift data JSON string; an optional \"grants\" array is validated like on create"),
         maxTotalRedemptions: z
           .number()
           .int()

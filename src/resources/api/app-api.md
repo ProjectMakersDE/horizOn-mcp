@@ -15,7 +15,7 @@ X-API-Key: your-api-key-here
 Content-Type: application/json
 ```
 
-Leaderboard submit, cloud save and gift code redeem also need the player's session from sign-in:
+Leaderboard submit, cloud save, gift code redeem and the player profile also need the player's session from sign-in:
 
 ```
 Authorization: Bearer <accessToken>
@@ -255,7 +255,12 @@ Get top leaderboard entries.
 ```json
 {
   "entries": [
-    { "position": 1, "username": "string", "score": "number" }
+    {
+      "position": 1,
+      "username": "string",
+      "score": "number",
+      "profile": { "avatarId": "string | null", "frameId": "string | null", "badges": ["string"] }
+    }
   ]
 }
 ```
@@ -275,7 +280,8 @@ Get a user's rank.
 {
   "position": "number",
   "username": "string",
-  "score": "number"
+  "score": "number",
+  "profile": { "avatarId": "string | null", "frameId": "string | null", "badges": ["string"] }
 }
 ```
 
@@ -294,10 +300,17 @@ Get entries around a user's rank.
 ```json
 {
   "entries": [
-    { "position": "number", "username": "string", "score": "number" }
+    {
+      "position": "number",
+      "username": "string",
+      "score": "number",
+      "profile": { "avatarId": "string | null", "frameId": "string | null", "badges": ["string"] }
+    }
   ]
 }
 ```
+
+`profile` is present in every entry of top, rank and around (player avatar, frame and badges, see Player Profile below).
 
 ---
 
@@ -456,11 +469,53 @@ Requests without any session are only accepted during a transition window for ol
 {
   "success": "boolean",
   "message": "string",
-  "giftData": "string (JSON) | null"
+  "giftData": "string (JSON) | null",
+  "grantedUnlocks": ["string"]
 }
 ```
 
-**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `401` invalid or expired session, `403` code or user of another API key or session of another user, `404` unknown code.
+`grantedUnlocks`: cosmetic IDs from `giftData.grants` the player owns after the redemption, `[]` without grants. A code with grants always needs the session.
+
+**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `401` invalid or expired session (or no session for a code with grants), `403` code or user of another API key or session of another user, `404` unknown code, `409` `UNLOCK_LIMIT_REACHED` (more than 25 unlocks, code not used up).
+
+---
+
+## Player Profile
+
+Both endpoints need `Authorization: Bearer <accessToken>` of `userId`. Errors carry a `code`: `INVALID_BADGES`, `INVALID_COSMETIC_ID`, `COSMETIC_NOT_FOUND`, `COSMETIC_TYPE_MISMATCH` (400), `SESSION_REQUIRED` (401), `COSMETIC_LOCKED`, `SESSION_FORBIDDEN` (403), `PLAYER_NOT_FOUND` (404).
+
+### GET /api/v1/app/player-profile?userId={userId}
+
+Profile, unlocks and the cosmetics catalog of the API key with `available` per entry.
+
+**Response (200):**
+```json
+{
+  "userId": "string",
+  "profile": { "avatarId": "string | null", "frameId": "string | null", "badges": ["string"] },
+  "unlocks": ["string"],
+  "cosmetics": [
+    { "id": "string", "type": "avatar | frame | badge", "locked": "boolean", "available": "boolean" }
+  ],
+  "limits": { "maxBadges": 3, "maxUnlocks": 25 }
+}
+```
+
+---
+
+### PUT /api/v1/app/player-profile
+
+Replaces the whole visible profile (a missing, `null` or `""` slot is cleared, missing or `[]` badges clears them). Returns the GET body.
+
+**Request:**
+```json
+{
+  "userId": "string",
+  "avatarId": "string | null",
+  "frameId": "string | null",
+  "badges": ["string (0 to 3, distinct)"]
+}
+```
 
 ---
 

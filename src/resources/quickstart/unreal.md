@@ -187,7 +187,23 @@ Horizon->News->LoadNews(20, TEXT("en"), true, FOnNewsComplete::CreateLambda(
 ```cpp
 Horizon->GiftCodes->Validate(TEXT("ABCD-1234"), FOnGiftCodeValidateComplete::CreateLambda([](bool bRequestSuccess, bool bValid) { }));
 Horizon->GiftCodes->Redeem(TEXT("ABCD-1234"), FOnGiftCodeRedeemComplete::CreateLambda([](bool bSuccess, const FString& GiftData, const FString& Message) { }));
+// Cosmetics unlocked by the last redeem: Horizon->GiftCodes->GetLastGrantedUnlocks()
 ```
+
+### Player Profile
+
+```cpp
+// Profile, unlocks and the cosmetics catalog with an "available" flag per entry
+Horizon->PlayerProfile->GetProfile(FOnPlayerProfileComplete::CreateLambda(
+    [](bool bSuccess, const FHorizonPlayerProfileResult& Result, const FString& ErrorCode, const FString& ErrorMessage) { }));
+
+// Replace the whole profile (empty string clears a slot, max 3 badges)
+Horizon->PlayerProfile->SetProfile(TEXT("avatar.zombie_07"), TEXT(""), { TEXT("badge.supporter") },
+    FOnPlayerProfileComplete::CreateLambda(
+        [](bool bSuccess, const FHorizonPlayerProfileResult& Result, const FString& ErrorCode, const FString& ErrorMessage) { }));
+```
+
+Leaderboard entries carry `Profile` (`AvatarId`, `FrameId`, `Badges`).
 
 ### Feedback
 
@@ -242,6 +258,7 @@ Get the subsystem with the **Get Horizon Subsystem** node or use the async nodes
 - **Cloud Save Data**, **Cloud Load Data**
 - **Get Remote Config**, **Get All Remote Configs**, **Get Localization**, **Load News**
 - **Validate Gift Code**, **Redeem Gift Code**, **Report Bug**, **Submit Feedback**
+- **Get Player Profile**, **Set Player Profile**
 - **Record Exception**, **Report Crash**, **Send Email**
 
 ## Hello horizOn Example

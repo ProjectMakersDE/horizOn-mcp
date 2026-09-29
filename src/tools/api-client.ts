@@ -35,7 +35,8 @@ async function parseBody<T>(response: Response): Promise<T> {
 
 /**
  * Authorization header for endpoints that need a player session
- * (leaderboard submit, cloud save). The token is the accessToken from sign-in.
+ * (leaderboard submit, cloud save, gift code redeem, player profile).
+ * The token is the accessToken from sign-in.
  */
 export function sessionHeaders(sessionToken: string): Record<string, string> {
   return { Authorization: `Bearer ${sessionToken}` };
@@ -63,7 +64,11 @@ export class HorizonApiClient {
     };
   }
 
-  async get<T>(path: string, params?: Record<string, string>): Promise<T> {
+  async get<T>(
+    path: string,
+    params?: Record<string, string>,
+    headers?: Record<string, string>,
+  ): Promise<T> {
     let url = `${this.baseUrl}${path}`;
     if (params) {
       const qs = new URLSearchParams(params).toString();
@@ -74,7 +79,7 @@ export class HorizonApiClient {
 
     const response = await fetch(url, {
       method: "GET",
-      headers: this.authHeaders(),
+      headers: { ...this.authHeaders(), ...headers },
     });
 
     if (!response.ok) {
@@ -100,10 +105,10 @@ export class HorizonApiClient {
     return parseBody<T>(response);
   }
 
-  async put<T>(path: string, body?: unknown): Promise<T> {
+  async put<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: "PUT",
-      headers: this.authHeaders(),
+      headers: { ...this.authHeaders(), ...headers },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 

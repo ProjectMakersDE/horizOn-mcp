@@ -160,7 +160,23 @@ if is_valid:
     var result = await Horizon.giftCodes.redeem("ABCD-1234")
     if result.get("success", false):
         print("Rewards: %s" % result.get("giftData", ""))
+        print("Unlocked: %s" % result.get("grantedUnlocks", []))
 ```
+
+### Player Profile
+
+```gdscript
+# Profile, unlocks and the cosmetics catalog with an "available" flag per entry
+var data: Dictionary = await Horizon.playerProfile.getProfile()
+var avatars: Array = Horizon.playerProfile.getCosmetics("avatar")
+
+# Replace the whole profile ("" clears a slot, [] clears the badges, max 3)
+var updated: Dictionary = await Horizon.playerProfile.setProfile("avatar.zombie_07", "", ["badge.supporter"])
+if updated.is_empty():
+    print(Horizon.playerProfile.getLastErrorCode())  # e.g. COSMETIC_LOCKED
+```
+
+Leaderboard entries carry `entry.profile` (`avatarId`, `frameId`, `badges`).
 
 ### Feedback
 

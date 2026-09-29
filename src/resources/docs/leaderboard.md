@@ -56,6 +56,10 @@ Submits a score for the authenticated user. Only updates if the score is higher 
 | `score` | number | Yes | Score value (positive integer) |
 | `leaderboardKey` | string | No | Optional named board key for V2 calls |
 
+**Headers:** `X-API-Key` and `Authorization: Bearer <accessToken>` of the signed-in player.
+
+A score has no `metadata` field; the server ignores unknown fields. Per-player display data (avatar, frame, badges) lives in the player profile instead.
+
 **Response (200):**
 
 ```json
@@ -84,12 +88,23 @@ Returns the top entries on the leaderboard.
 ```json
 {
   "entries": [
-    { "position": 1, "username": "TopPlayer", "score": 50000 },
-    { "position": 2, "username": "Runner-Up", "score": 45000 },
-    { "position": 3, "username": "ThirdPlace", "score": 40000 }
+    {
+      "position": 1,
+      "username": "TopPlayer",
+      "score": 50000,
+      "profile": { "avatarId": "avatar.zombie_07", "frameId": "frame.gold", "badges": ["badge.supporter"] }
+    },
+    {
+      "position": 2,
+      "username": "Runner-Up",
+      "score": 45000,
+      "profile": { "avatarId": null, "frameId": null, "badges": [] }
+    }
   ]
 }
 ```
+
+Every entry carries `profile` (always present): the player's avatar, frame and up to three badges, as cosmetic IDs from the project's catalog (`null` or `[]` when not set). Treat IDs your game does not know as "not set". See `horizon://docs/player-profile`.
 
 ---
 
@@ -111,7 +126,8 @@ Returns the current user's position on the leaderboard.
 {
   "position": 42,
   "username": "MyPlayer",
-  "score": 12500
+  "score": 12500,
+  "profile": { "avatarId": "avatar.zombie_07", "frameId": null, "badges": [] }
 }
 ```
 
@@ -135,10 +151,9 @@ Returns entries around the user's position (players ranked near them).
 ```json
 {
   "entries": [
-    { "position": 40, "username": "NearbyPlayer1", "score": 13000 },
-    { "position": 41, "username": "NearbyPlayer2", "score": 12800 },
-    { "position": 42, "username": "MyPlayer", "score": 12500 },
-    { "position": 43, "username": "NearbyPlayer3", "score": 12200 }
+    { "position": 41, "username": "NearbyPlayer", "score": 12800, "profile": { "avatarId": null, "frameId": null, "badges": [] } },
+    { "position": 42, "username": "MyPlayer", "score": 12500, "profile": { "avatarId": "avatar.zombie_07", "frameId": null, "badges": [] } },
+    { "position": 43, "username": "NearbyPlayer2", "score": 12200, "profile": { "avatarId": null, "frameId": null, "badges": [] } }
   ]
 }
 ```
@@ -158,6 +173,7 @@ await Horizon.leaderboard.submitScore(1000, "weekly")
 var top: Array[HorizonLeaderboardEntry] = await Horizon.leaderboard.getTop(10)
 for entry in top:
     print("#%d %s: %d" % [entry.position, entry.username, entry.score])
+    # entry.profile.avatarId, entry.profile.frameId, entry.profile.badges ("" / [] when not set)
 
 # Get current user's rank
 var myRank: HorizonLeaderboardEntry = await Horizon.leaderboard.getRank()
@@ -197,6 +213,7 @@ var top = await LeaderboardManager.Instance.GetTop(10);
 foreach (var entry in top)
 {
     Debug.Log($"#{entry.position} {entry.username}: {entry.score}");
+    // entry.profile.avatarId, entry.profile.frameId, entry.profile.badges (check entry.profile.HasAvatar)
 }
 
 // Get your rank
@@ -219,12 +236,14 @@ LeaderboardManager.Instance.ClearCache();
 # Submit score
 curl -X POST https://horizon.pm/api/v1/app/leaderboard/submit \
   -H "X-API-Key: YOUR_API_KEY" \
+  -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
   -H "Content-Type: application/json" \
   -d '{"userId": "user123", "score": 12500}'
 
 # Submit to a named board
 curl -X POST https://horizon.pm/api/v1/app/leaderboards/weekly/submit \
   -H "X-API-Key: YOUR_API_KEY" \
+  -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
   -H "Content-Type: application/json" \
   -d '{"userId": "user123", "score": 12500, "leaderboardKey": "weekly"}'
 

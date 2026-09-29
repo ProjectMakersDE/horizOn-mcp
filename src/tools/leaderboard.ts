@@ -17,6 +17,13 @@ const leaderboardKeySchema = z
     "Leaderboard key — selects a named board on the API key. Omit to use the default board.",
   );
 
+/**
+ * Every leaderboard entry carries the player's profile (TASK-881). The tools
+ * pass it through unchanged.
+ */
+const PROFILE_NOTE =
+  "profile is {avatarId, frameId, badges} (IDs from the cosmetics catalog; null or [] when not set, set with horizon_set_profile). ";
+
 function topPath(leaderboardKey?: string): string {
   return leaderboardKey
     ? `/api/v1/app/leaderboards/${encodeURIComponent(leaderboardKey)}/top`
@@ -116,7 +123,8 @@ export function registerLeaderboardTools(server: McpServer): void {
     {
       title: "Get Leaderboard Top",
       description:
-        "Returns the best entries of a leaderboard as {entries: [{position, username, score}]}, in the board's sort order starting at position 1. " +
+        "Returns the best entries of a leaderboard as {entries: [{position, username, score, profile}]}, in the board's sort order starting at position 1. " +
+        PROFILE_NOTE +
         "If the player given by userId is not in that list, their own entry with the real position is added at the end. An unknown leaderboardKey gives 404. " +
         "Use it for a global top list; use horizon_get_user_rank for one player's position and horizon_get_leaderboard_around for the players near them. " +
         "Omit leaderboardKey for the default board. " +
@@ -156,7 +164,8 @@ export function registerLeaderboardTools(server: McpServer): void {
     {
       title: "Get User Rank",
       description:
-        "Returns one player's own position on a leaderboard as {position, username, score}, for example after horizon_submit_score. " +
+        "Returns one player's own position on a leaderboard as {position, username, score, profile}, for example after horizon_submit_score. " +
+        PROFILE_NOTE +
         "A player without a score on that board gives 404. " +
         "Use horizon_get_leaderboard_top for the top list and horizon_get_leaderboard_around to include the neighbouring players. " +
         "Omit leaderboardKey for the default board. " +
@@ -186,7 +195,8 @@ export function registerLeaderboardTools(server: McpServer): void {
     {
       title: "Get Leaderboard Around User",
       description:
-        "Returns the entries around a player's own position as {entries: [{position, username, score}]}, for views like 'you and your rivals'. " +
+        "Returns the entries around a player's own position as {entries: [{position, username, score, profile}]}, for views like 'you and your rivals'. " +
+        PROFILE_NOTE +
         "range sets how many entries around the player are returned. Use horizon_get_leaderboard_top for the top list and horizon_get_user_rank for the position alone. " +
         "Omit leaderboardKey for the default board. " +
         API_ERRORS,

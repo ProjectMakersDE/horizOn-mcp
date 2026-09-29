@@ -51,6 +51,30 @@ describe("registerGiftCodeTools", () => {
     expect(JSON.parse(result.content[0].text)).toEqual({ success: true, message: "ok", giftData: "{}" });
   });
 
+  it("passes grantedUnlocks of a code with grants through", async () => {
+    const server = createMockServer();
+    registerGiftCodeTools(server);
+
+    const response = {
+      success: true,
+      message: "Gift code redeemed successfully",
+      giftData: "{\"grants\": [\"badge.supporter\"]}",
+      grantedUnlocks: ["badge.supporter"],
+    };
+    const mockPost = vi.fn().mockResolvedValue(response);
+    mockedCreateApiClient.mockReturnValue({ post: mockPost } as any);
+
+    const { handler, schema } = registeredTools.get("horizon_redeem_gift_code")!;
+    const result = await handler({
+      code: "SUPPORTER",
+      userId: "550e8400-e29b-41d4-a716-446655440000",
+      sessionToken: "session-881",
+    });
+
+    expect(JSON.parse(result.content[0].text).grantedUnlocks).toEqual(["badge.supporter"]);
+    expect((schema as { description: string }).description).toContain("grantedUnlocks");
+  });
+
   it("requires a session token for redeem", () => {
     const server = createMockServer();
     registerGiftCodeTools(server);

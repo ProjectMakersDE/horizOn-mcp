@@ -15,6 +15,7 @@ export function registerIntegrateFeaturePrompt(server: McpServer): void {
           "remote-config",
           "news",
           "gift-codes",
+          "player-profile",
           "feedback",
           "user-logs",
           "crash-reporting",

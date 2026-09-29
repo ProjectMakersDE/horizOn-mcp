@@ -38,8 +38,10 @@ export function registerGiftCodeTools(server: McpServer): void {
     description:
       "Redeems a gift code for a player and returns the reward. Needs the player's session: sign in with horizon_signin_email or horizon_signin_anonymous first and pass its accessToken. " +
       "Each call uses up one redemption and cannot be undone; codes can be limited per player and in total. To check a code without using it, call horizon_validate_gift_code. " +
-      "Returns {success, message, giftData}. giftData is a JSON string with the reward set in the dashboard, which the game must parse and apply. " +
-      "An unknown code gives 404; an expired or revoked code or a reached limit gives 400; an expired session gives 401, a session of another user 403. " +
+      "Returns {success, message, giftData, grantedUnlocks}. giftData is a JSON string with the reward set in the dashboard, which the game must parse and apply. " +
+      "grantedUnlocks lists the cosmetic IDs from giftData.grants the player owns after this redemption ([] without grants); call horizon_get_profile to show them. " +
+      "An unknown code gives 404; an expired or revoked code or a reached limit gives 400; an expired session gives 401, a session of another user 403; " +
+      "more than 25 unlocks gives 409 UNLOCK_LIMIT_REACHED and the code is not used up. " +
       API_ERRORS,
     inputSchema: {
       code: z.string().max(50).describe("Gift code to redeem (max 50 characters)"),
