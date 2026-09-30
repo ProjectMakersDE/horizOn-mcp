@@ -204,11 +204,13 @@ Dashboard session or account API key (`X-Account-API-Key`, feature group `LEADER
 
 | Method and path | Description |
 |---|---|
-| `GET /api/v1/admin/validated-actions/evidence?apiKeyId=&leaderboardKey=&status=&page=&size=` | Review list `{items, page, size, totalElements}`, newest request first; `status` `REQUESTED` or `UPLOADED`, `size` 1 to 100 (default 20) |
+| `GET /api/v1/admin/validated-actions/evidence?apiKeyId=&leaderboardKey=&status=&page=&size=` | Review list `{items, page, size, totalElements}`, newest request first; `status` `REQUESTED` or `UPLOADED`, `size` 1 to 100 (default 20). `leaderboardKey` needs `apiKeyId` (`400 API_KEY_REQUIRED`): the same board key can exist under several API keys |
 | `GET /api/v1/admin/validated-actions/evidence/quota` | `{used, limit, full, topNAllocated, maxBytes}` |
-| `GET /api/v1/admin/validated-actions/evidence/{runId}` | Item fields plus `seed` and `logHash` (hex); `404 EVIDENCE_NOT_FOUND` |
-| `GET /api/v1/admin/validated-actions/evidence/{runId}/log` | The log as `application/octet-stream`, header `X-Input-Log-Hash`; `404 EVIDENCE_NOT_UPLOADED` while requested |
-| `DELETE /api/v1/admin/validated-actions/evidence/{runId}` | Deletes the record and frees its slot (`204`) |
+| `GET /api/v1/admin/validated-actions/evidence/{runId}?apiKeyId=` | Item fields plus `seed` and `logHash` (hex); `404 EVIDENCE_NOT_FOUND` |
+| `GET /api/v1/admin/validated-actions/evidence/{runId}/log?apiKeyId=` | The log as `application/octet-stream`, header `X-Input-Log-Hash`; `404 EVIDENCE_NOT_UPLOADED` while requested |
+| `DELETE /api/v1/admin/validated-actions/evidence/{runId}?apiKeyId=` | Deletes the record and frees its slot (`204`) |
+
+`apiKeyId` on the record endpoints is optional; when given it must belong to the account (`404 API_KEY_NOT_FOUND`) and own the record's board (`404 EVIDENCE_NOT_FOUND` otherwise).
 
 Moderation (remove entry, clear flag, board ban, shadow ban, reset with archive) lives in the leaderboard admin API and the Dashboard. A player banned from a board gets `403 PLAYER_BANNED` on both submit paths.
 
@@ -318,7 +320,7 @@ curl "https://horizon.pm/api/v1/app/validated-actions/state?userId=USER_ID" \
 4. `horizon_get_state` with `userId` and `sessionToken` to read the balances at any time.
 5. When the submit result has `evidence.required: true`: `horizon_upload_evidence` with `userId`, `sessionToken`, `runId` and the same log as exactly one of `inputLogBase64` or `inputLog` (the tool base64-encodes it and returns the `inputLogHash` of the uploaded bytes).
 
-Admin tools (need `HORIZON_ACCOUNT_API_KEY`): `horizon_admin_validated_evidence_list` (filters `projectApiKeyId`, `leaderboardKey`, `status`, `page`, `size`), `horizon_admin_validated_evidence_quota`, `horizon_admin_validated_evidence_get` (metadata with `seed` and `logHash`), `horizon_admin_validated_evidence_download` (`format: "base64"` returns the log as base64, `format: "hash"` only size and hashes; both compare the server's `X-Input-Log-Hash` with the SHA-256 of the downloaded bytes) and `horizon_admin_validated_evidence_delete`.
+Admin tools (need `HORIZON_ACCOUNT_API_KEY`): `horizon_admin_validated_evidence_list` (filters `projectApiKeyId`, `leaderboardKey` (only together with `projectApiKeyId`), `status`, `page`, `size`), `horizon_admin_validated_evidence_quota`, `horizon_admin_validated_evidence_get` (metadata with `seed` and `logHash`), `horizon_admin_validated_evidence_download` (`format: "base64"` returns the log as base64, `format: "hash"` only size and hashes; both compare the server's `X-Input-Log-Hash` with the SHA-256 of the downloaded bytes) and `horizon_admin_validated_evidence_delete`. Get, download and delete take an optional `projectApiKeyId` that must own the record's board.
 
 Configuration admin tools (same key): `horizon_admin_validated_rules_get` (rule set of a `projectApiKeyId`, the defaults with `configured: false` when none is saved, plus `limits`), `horizon_admin_validated_rules_set` (replaces the whole rule set; read, edit and send back the complete `rules` object), `horizon_admin_validated_rules_delete` (back to the defaults), `horizon_admin_validated_usage_get` (runs of the account in the current UTC hour against the plan limit), `horizon_admin_validated_runs_list` (recent runs of a `projectApiKeyId` with `status` and the rejection `reason`), `horizon_admin_validated_state_get` and `horizon_admin_validated_state_correct` (a player's balances; a correction sets the listed keys, stores an optional `note` and records the caller as `account-key:<id>`). Project-scoped Account Keys reach only `rules_get`, `runs_list` and `evidence_list` with their own `projectApiKeyId`.
 

@@ -8,7 +8,7 @@ import {
 } from "../admin/validated-actions.js";
 
 // Contract checked against horizOn-Server AdminEvidenceController and EvidenceService
-// (develop, TASK-888) on 2026-09-29. Never call a live API here.
+// (develop, TASK-888) on 2026-09-29, API key scoping on 2026-09-30. Never call a live API here.
 
 const BASE = "https://evidence.test.invalid";
 const RUN_ID = "5b0b6c1e-8d0f-4c55-9b0e-0e6a4a8a3d11";
@@ -106,6 +106,35 @@ describe("admin evidence tools over MCP", () => {
     expect(Object.fromEntries(parsed.searchParams)).toEqual({ page: "0", size: "20" });
   });
 
+  it("rejects a leaderboardKey without projectApiKeyId before any request", async () => {
+    const result = (await client.callTool({
+      name: "horizon_admin_validated_evidence_list",
+      arguments: { leaderboardKey: "weekly" },
+    })) as TextResult;
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("API_KEY_REQUIRED");
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("keeps the same leaderboardKey of two Project API keys apart", async () => {
+    const OTHER_KEY = "22222222-2222-4222-8222-222222222222";
+    await client.callTool({
+      name: "horizon_admin_validated_evidence_list",
+      arguments: { projectApiKeyId: PROJECT_KEY, leaderboardKey: "weekly" },
+    });
+    await client.callTool({
+      name: "horizon_admin_validated_evidence_list",
+      arguments: { projectApiKeyId: OTHER_KEY, leaderboardKey: "weekly" },
+    });
+
+    const queries = request.mock.calls.map(([url]) => Object.fromEntries(new URL(url).searchParams));
+    expect(queries).toEqual([
+      { page: "0", size: "20", apiKeyId: PROJECT_KEY, leaderboardKey: "weekly" },
+      { page: "0", size: "20", apiKeyId: OTHER_KEY, leaderboardKey: "weekly" },
+    ]);
+  });
+
   it("rejects an unknown status before any request", async () => {
     const result = (await client.callTool({
       name: "horizon_admin_validated_evidence_list",
@@ -128,6 +157,50 @@ describe("admin evidence tools over MCP", () => {
   it("reads the metadata of one record", async () => {
     await client.callTool({ name: "horizon_admin_validated_evidence_get", arguments: { runId: RUN_ID } });
     expect(request.mock.calls[0][0]).toBe(`${BASE}/api/v1/admin/validated-actions/evidence/${RUN_ID}`);
+  });
+
+  it("scopes get, download and delete to projectApiKeyId", async () => {
+    request.mockResolvedValueOnce(new Response(JSON.stringify({ runId: RUN_ID })));
+    request.mockResolvedValueOnce(new Response(Buffer.from("abc", "utf8"), { headers: { "X-Input-Log-Hash": HASH_ABC } }));
+    request.mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    await client.callTool({ name: "horizon_admin_validated_evidence_get", arguments: { runId: RUN_ID, projectApiKeyId: PROJECT_KEY } });
+    await client.callTool({
+      name: "horizon_admin_validated_evidence_download",
+      arguments: { runId: RUN_ID, projectApiKeyId: PROJECT_KEY, format: "hash" },
+    });
+    await client.callTool({ name: "horizon_admin_validated_evidence_delete", arguments: { runId: RUN_ID, projectApiKeyId: PROJECT_KEY } });
+
+    const record = `${BASE}/api/v1/admin/validated-actions/evidence/${RUN_ID}`;
+    expect(request.mock.calls.map(([url]) => url)).toEqual([
+      `${record}?apiKeyId=${PROJECT_KEY}`,
+      `${record}/log?apiKeyId=${PROJECT_KEY}`,
+      `${record}?apiKeyId=${PROJECT_KEY}`,
+    ]);
+    expect(request.mock.calls[2][1].method).toBe("DELETE");
+  });
+
+  it("names the code when the record belongs to another Project API key", async () => {
+    request.mockResolvedValueOnce(
+      new Response(JSON.stringify({ status: 404, code: "EVIDENCE_NOT_FOUND", message: "Evidence not found" }), { status: 404 }),
+    );
+
+    const result = (await client.callTool({
+      name: "horizon_admin_validated_evidence_delete",
+      arguments: { runId: RUN_ID, projectApiKeyId: PROJECT_KEY },
+    })) as TextResult;
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("HTTP 404, code EVIDENCE_NOT_FOUND");
+  });
+
+  it("rejects a projectApiKeyId that is not a UUID before any request", async () => {
+    const result = (await client.callTool({
+      name: "horizon_admin_validated_evidence_get",
+      arguments: { runId: RUN_ID, projectApiKeyId: "weekly" },
+    })) as TextResult;
+    expect(result.isError).toBe(true);
+    expect(request).not.toHaveBeenCalled();
   });
 
   it("downloads the log as base64 and checks the hash header", async () => {
