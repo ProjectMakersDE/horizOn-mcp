@@ -241,7 +241,7 @@ Submit a score. Only the player's best score is kept (higher wins on DESC boards
 }
 ```
 
-**Response (200):** empty body. `401` without a valid session, `403` when the session belongs to another user, `403` with `"code": "VALIDATED_SUBMIT_REQUIRED"` on a validated only board (nothing is written).
+**Response (200):** empty body. `401` without a valid session, `403` when the session belongs to another user, `403` with `"code": "VALIDATED_SUBMIT_REQUIRED"` on a validated only board and `403` with `"code": "PLAYER_BANNED"` for a player banned from the board (nothing is written in both cases).
 
 ---
 
@@ -524,7 +524,7 @@ Replaces the whole visible profile (a missing, `null` or `""` slot is cleared, m
 
 ## Validated Actions
 
-Server-checked runs (cloud only). All three endpoints need `Authorization: Bearer <accessToken>` of `userId`. Errors carry a `code` and, when known, the `runId`: `SCORE_REQUIRED`, `PLAYER_NAME_REQUIRED` (400), `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN`, `SCORE_LIMIT_REACHED` (403), `PLAYER_NOT_FOUND`, `LEADERBOARD_NOT_FOUND` (404), `TICKET_INVALID`, `TICKET_EXPIRED`, `TICKET_FOREIGN`, `TICKET_CONSUMED`, `LEADERBOARD_MISMATCH`, `STAGE_REQUIRED`, `STAGE_UNKNOWN`, `SCORE_ABOVE_MAX`, `SCORE_BELOW_MIN`, `STAGE_SCORE_ABOVE_MAX`, `STAGE_SCORE_BELOW_MIN`, `DURATION_TOO_SHORT`, `SCORE_RATE_TOO_HIGH`, `UNKNOWN_VALUE_KEY`, `DUPLICATE_VALUE_KEY`, `EARNED_ABOVE_MAX`, `EARNED_BELOW_MIN`, `INSUFFICIENT_BALANCE` (422), `RUN_RATE_LIMITED`, `RUN_CAPACITY_REACHED` (429, `Retry-After`), `VALIDATED_ACTIONS_UNAVAILABLE` (503). See `horizon://docs/validated-actions`.
+Server-checked runs (cloud only). All four endpoints need `Authorization: Bearer <accessToken>` of `userId`. Errors carry a `code` and, when known, the `runId`: `SCORE_REQUIRED`, `PLAYER_NAME_REQUIRED` (400), `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN`, `SCORE_LIMIT_REACHED`, `PLAYER_BANNED` (403), `PLAYER_NOT_FOUND`, `LEADERBOARD_NOT_FOUND` (404), `TICKET_INVALID`, `TICKET_EXPIRED`, `TICKET_FOREIGN`, `TICKET_CONSUMED`, `LEADERBOARD_MISMATCH`, `STAGE_REQUIRED`, `STAGE_UNKNOWN`, `SCORE_ABOVE_MAX`, `SCORE_BELOW_MIN`, `STAGE_SCORE_ABOVE_MAX`, `STAGE_SCORE_BELOW_MIN`, `DURATION_TOO_SHORT`, `SCORE_RATE_TOO_HIGH`, `UNKNOWN_VALUE_KEY`, `DUPLICATE_VALUE_KEY`, `EARNED_ABOVE_MAX`, `EARNED_BELOW_MIN`, `INSUFFICIENT_BALANCE` (422), `RUN_RATE_LIMITED`, `RUN_CAPACITY_REACHED` (429, `Retry-After`), `VALIDATED_ACTIONS_UNAVAILABLE` (503). See `horizon://docs/validated-actions`.
 
 ### POST /api/v1/app/validated-actions/runs
 
@@ -589,6 +589,8 @@ Submit the result of a run. Rules run before any write; the ticket is consumed (
 }
 ```
 
+`evidence` is `null`, or `{ "required": true, "runId": "string", "uploadBefore": "string (ISO 8601 UTC, 24 hours)", "maxBytes": 32768 }` when the server asks for the input log (a new top N entry or a flagged run): upload it with `PUT /api/v1/app/validated-actions/runs/{runId}/evidence`.
+
 `state` is `null` when the rules define no values. `credited < requested` on a positive amount means the daily cap or `maxBalance` clamped it; a spend is credited in full or with `0` (grant a purchase only when `credited == requested`).
 
 ---
@@ -609,6 +611,31 @@ The player's server-owned values. Read only; only accepted validated runs change
 ```
 
 Every value key of the rules, sorted by key (balance `0` when never earned). Errors: `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN` (403), `PLAYER_NOT_FOUND` (404), 429 without body.
+
+---
+
+### PUT /api/v1/app/validated-actions/runs/{runId}/evidence
+
+Upload the input log of a run whose submit response had `evidence.required = true`, before `evidence.uploadBefore`. The SHA-256 of the decoded bytes must equal the `inputLogHash` sent with the run.
+
+**Request:**
+```json
+{
+  "userId": "string",
+  "log": "string (standard base64 of the raw input log, decoded at most maxBytes)"
+}
+```
+
+**Response (200):**
+```json
+{
+  "runId": "string",
+  "status": "UPLOADED",
+  "bytes": "number"
+}
+```
+
+Errors: `EVIDENCE_INVALID_ENCODING` (400), `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN` (403), `EVIDENCE_NOT_REQUESTED` (404, also for a run of another player), `EVIDENCE_ALREADY_UPLOADED` (409), `EVIDENCE_EXPIRED` (410, the slot is freed), `EVIDENCE_TOO_LARGE` (413), `EVIDENCE_HASH_MISMATCH` (422, the request stays open until `uploadBefore`), 429 without body.
 
 ---
 

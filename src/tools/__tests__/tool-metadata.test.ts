@@ -217,7 +217,7 @@ describe("admin tool metadata", () => {
     const player = registerTools(false);
     const all = registerTools(true);
     const admin = [...all.keys()].filter((name) => !player.has(name));
-    expect(admin.length).toBe(79);
+    expect(admin.length).toBe(86);
     expect(admin.every((name) => name.startsWith("horizon_admin_"))).toBe(true);
   });
 

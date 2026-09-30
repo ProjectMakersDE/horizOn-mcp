@@ -122,7 +122,7 @@ Resources (documentation) work without an API key. Only the live API tools requi
 
 ## Admin Tools (v1.2+)
 
-With an **Account Key** (creatable in your horizOn Dashboard -> API Keys -> Create -> **Account Key**), the MCP server exposes additional tools that let Claude manage your dashboard -- projects, remote config, news, email templates, gift codes, users, leaderboards, cloud-save data, crash reports, feedback, user logs, SMTP, and the Validated Actions evidence review.
+With an **Account Key** (creatable in your horizOn Dashboard -> API Keys -> Create -> **Account Key**), the MCP server exposes additional tools that let Claude manage your dashboard -- projects, remote config, news, email templates, gift codes, users, leaderboards, cloud-save data, crash reports, feedback, user logs, SMTP, and Validated Actions (rules, runs, player values and the evidence review).
 
 ### How to get your Account Key
 
@@ -180,6 +180,7 @@ Admin tools carry the same annotations as the player tools: list, get and statis
 | `horizon_admin_userlogs_*` | Read user logs |
 | `horizon_admin_smtp_*` | Account SMTP configuration (password always returned masked) |
 | `horizon_admin_validated_evidence_*` | Validated Actions evidence review: list, quota, metadata, log download (base64 or hashes only), delete |
+| `horizon_admin_validated_rules_*`, `_usage_get`, `_runs_list`, `_state_*` | Validated Actions configuration: rule set per Project API key (get, replace, delete), run capacity of the hour, recent runs with rejection codes, server-owned player values (read, support correction) |
 
 ## What is horizOn?
 

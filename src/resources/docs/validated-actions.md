@@ -35,7 +35,7 @@ Validated Actions is cloud only. The self-hosted simpleServer does not support i
 | Value keys per API key | FREE 8, BASIC 16, PRO 32, ENTERPRISE 64 |
 | Amounts and balances | At most 9,007,199,254,740,991 in magnitude |
 
-Rule sets are configured per API key in the Dashboard (global fields, defaults, per-leaderboard blocks, stage rules, values). The mcp admin tools cover only the evidence review (`horizon_admin_validated_evidence_*`); rules, balance corrections (user management) and moderation are done in the Dashboard.
+Rule sets are configured per API key in the Dashboard (global fields, defaults, per-leaderboard blocks, stage rules, values). The mcp admin tools cover the rules, the run capacity, recent runs, player values (read and correction) and the evidence review (see [MCP tools](#mcp-tools)); leaderboard moderation (bans, shadow bans, reset with archive) is done in the Dashboard.
 
 ## Endpoints
 
@@ -319,6 +319,8 @@ curl "https://horizon.pm/api/v1/app/validated-actions/state?userId=USER_ID" \
 5. When the submit result has `evidence.required: true`: `horizon_upload_evidence` with `userId`, `sessionToken`, `runId` and the same log as exactly one of `inputLogBase64` or `inputLog` (the tool base64-encodes it and returns the `inputLogHash` of the uploaded bytes).
 
 Admin tools (need `HORIZON_ACCOUNT_API_KEY`): `horizon_admin_validated_evidence_list` (filters `projectApiKeyId`, `leaderboardKey`, `status`, `page`, `size`), `horizon_admin_validated_evidence_quota`, `horizon_admin_validated_evidence_get` (metadata with `seed` and `logHash`), `horizon_admin_validated_evidence_download` (`format: "base64"` returns the log as base64, `format: "hash"` only size and hashes; both compare the server's `X-Input-Log-Hash` with the SHA-256 of the downloaded bytes) and `horizon_admin_validated_evidence_delete`.
+
+Configuration admin tools (same key): `horizon_admin_validated_rules_get` (rule set of a `projectApiKeyId`, the defaults with `configured: false` when none is saved, plus `limits`), `horizon_admin_validated_rules_set` (replaces the whole rule set; read, edit and send back the complete `rules` object), `horizon_admin_validated_rules_delete` (back to the defaults), `horizon_admin_validated_usage_get` (runs of the account in the current UTC hour against the plan limit), `horizon_admin_validated_runs_list` (recent runs of a `projectApiKeyId` with `status` and the rejection `reason`), `horizon_admin_validated_state_get` and `horizon_admin_validated_state_correct` (a player's balances; a correction sets the listed keys, stores an optional `note` and records the caller as `account-key:<id>`). Project-scoped Account Keys reach only `rules_get`, `runs_list` and `evidence_list` with their own `projectApiKeyId`.
 
 Error results name the server `code`, for example `horizOn API error (HTTP 422, code DURATION_TOO_SHORT)`.
 
