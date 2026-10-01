@@ -1,3 +1,25 @@
+# [1.6.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.5.5...v1.6.0) (2026-10-01)
+
+
+### Bug Fixes
+
+* **admin-tools:** scope validated evidence tools to the Project API key ([25de28a](https://github.com/ProjectMakersDE/horizOn-mcp/commit/25de28a166ae8408e5a7d2197e286679d2021b62))
+* **release:** enable release recovery and correct Cloud Save docs ([14ae1ee](https://github.com/ProjectMakersDE/horizOn-mcp/commit/14ae1eedb72dce099bec8cd647455c20e07219ef))
+* **tools:** align sign-up and sign-in input limits with the server ([4905cca](https://github.com/ProjectMakersDE/horizOn-mcp/commit/4905ccab4a53fc8f2776eef48c1cd4d50dcb517c))
+* **tools:** send the player session when redeeming a gift code ([73e6549](https://github.com/ProjectMakersDE/horizOn-mcp/commit/73e654934f598a3e653d3647b05b9c5a08732360))
+
+
+### Features
+
+* **admin-tools:** annotations and structured descriptions for all admin tools ([232573b](https://github.com/ProjectMakersDE/horizOn-mcp/commit/232573b817dae0f76f03cb8374029d6aca79b595))
+* **admin-tools:** validated actions rules, usage, runs and player state tools ([049d768](https://github.com/ProjectMakersDE/horizOn-mcp/commit/049d768bbdf0ea8026261c661dd396218679c035))
+* **player-profile:** add horizon_get_profile and horizon_set_profile tools ([1f5cb20](https://github.com/ProjectMakersDE/horizOn-mcp/commit/1f5cb20e49f00edcb14ee615a6eda2fb2b31d8e9))
+* **prompts:** offer localization and email sending in the feature prompts ([c65e081](https://github.com/ProjectMakersDE/horizOn-mcp/commit/c65e081a2cb1db4096170111d2f5d154d6945d42))
+* **tools:** describe player tools by purpose, usage, result and recovery ([636e431](https://github.com/ProjectMakersDE/horizOn-mcp/commit/636e431f6c1e58fb9b52a404006f26aebf151d94))
+* **validated-actions:** add horizon_get_state and server-owned values in submit ([35dea99](https://github.com/ProjectMakersDE/horizOn-mcp/commit/35dea992370e2a5d21bcf822cafd930c1ae8a9d0))
+* **validated-actions:** add horizon_start_run and horizon_submit_validated tools ([0c91ecf](https://github.com/ProjectMakersDE/horizOn-mcp/commit/0c91ecfe52c0f969c0b754f7efe4dcb8183356ec))
+* **validated-actions:** add horizon_upload_evidence and admin evidence review tools ([e30bc63](https://github.com/ProjectMakersDE/horizOn-mcp/commit/e30bc63ad8666e882cab7c3de38fe1d7fe2fb65f))
+
 ## [1.5.5](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.5.4...v1.5.5) (2026-09-28)
 
 
