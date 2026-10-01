@@ -8,6 +8,10 @@
  * delete (single, by key, and bulk) and inspect the per-key limits from the
  * MCP surface.
  *
+ * The server's account-key scope filter maps no feature group to this
+ * prefix, so only full-account Account Keys reach it: keys with a feature
+ * or project scope are denied (403).
+ *
  * All tools require HORIZON_ACCOUNT_API_KEY.
  */
 
@@ -18,6 +22,10 @@ import {
   noAdminClientResponse,
   jsonResponse,
   errorResponse,
+  describeTool,
+  ADMIN_AUTH,
+  READ_ONLY,
+  DESTRUCTIVE_WRITE,
 } from "./_utils.js";
 
 const SUPPORTED_LANGUAGES = [
@@ -40,41 +48,66 @@ const SUPPORTED_LANGUAGES = [
 
 const SUPPORTED_LANGUAGES_HINT = SUPPORTED_LANGUAGES.join(", ");
 
+const SCOPE =
+  "an Account Key with full-account access; Account Keys limited to feature groups or one project are denied (403) for every localization admin call.";
+
+const ENTRY_FIELDS =
+  "id, accountId, apiKeyId, apiKeyName, localizationKey, translations ({language: value}), languageCount, totalLength, isActive, createdAt, updatedAt";
+
+const projectApiKeyIdSchema = (purpose: string) =>
+  z
+    .string()
+    .uuid()
+    .describe(`id (UUID) of the Project API key ${purpose}, from horizon_admin_projects_list`);
+
 export function registerAdminLocalizationTools(server: McpServer): void {
   server.registerTool(
     "horizon_admin_localization_list",
     {
       title: "List Localization Entries",
-      description:
-        "Lists localization entries for the authenticated account. Filter by projectApiKeyId to scope the result to a single project, by search to match against keys/values, and by language to scope to a single language code.",
+      description: describeTool(
+        {
+          summary:
+            "Lists the account's localization entries (one key with its translations per entry), newest first, optionally filtered by project, key text and language.",
+          use: "reviewing translations, finding missing languages, or finding an entry id for horizon_admin_localization_delete or horizon_admin_localization_bulkDelete.",
+          avoid: "reading strings as the game sees them (use the player tool horizon_get_all_localizations) or checking the key quota (use horizon_admin_localization_getLimits).",
+          requires: SCOPE,
+          effects: "None (read only).",
+          returns:
+            `{entries, total, page, size, totalPages}; each entry has ${ENTRY_FIELDS}. ` +
+            "An empty entries array means nothing matches the filters.",
+        },
+        ADMIN_AUTH,
+      ),
       inputSchema: {
         projectApiKeyId: z
           .string()
           .uuid()
           .optional()
           .describe(
-            "Optional UUID of the project API key to filter entries by. Omit to list across all projects.",
+            "id (UUID) of the Project API key to filter by, from horizon_admin_projects_list (sent as apiKeyId). Omit to list all projects",
           ),
         search: z
           .string()
           .optional()
-          .describe("Optional case-insensitive search on key and value"),
+          .describe("Case-insensitive text matched against localizationKey only (not the translated values). Optional"),
         language: z
           .string()
           .length(2)
           .optional()
           .describe(
-            `Optional ISO 639-1 language code (2 characters) to filter by. One of: ${SUPPORTED_LANGUAGES_HINT}.`,
+            `Language code (2 characters) to keep only entries that have a value in that language. One of: ${SUPPORTED_LANGUAGES_HINT}. Optional`,
           ),
-        page: z.number().int().min(0).default(0).describe("0-based page index"),
+        page: z.number().int().min(0).default(0).describe("0-based page index (default 0)"),
         size: z
           .number()
           .int()
           .min(1)
           .max(100)
           .default(20)
-          .describe("items per page (1-100)"),
+          .describe("Items per page, 1 to 100 (default 20)"),
       },
+      annotations: READ_ONLY,
     },
     async ({ projectApiKeyId, search, language, page, size }) => {
       const client = getAdminClient();
@@ -99,20 +132,31 @@ export function registerAdminLocalizationTools(server: McpServer): void {
     "horizon_admin_localization_create",
     {
       title: "Create or Update Localization Entry",
-      description:
-        "Creates a new localization entry or updates the translations if the key already exists for the given project API key. Keys must match /^[a-zA-Z0-9_.-]+$/ (1-100 chars). Provide translations as a map of language code to value.",
+      description: describeTool(
+        {
+          summary:
+            "Sets one localization key for a Project API key: creates the entry, or replaces its whole translations map when the key already exists (upsert).",
+          use: "adding a string or changing its translations; games read it with horizon_get_localization.",
+          avoid: "removing a key (use horizon_admin_localization_deleteByKey or horizon_admin_localization_delete).",
+          requires: "projectApiKeyId from horizon_admin_projects_list; " + SCOPE,
+          effects:
+            "Creates the entry or overwrites all its translations: languages missing from the new map are removed, so pass every language to keep (read them first with horizon_admin_localization_list). Repeating the same call changes nothing more.",
+          returns: `The saved entry: {${ENTRY_FIELDS}}.`,
+          errors:
+            "400 for an unknown language code, a value longer than the tier's per value limit (see horizon_admin_localization_getLimits), or a Project API key that does not exist or belongs to another account (check with horizon_admin_projects_list). " +
+            "403 when a new key would exceed the tier's key limit for this Project API key: check with horizon_admin_localization_getLimits and delete unused keys.",
+        },
+        ADMIN_AUTH,
+      ),
       inputSchema: {
-        projectApiKeyId: z
-          .string()
-          .uuid()
-          .describe("UUID of the project API key this entry belongs to"),
+        projectApiKeyId: projectApiKeyIdSchema("this entry belongs to"),
         localizationKey: z
           .string()
           .min(1)
           .max(100)
           .regex(/^[a-zA-Z0-9_.-]+$/)
           .describe(
-            "Localization key (1-100 chars, alphanumeric + _ . -). Dot-notation recommended.",
+            "Localization key, 1 to 100 characters of a-z, A-Z, 0-9, _ . and -; dot notation recommended, e.g. menu.start. An existing key is overwritten",
           ),
         translations: z
           // Backend enforces the real per-tier cap (ADMIN allows up to 2000 chars);
@@ -133,9 +177,10 @@ export function registerAdminLocalizationTools(server: McpServer): void {
             },
           )
           .describe(
-            `Map of language code to translated value (max chars per value is tier-enforced server-side; ADMIN allows up to 2000). Supported keys: ${SUPPORTED_LANGUAGES_HINT}.`,
+            `Complete map of language code to translated text, e.g. {"en":"Start","de":"Starten"}; at least one entry. Keys: ${SUPPORTED_LANGUAGES_HINT}. The tier caps each value's length (maxCharsPerValue from horizon_admin_localization_getLimits); this tool accepts up to 2000 characters`,
           ),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ projectApiKeyId, localizationKey, translations }) => {
       const client = getAdminClient();
@@ -161,14 +206,25 @@ export function registerAdminLocalizationTools(server: McpServer): void {
     "horizon_admin_localization_delete",
     {
       title: "Delete Localization Entry",
-      description:
-        "Soft-deletes a localization entry by its UUID. After deletion the entry is no longer returned by the runtime app API.",
+      description: describeTool(
+        {
+          summary: "Deletes one localization entry (all its languages) by entry id (soft delete); games no longer receive the key.",
+          use: "the entry id is known from horizon_admin_localization_list.",
+          avoid: "deleting by key name (use horizon_admin_localization_deleteByKey), many entries (use horizon_admin_localization_bulkDelete) or a single language (resend the map without it via horizon_admin_localization_create).",
+          requires: "id from horizon_admin_localization_list; " + SCOPE,
+          effects: "Removes the entry from the game API and frees its key slot. No MCP tool restores it; set the key again with horizon_admin_localization_create.",
+          returns: "null (the server answers HTTP 204 without a body).",
+          errors: "404 for an unknown entry id: look it up with horizon_admin_localization_list.",
+        },
+        ADMIN_AUTH,
+      ),
       inputSchema: {
         id: z
           .string()
           .uuid()
-          .describe("UUID of the localization entry to delete"),
+          .describe("Entry id (UUID) of the localization entry, from horizon_admin_localization_list (not the Project API key id)"),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ id }) => {
       const client = getAdminClient();
@@ -188,19 +244,28 @@ export function registerAdminLocalizationTools(server: McpServer): void {
     "horizon_admin_localization_deleteByKey",
     {
       title: "Delete Localization Entry by Key",
-      description:
-        "Soft-deletes a localization entry by its localizationKey for a specific project API key. Useful when the entry UUID is not known.",
+      description: describeTool(
+        {
+          summary: "Deletes one localization entry (all its languages) by Project API key and localizationKey (soft delete), without needing the entry id.",
+          use: "the key name is known, e.g. from the game code or horizon_get_all_localizations.",
+          avoid: "deleting by entry id (use horizon_admin_localization_delete) or many entries (use horizon_admin_localization_bulkDelete).",
+          requires: "projectApiKeyId from horizon_admin_projects_list; " + SCOPE,
+          effects: "Removes the entry from the game API and frees its key slot. No MCP tool restores it; set the key again with horizon_admin_localization_create.",
+          returns: "null (the server answers HTTP 204 without a body).",
+          errors:
+            "404 when no active entry has this key for the Project API key (already deleted or a typo): check with horizon_admin_localization_list. 400 when the entry belongs to another account.",
+        },
+        ADMIN_AUTH,
+      ),
       inputSchema: {
-        projectApiKeyId: z
-          .string()
-          .uuid()
-          .describe("UUID of the project API key the entry belongs to"),
+        projectApiKeyId: projectApiKeyIdSchema("the entry belongs to"),
         localizationKey: z
           .string()
           .min(1)
           .max(100)
-          .describe("Localization key to delete"),
+          .describe("Exact localizationKey to delete, 1 to 100 characters (case-sensitive)"),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ projectApiKeyId, localizationKey }) => {
       const client = getAdminClient();
@@ -219,15 +284,26 @@ export function registerAdminLocalizationTools(server: McpServer): void {
     "horizon_admin_localization_bulkDelete",
     {
       title: "Bulk Delete Localization Entries",
-      description:
-        "Deletes up to 10000 localization entries in a single request. Each entry is processed independently; the response reports per-entry success/failure.",
+      description: describeTool(
+        {
+          summary: "Deletes up to 10000 localization entries by entry id in one request (soft delete) and reports the result per id.",
+          use: "cleaning up many keys at once, e.g. all ids of a project from horizon_admin_localization_list.",
+          avoid: "a single entry (use horizon_admin_localization_delete or horizon_admin_localization_deleteByKey).",
+          requires: "entry ids from horizon_admin_localization_list; " + SCOPE,
+          effects: "Removes every found entry from the game API and frees its key slots. Ids that are unknown or already deleted are reported as failed, not fatal.",
+          returns: "{successful, failed, results}; each result has id, success and message (\"Deleted\" or \"Localization entry not found\").",
+          errors: "400 for an empty list or more than 10000 ids.",
+        },
+        ADMIN_AUTH,
+      ),
       inputSchema: {
         ids: z
           .array(z.string().uuid())
           .min(1)
           .max(10000)
-          .describe("List of entry UUIDs to delete (1-10000)"),
+          .describe("Entry ids (UUIDs) from horizon_admin_localization_list, 1 to 10000 per call"),
       },
+      annotations: DESTRUCTIVE_WRITE,
     },
     async ({ ids }) => {
       const client = getAdminClient();
@@ -248,14 +324,22 @@ export function registerAdminLocalizationTools(server: McpServer): void {
     "horizon_admin_localization_getLimits",
     {
       title: "Get Localization Limits",
-      description:
-        "Returns the localization key usage and limits for a specific project API key: used (current key count), maxKeys, maxCharsPerValue, and role.",
+      description: describeTool(
+        {
+          summary: "Returns the localization quota of one Project API key: keys used, the tier's key limit and the maximum characters per translated value.",
+          use: "before adding many keys or long texts, or after a 400 or 403 from horizon_admin_localization_create.",
+          avoid: "listing the entries (use horizon_admin_localization_list).",
+          requires: "projectApiKeyId from horizon_admin_projects_list; " + SCOPE,
+          effects: "None (read only).",
+          returns: "{used, maxKeys, maxCharsPerValue, role}. used counts the active keys of this Project API key; maxKeys applies per Project API key.",
+          errors: "400 when the Project API key does not exist or belongs to another account: check the id with horizon_admin_projects_list.",
+        },
+        ADMIN_AUTH,
+      ),
       inputSchema: {
-        projectApiKeyId: z
-          .string()
-          .uuid()
-          .describe("UUID of the project API key to inspect"),
+        projectApiKeyId: projectApiKeyIdSchema("to check"),
       },
+      annotations: READ_ONLY,
     },
     async ({ projectApiKeyId }) => {
       const client = getAdminClient();

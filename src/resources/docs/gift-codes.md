@@ -42,12 +42,14 @@ Checks if a gift code is valid and can be redeemed by the user, without consumin
 
 Redeems a gift code and returns the associated reward data.
 
+**Headers:** `X-API-Key` and `Authorization: Bearer <accessToken>` of the signed-in player. The server only redeems for the player who owns the session (`401` for an invalid or expired session, `403` for a session of another user). The SDKs send the session automatically.
+
 **Request Body:**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `code` | string | Yes | The gift code to redeem |
-| `userId` | string | Yes | The user's ID |
+| `userId` | string | Yes | The user's ID (must be the session user) |
 
 **Response (200):**
 
@@ -55,11 +57,24 @@ Redeems a gift code and returns the associated reward data.
 {
   "success": true,
   "message": "Gift code redeemed successfully",
-  "giftData": "{\"coins\": 500, \"gems\": 10}"
+  "giftData": "{\"coins\": 500, \"gems\": 10, \"grants\": [\"badge.supporter\"]}",
+  "grantedUnlocks": ["badge.supporter"]
 }
 ```
 
 `giftData` is a JSON string set by the developer in the Dashboard. Your app must parse and apply the rewards.
+
+`grantedUnlocks` lists the cosmetic IDs from `giftData.grants` the player owns after this redemption (always present, `[]` when the code has no grants). Reload the player profile when it is not empty.
+
+### Cosmetic unlocks (`grants`)
+
+When `giftData` is a JSON object with a `grants` array, the server unlocks those player profile cosmetics (see `horizon://docs/player-profile`) for the redeeming player, in the same transaction as the redemption:
+
+- `grants` holds 1 to 10 distinct cosmetic IDs from the catalog of the code's API key. The Dashboard and the admin API reject other values with 400 (`Invalid Grants` or `COSMETIC_NOT_FOUND`).
+- Grants go to the player who owns the session. Like every redemption, a request without `Authorization` is rejected with 401 and the code is not used up.
+- IDs removed from the catalog after the code was created are skipped.
+- A redemption that would give the player more than 25 unlocks fails as a whole with 409 `UNLOCK_LIMIT_REACHED`; the code is not used up.
+- Other keys (currency, items) stay in the same object and are applied by your game as before.
 
 **Failed redemption:**
 
@@ -67,7 +82,8 @@ Redeems a gift code and returns the associated reward data.
 {
   "success": false,
   "message": "Gift code already redeemed by this user",
-  "giftData": null
+  "giftData": null,
+  "grantedUnlocks": []
 }
 ```
 
@@ -134,6 +150,7 @@ curl -X POST https://horizon.pm/api/v1/app/gift-codes/validate \
 # Redeem
 curl -X POST https://horizon.pm/api/v1/app/gift-codes/redeem \
   -H "X-API-Key: YOUR_API_KEY" \
+  -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
   -H "Content-Type: application/json" \
   -d '{"code": "ABCD-1234", "userId": "user123"}'
 ```
@@ -143,11 +160,15 @@ curl -X POST https://horizon.pm/api/v1/app/gift-codes/redeem \
 - **Validate before redeeming** — Show the user whether their code is valid before consuming it.
 - **Parse giftData in your app** — The reward structure is defined by you in the Dashboard. Parse the JSON string and apply rewards accordingly.
 - **Handle already-redeemed codes** — Check the `success` field and display the `message` to the user.
+- **Unlock cosmetics with `grants`** — Put profile cosmetics into `giftData.grants` and reload the player profile after a redemption with a non-empty `grantedUnlocks`.
 
 ## Common Errors
 
 | Status | Cause | Solution |
 |--------|-------|----------|
 | 401 | Invalid API key | Check `X-API-Key` header |
+| 401 | Missing, invalid or expired session | Sign in again and send `Authorization: Bearer <accessToken>` |
+| 403 | Session belongs to another user | Redeem with the session of `userId` |
 | 404 | Code does not exist | Verify the code spelling |
+| 409 | `UNLOCK_LIMIT_REACHED`: the player would hold more than 25 unlocks | Revoke unlocks in the Dashboard; the code stays unused |
 | 429 | Rate limit exceeded | Avoid rapid repeated redemption attempts |

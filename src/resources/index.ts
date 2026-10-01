@@ -77,7 +77,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "Leaderboards",
       description:
-        "Leaderboard score submission, top entries, user rank, entries around user, with SDK examples.",
+        "Leaderboard score submission, top entries, user rank, entries around user, player profile per entry, validated only boards, with SDK examples.",
       mimeType: "text/markdown",
     },
     () => ({
@@ -182,7 +182,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "Gift Codes",
       description:
-        "Gift code validation and redemption for promotional rewards. SDK examples.",
+        "Gift code validation and redemption for promotional rewards, including cosmetic unlocks via grants. SDK examples.",
       mimeType: "text/markdown",
     },
     () => ({
@@ -191,6 +191,48 @@ export function registerAllResources(server: McpServer): void {
           uri: "horizon://docs/gift-codes",
           mimeType: "text/markdown",
           text: loadDoc("docs/gift-codes.md"),
+        },
+      ],
+    }),
+  );
+
+  // Player Profile
+  server.registerResource(
+    "docs-player-profile",
+    "horizon://docs/player-profile",
+    {
+      title: "Player Profile",
+      description:
+        "Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples.",
+      mimeType: "text/markdown",
+    },
+    () => ({
+      contents: [
+        {
+          uri: "horizon://docs/player-profile",
+          mimeType: "text/markdown",
+          text: loadDoc("docs/player-profile.md"),
+        },
+      ],
+    }),
+  );
+
+  // Validated Actions
+  server.registerResource(
+    "docs-validated-actions",
+    "horizon://docs/validated-actions",
+    {
+      title: "Validated Actions",
+      description:
+        "Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state (currency, daily caps), evidence upload (input log) and admin evidence review, rejection codes. SDK examples.",
+      mimeType: "text/markdown",
+    },
+    () => ({
+      contents: [
+        {
+          uri: "horizon://docs/validated-actions",
+          mimeType: "text/markdown",
+          text: loadDoc("docs/validated-actions.md"),
         },
       ],
     }),

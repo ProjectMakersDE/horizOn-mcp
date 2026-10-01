@@ -79,6 +79,33 @@ describe("HorizonApiClient", () => {
     expect(options.headers.Authorization).toBe("Bearer s");
   });
 
+  it("GET merges extra headers such as a session", async () => {
+    const fakeFetch = mockFetchResponse({ ok: true });
+    vi.stubGlobal("fetch", fakeFetch);
+
+    const client = new HorizonApiClient("test-key", "https://example.com");
+    await client.get("/api/v1/test", { userId: "u" }, { Authorization: "Bearer s" });
+
+    const [url, options] = fakeFetch.mock.calls[0];
+    expect(url).toBe("https://example.com/api/v1/test?userId=u");
+    expect(options.headers["X-API-Key"]).toBe("test-key");
+    expect(options.headers.Authorization).toBe("Bearer s");
+  });
+
+  it("PUT merges extra headers such as a session", async () => {
+    const fakeFetch = mockFetchResponse({ ok: true });
+    vi.stubGlobal("fetch", fakeFetch);
+
+    const client = new HorizonApiClient("test-key", "https://example.com");
+    await client.put("/api/v1/test", { a: 1 }, { Authorization: "Bearer s" });
+
+    const [, options] = fakeFetch.mock.calls[0];
+    expect(options.method).toBe("PUT");
+    expect(options.headers["X-API-Key"]).toBe("test-key");
+    expect(options.headers.Authorization).toBe("Bearer s");
+    expect(options.body).toBe(JSON.stringify({ a: 1 }));
+  });
+
   it("GET appends query params", async () => {
     const fakeFetch = mockFetchResponse({ items: [] });
     vi.stubGlobal("fetch", fakeFetch);
@@ -168,6 +195,35 @@ describe("HorizonApiClient", () => {
 
     await expect(client.get("/api/v1/test")).rejects.toThrow("fetch failed");
     await expect(client.post("/api/v1/test")).rejects.toThrow("fetch failed");
+  });
+
+  it("getBytes returns the raw body and headers", async () => {
+    const fakeFetch = vi.fn().mockResolvedValue(
+      new Response(new Uint8Array([0, 1, 255]), { headers: { "X-Input-Log-Hash": "ab" } }),
+    );
+    vi.stubGlobal("fetch", fakeFetch);
+
+    const client = new HorizonApiClient("acc-key", "https://example.com", "X-Account-API-Key");
+    const { bytes, headers } = await client.getBytes("/api/v1/admin/x/log", { a: "1" });
+
+    expect(Array.from(bytes)).toEqual([0, 1, 255]);
+    expect(headers.get("X-Input-Log-Hash")).toBe("ab");
+    const [url, options] = fakeFetch.mock.calls[0];
+    expect(url).toBe("https://example.com/api/v1/admin/x/log?a=1");
+    expect(options.headers["X-Account-API-Key"]).toBe("acc-key");
+  });
+
+  it("getBytes throws HorizonApiError with the error body", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response('{"code":"EVIDENCE_NOT_UPLOADED"}', { status: 404 })),
+    );
+
+    const client = new HorizonApiClient("acc-key", "https://example.com");
+    await expect(client.getBytes("/log")).rejects.toMatchObject({
+      status: 404,
+      body: '{"code":"EVIDENCE_NOT_UPLOADED"}',
+    });
   });
 
   it("strips trailing slash from base URL", async () => {

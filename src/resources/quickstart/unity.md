@@ -204,8 +204,45 @@ if (result != null && result.success)
 {
     string giftData = result.giftData; // JSON string with rewards
     Debug.Log($"Rewards: {giftData}");
+    // result.grantedUnlocks: cosmetics unlocked by the code (profile cache is cleared automatically)
 }
 ```
+
+### Player Profile
+
+```csharp
+// Profile, unlocks and the cosmetics catalog with an "available" flag per entry
+var profile = await PlayerProfileManager.Instance.GetProfile();
+var avatars = profile?.GetCosmetics("avatar");
+
+// Replace the whole profile (null or "" clears a slot, max 3 badges)
+var updated = await PlayerProfileManager.Instance.SetProfile("avatar.zombie_07", null, new[] { "badge.supporter" });
+if (updated == null)
+{
+    Debug.LogWarning(PlayerProfileManager.Instance.LastErrorCode); // e.g. COSMETIC_LOCKED
+}
+```
+
+Leaderboard entries carry `profile` (`avatarId`, `frameId`, `badges`).
+
+### Validated Actions
+
+```csharp
+// Server-checked run: single-use ticket with a server seed (cloud only)
+var run = await ValidatedActionsManager.Instance.StartRun("weekly");
+if (run != null)
+{
+    Random.InitState(run.seed);
+    // ... play, record the inputs into byte[] inputLog ...
+    var result = await ValidatedActionsManager.Instance.SubmitValidated(18250, inputLog);
+    if (result == null)
+    {
+        Debug.LogWarning(ValidatedActionsManager.Instance.LastErrorCode); // e.g. DURATION_TOO_SHORT
+    }
+}
+```
+
+Boards with `validatedOnly` reject `SubmitScore` with `VALIDATED_SUBMIT_REQUIRED`. See `horizon://docs/validated-actions`.
 
 ### Feedback
 

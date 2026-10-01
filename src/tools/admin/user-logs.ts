@@ -15,6 +15,9 @@ import {
   noAdminClientResponse,
   jsonResponse,
   errorResponse,
+  describeTool,
+  ADMIN_AUTH,
+  READ_ONLY,
 } from "./_utils.js";
 
 export function registerAdminUserLogsTools(server: McpServer): void {
@@ -22,31 +25,45 @@ export function registerAdminUserLogsTools(server: McpServer): void {
     "horizon_admin_userlogs_list",
     {
       title: "List User Logs",
-      description:
-        "Lists user log entries for the authenticated account. Results are paginated and sorted by createdAt DESC. Optionally filter by project API key UUID (maps to apiKeyId) and log level (maps to the backend's type enum: INFO, WARN, ERROR).",
+      description: describeTool(
+        {
+          summary:
+            "Lists the log entries games wrote for their players, newest first, filterable by Project API key and level (INFO, WARN, ERROR), with paging.",
+          use: "investigating what happened for players, for example all ERROR entries of one game.",
+          avoid: "writing a log entry (use horizon_create_log) or crash data (use horizon_admin_crashes_listGroups).",
+          requires:
+            "an Account Key with full-account access or the USER_LOGS feature group; a project-scoped key must pass its own projectApiKeyId.",
+          effects: "None (read only).",
+          returns:
+            "{content, page: {size, number, totalElements, totalPages}}; each item has id, apiKeyId, userId, message, errorCode (null when none), type (INFO, WARN, ERROR), createdAt. " +
+            "An empty content array means no entry matches the filters.",
+        },
+        ADMIN_AUTH,
+      ),
       inputSchema: {
-        page: z.number().int().min(0).default(0).describe("0-based page index"),
+        page: z.number().int().min(0).default(0).describe("0-based page index (default 0)"),
         size: z
           .number()
           .int()
           .min(1)
           .max(100)
           .default(20)
-          .describe("items per page (1-100)"),
+          .describe("Entries per page, 1 to 100 (default 20)"),
         projectApiKeyId: z
           .string()
           .uuid()
           .optional()
           .describe(
-            "Optional UUID of the project API key to filter logs by. Maps to the backend's apiKeyId filter.",
+            "UUID of the Project API key to filter by (from horizon_admin_projects_list; sent as apiKeyId). Omit for all keys; required for a project-scoped Account Key",
           ),
         level: z
           .enum(["INFO", "WARN", "ERROR"])
           .optional()
           .describe(
-            "Optional log level filter. Maps to the backend's type enum (LogType).",
+            "Level filter: INFO, WARN or ERROR (sent as type). Omit for all levels",
           ),
       },
+      annotations: READ_ONLY,
     },
     async ({ page, size, projectApiKeyId, level }) => {
       const client = getAdminClient();

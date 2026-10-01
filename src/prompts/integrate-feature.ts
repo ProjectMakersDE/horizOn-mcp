@@ -13,11 +13,15 @@ export function registerIntegrateFeaturePrompt(server: McpServer): void {
           "leaderboard",
           "cloud-save",
           "remote-config",
+          "localization",
           "news",
           "gift-codes",
+          "player-profile",
+          "validated-actions",
           "feedback",
           "user-logs",
           "crash-reporting",
+          "email-sending",
         ])
         .describe("The horizOn feature to integrate"),
       engine: z
@@ -30,7 +34,7 @@ export function registerIntegrateFeaturePrompt(server: McpServer): void {
         role: "user" as const,
         content: {
           type: "text" as const,
-          text: `I want to integrate the horizOn "${feature}" feature into my ${engine} project.\n\nPlease:\n1. Read the horizOn documentation for this feature (resource: horizon://docs/${feature})\n2. Read the ${engine} quickstart guide (resource: horizon://quickstart/${engine})\n3. Generate complete, production-ready integration code\n4. Include error handling and best practices\n5. Show how to test it works using the horizOn MCP tools\n\nUse the horizOn SDK for ${engine === "godot" ? "Godot (GDScript)" : engine === "unity" ? "Unity (C#)" : "Unreal Engine (C++ and Blueprints)"}`,
+          text: `I want to integrate the horizOn "${feature}" feature into my ${engine} project.\n\nPlease:\n1. Read the horizOn documentation for this feature (resource: horizon://docs/${feature})\n2. Read the ${engine} quickstart guide (resource: horizon://quickstart/${engine})\n3. Generate complete, production-ready integration code\n4. Include error handling and best practices\n5. Show how to test it works using the horizOn MCP tools (the matching horizon_* tools; the documentation lists them)\n\nUse the horizOn SDK for ${engine === "godot" ? "Godot (GDScript)" : engine === "unity" ? "Unity (C#)" : "Unreal Engine (C++ and Blueprints)"}`,
         },
       },
     ],

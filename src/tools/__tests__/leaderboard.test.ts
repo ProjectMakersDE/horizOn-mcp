@@ -104,4 +104,15 @@ describe("registerLeaderboardTools", () => {
       },
     );
   });
+
+  it("names VALIDATED_SUBMIT_REQUIRED for validated only boards", () => {
+    registerLeaderboardTools(createMockServer());
+
+    const submit = registeredTools.get("horizon_submit_score")!.schema as { description: string };
+    expect(submit.description).toContain("VALIDATED_SUBMIT_REQUIRED");
+    expect(submit.description).toContain("horizon_submit_validated");
+
+    const list = registeredTools.get("horizon_list_leaderboards")!.schema as { description: string };
+    expect(list.description).toContain("validatedOnly");
+  });
 });

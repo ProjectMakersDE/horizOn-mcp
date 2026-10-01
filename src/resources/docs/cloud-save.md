@@ -22,6 +22,11 @@ If the save data exceeds the tier limit, the save request will fail with a `403`
 
 ## Endpoints
 
+All save and load modes require `X-API-Key` and the player's
+`Authorization: Bearer <accessToken>` from sign-in. Sign in before calling the SDK managers.
+The session determines the save owner. A missing, invalid or expired session returns `401`.
+The MCP tools require this token in their `sessionToken` input.
+
 ### Save Data
 
 **`POST /api/v1/app/cloud-save/save`**
@@ -78,7 +83,9 @@ If no save data exists:
 }
 ```
 
-**Binary mode:** `GET /api/v1/app/cloud-save/load?userId={userId}` with `Accept: application/octet-stream`.
+**Binary mode:** `POST /api/v1/app/cloud-save/load` with `Content-Type: application/json`,
+`Accept: application/octet-stream` and JSON body `{"userId":"<player-uuid>"}`.
+The response is raw bytes (`200`) or an empty body (`204`) when no save exists.
 
 ## Code Examples
 
@@ -154,12 +161,14 @@ byte[] loadedBytes = await CloudSaveManager.Instance.LoadBytes();
 # Save data (JSON mode)
 curl -X POST https://horizon.pm/api/v1/app/cloud-save/save \
   -H "X-API-Key: YOUR_API_KEY" \
+  -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
   -H "Content-Type: application/json" \
   -d '{"userId": "user123", "saveData": "{\"level\":5,\"coins\":1000}"}'
 
 # Load data (JSON mode)
 curl -X POST https://horizon.pm/api/v1/app/cloud-save/load \
   -H "X-API-Key: YOUR_API_KEY" \
+  -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
   -H "Content-Type: application/json" \
   -d '{"userId": "user123"}'
 ```
@@ -176,5 +185,6 @@ curl -X POST https://horizon.pm/api/v1/app/cloud-save/load \
 | Status | Cause | Solution |
 |--------|-------|----------|
 | 401 | Invalid API key | Check `X-API-Key` header |
+| 401 | Missing, invalid or expired player session | Sign in again and send the Bearer session |
 | 403 | Save exceeds tier limit | Reduce data size or upgrade tier |
 | 429 | Rate limit exceeded | Batch saves, save less frequently |

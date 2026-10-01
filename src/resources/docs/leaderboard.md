@@ -24,12 +24,15 @@ Returns the leaderboard boards configured for the app API key.
       "name": "Weekly",
       "sortOrder": "DESC",
       "isActive": true,
-      "scoreCount": 10
+      "scoreCount": 10,
+      "validatedOnly": false
     }
   ],
   "totalElements": 1
 }
 ```
+
+`validatedOnly: true` marks a board that only accepts server-checked runs (see [Validated only boards](#validated-only-boards)).
 
 ### Multi-Board Endpoints
 
@@ -56,6 +59,10 @@ Submits a score for the authenticated user. Only updates if the score is higher 
 | `score` | number | Yes | Score value (positive integer) |
 | `leaderboardKey` | string | No | Optional named board key for V2 calls |
 
+**Headers:** `X-API-Key` and `Authorization: Bearer <accessToken>` of the signed-in player.
+
+A score has no `metadata` field; the server ignores unknown fields. Per-player display data (avatar, frame, badges) lives in the player profile instead.
+
 **Response (200):**
 
 ```json
@@ -63,6 +70,14 @@ Submits a score for the authenticated user. Only updates if the score is higher 
   "success": true
 }
 ```
+
+On a board with `validatedOnly: true` this call answers `403` with `"code": "VALIDATED_SUBMIT_REQUIRED"` and writes nothing. Do not retry; submit through Validated Actions instead.
+
+A player a moderator banned from the board gets `403` with `"code": "PLAYER_BANNED"` (from this submit and from the validated submit). Rows hidden by a ban or a shadow ban stay visible to their own player only: top, around and rank skip them for everyone else and count only the rows the caller sees.
+
+### Validated only boards
+
+A board can be switched to **validated only** in the Dashboard. It then accepts scores only from a server-checked run: the game starts a run (`POST /api/v1/app/validated-actions/runs`, single-use ticket with a server seed), plays, and submits score plus the SHA-256 of its input log (`POST /api/v1/app/validated-actions/submit`). The server checks its rules (score limits, minimum duration, score per second, stage rules) before it writes. The normal submit answers `403 VALIDATED_SUBMIT_REQUIRED`. Details: `horizon://docs/validated-actions`. MCP tools: `horizon_start_run`, `horizon_submit_validated`.
 
 ---
 
@@ -84,12 +99,23 @@ Returns the top entries on the leaderboard.
 ```json
 {
   "entries": [
-    { "position": 1, "username": "TopPlayer", "score": 50000 },
-    { "position": 2, "username": "Runner-Up", "score": 45000 },
-    { "position": 3, "username": "ThirdPlace", "score": 40000 }
+    {
+      "position": 1,
+      "username": "TopPlayer",
+      "score": 50000,
+      "profile": { "avatarId": "avatar.zombie_07", "frameId": "frame.gold", "badges": ["badge.supporter"] }
+    },
+    {
+      "position": 2,
+      "username": "Runner-Up",
+      "score": 45000,
+      "profile": { "avatarId": null, "frameId": null, "badges": [] }
+    }
   ]
 }
 ```
+
+Every entry carries `profile` (always present): the player's avatar, frame and up to three badges, as cosmetic IDs from the project's catalog (`null` or `[]` when not set). Treat IDs your game does not know as "not set". See `horizon://docs/player-profile`.
 
 ---
 
@@ -111,7 +137,8 @@ Returns the current user's position on the leaderboard.
 {
   "position": 42,
   "username": "MyPlayer",
-  "score": 12500
+  "score": 12500,
+  "profile": { "avatarId": "avatar.zombie_07", "frameId": null, "badges": [] }
 }
 ```
 
@@ -135,10 +162,9 @@ Returns entries around the user's position (players ranked near them).
 ```json
 {
   "entries": [
-    { "position": 40, "username": "NearbyPlayer1", "score": 13000 },
-    { "position": 41, "username": "NearbyPlayer2", "score": 12800 },
-    { "position": 42, "username": "MyPlayer", "score": 12500 },
-    { "position": 43, "username": "NearbyPlayer3", "score": 12200 }
+    { "position": 41, "username": "NearbyPlayer", "score": 12800, "profile": { "avatarId": null, "frameId": null, "badges": [] } },
+    { "position": 42, "username": "MyPlayer", "score": 12500, "profile": { "avatarId": "avatar.zombie_07", "frameId": null, "badges": [] } },
+    { "position": 43, "username": "NearbyPlayer2", "score": 12200, "profile": { "avatarId": null, "frameId": null, "badges": [] } }
   ]
 }
 ```
@@ -158,6 +184,7 @@ await Horizon.leaderboard.submitScore(1000, "weekly")
 var top: Array[HorizonLeaderboardEntry] = await Horizon.leaderboard.getTop(10)
 for entry in top:
     print("#%d %s: %d" % [entry.position, entry.username, entry.score])
+    # entry.profile.avatarId, entry.profile.frameId, entry.profile.badges ("" / [] when not set)
 
 # Get current user's rank
 var myRank: HorizonLeaderboardEntry = await Horizon.leaderboard.getRank()
@@ -197,6 +224,7 @@ var top = await LeaderboardManager.Instance.GetTop(10);
 foreach (var entry in top)
 {
     Debug.Log($"#{entry.position} {entry.username}: {entry.score}");
+    // entry.profile.avatarId, entry.profile.frameId, entry.profile.badges (check entry.profile.HasAvatar)
 }
 
 // Get your rank
@@ -219,12 +247,14 @@ LeaderboardManager.Instance.ClearCache();
 # Submit score
 curl -X POST https://horizon.pm/api/v1/app/leaderboard/submit \
   -H "X-API-Key: YOUR_API_KEY" \
+  -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
   -H "Content-Type: application/json" \
   -d '{"userId": "user123", "score": 12500}'
 
 # Submit to a named board
 curl -X POST https://horizon.pm/api/v1/app/leaderboards/weekly/submit \
   -H "X-API-Key: YOUR_API_KEY" \
+  -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
   -H "Content-Type: application/json" \
   -d '{"userId": "user123", "score": 12500, "leaderboardKey": "weekly"}'
 
@@ -252,5 +282,7 @@ curl "https://horizon.pm/api/v1/app/leaderboard/around?userId=user123&range=5" \
 | Status | Cause | Solution |
 |--------|-------|----------|
 | 401 | Invalid API key | Check `X-API-Key` header |
+| 403 | `VALIDATED_SUBMIT_REQUIRED` | The board is validated only: use Validated Actions (`horizon://docs/validated-actions`) |
+| 403 | `PLAYER_BANNED` | A moderator banned the player from this board; do not retry |
 | 404 | User not found on leaderboard | User may not have submitted a score yet |
 | 429 | Rate limit exceeded | Cache data and reduce API calls |

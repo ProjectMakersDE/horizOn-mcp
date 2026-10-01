@@ -1,20 +1,21 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { createApiClientFromEnv } from "./api-client.js";
-import { noApiKeyResponse, errorResponse, jsonResponse, READ_ONLY, API_ERRORS } from "./tool-helpers.js";
+import { noApiKeyResponse, errorResponse, jsonResponse, describeTool, READ_ONLY } from "./tool-helpers.js";
 
 export function registerNewsTools(server: McpServer): void {
   server.registerTool("horizon_get_news", {
     title: "Get News",
-    description:
-      "Reads the in-game news created in the horizOn dashboard, such as announcements and patch notes, to show them in the game. " +
-      "Returns an array of {id, title, message, releaseDate, languageCode}, newest first, with only published entries whose release date has passed; " +
-      "the array is empty when there is no news. " +
-      "Without languageCode, entries in all languages are returned. " +
-      API_ERRORS,
+    description: describeTool({
+      summary: "Lists the published in-game news of the app (announcements, patch notes) created in the horizOn dashboard, newest first.",
+      use: "a game shows a news feed or a message of the day, optionally filtered to the player's language.",
+      avoid: "configuration values (use horizon_get_remote_config) or UI translations (use horizon_get_localization).",
+      effects: "None (read only).",
+      returns: "an array of {id, title, message, releaseDate, languageCode} with only published entries whose release date has passed; an empty array means there is no news. Without languageCode, entries of all languages are returned.",
+    }),
     inputSchema: {
-      limit: z.number().int().min(0).max(100).default(20).describe("Number of news items to return (0-100, default 20)"),
-      languageCode: z.string().length(2).optional().describe("ISO 639-1 language code (2 characters, e.g. 'en')"),
+      limit: z.number().int().min(0).max(100).default(20).describe("Maximum number of entries to return, 0 to 100 (default 20)"),
+      languageCode: z.string().length(2).optional().describe("ISO 639-1 code (2 lowercase letters, for example 'en' or 'de') to return only entries in that language. Omit for all languages"),
     },
     annotations: READ_ONLY,
   }, async ({ limit, languageCode }) => {

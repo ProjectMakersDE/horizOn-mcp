@@ -30,7 +30,7 @@ Add to your MCP client configuration (Claude Desktop, Cursor, etc.):
 
 ## Features
 
-### Resources (16 docs)
+### Resources (18 docs)
 
 Documentation resources are served directly from the MCP server. No API key required.
 
@@ -38,12 +38,14 @@ Documentation resources are served directly from the MCP server. No API key requ
 |-----|-------------|
 | `horizon://overview` | What is horizOn, core concepts (Account vs User), features, tier system, API structure, and SDKs |
 | `horizon://docs/auth` | Authentication methods (Anonymous, Email, Google), endpoints, SDK code examples, and common errors |
-| `horizon://docs/leaderboard` | Leaderboard score submission, top entries, user rank, entries around user, with SDK examples |
+| `horizon://docs/leaderboard` | Leaderboard score submission, top entries, user rank, entries around user, player profile per entry, validated only boards, with SDK examples |
 | `horizon://docs/cloud-save` | Cloud save/load for JSON and binary data, tier size limits, SDK examples |
 | `horizon://docs/remote-config` | Server-side key-value configuration: feature flags, game balance, A/B testing. SDK examples |
 | `horizon://docs/localization` | Server-side localized strings across 15 languages: per-key translations, single/all fetch, available languages. SDK examples |
 | `horizon://docs/news` | In-game news and announcements with language filtering. SDK examples |
-| `horizon://docs/gift-codes` | Gift code validation and redemption for promotional rewards. SDK examples |
+| `horizon://docs/gift-codes` | Gift code validation and redemption for promotional rewards, including cosmetic unlocks via grants. SDK examples |
+| `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
+| `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, evidence upload and admin evidence review, rejection codes. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
 | `horizon://docs/user-logs` | Server-side event and error tracking. Requires BASIC tier or higher. SDK examples |
 | `horizon://docs/crash-reporting` | Crash report submission, session tracking, fingerprinting, breadcrumbs, and auto-regression detection. SDK examples |
@@ -53,11 +55,13 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
 | `horizon://quickstart/unreal` | Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples |
 
-### Tools (28 tools)
+### Tools (34 tools)
 
 Live API tools that call the horizOn backend. Requires a valid API key.
 
-`horizon_submit_score`, `horizon_save_cloud_data` and `horizon_load_cloud_data` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
+`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated`, `horizon_get_state` and `horizon_upload_evidence` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
+
+Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), so clients can tell reads from writes. Destructive tools are `horizon_save_cloud_data` (replaces the save), `horizon_set_profile` (replaces the whole profile), `horizon_submit_validated` (consumes the ticket, can spend balances) and `horizon_cancel_email`. The read tools that return an object also declare an `outputSchema` and return `structuredContent` next to the JSON text. Each description names when to use the tool, which sibling to use instead, what it returns and how to recover from its errors.
 
 | Tool | Description |
 |------|-------------|
@@ -68,8 +72,8 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 | `horizon_signin_anonymous` | Sign in with an anonymous token |
 | `horizon_check_auth` | Check whether a user session is still valid |
 | `horizon_list_leaderboards` | List available leaderboard boards for multi-board calls |
-| `horizon_submit_score` | Submit a score to the leaderboard |
-| `horizon_get_leaderboard_top` | Get the top leaderboard entries, optionally by board key |
+| `horizon_submit_score` | Submit a score to the leaderboard (403 `VALIDATED_SUBMIT_REQUIRED` on validated only boards) |
+| `horizon_get_leaderboard_top` | Get the top leaderboard entries with each player's profile, optionally by board key |
 | `horizon_get_user_rank` | Get a user's leaderboard rank, optionally by board key |
 | `horizon_get_leaderboard_around` | Get leaderboard entries around a user's position, optionally by board key |
 | `horizon_save_cloud_data` | Save cloud data for a user |
@@ -81,7 +85,13 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 | `horizon_get_localization_languages` | List the languages that have localizations for the app |
 | `horizon_get_news` | Get news articles with optional language filtering |
 | `horizon_validate_gift_code` | Validate a gift code without redeeming it |
-| `horizon_redeem_gift_code` | Redeem a gift code for a user |
+| `horizon_redeem_gift_code` | Redeem a gift code for a user (returns `grantedUnlocks` for codes with cosmetic grants) |
+| `horizon_get_profile` | Get a player's profile (avatar, frame, badges), unlocks and the cosmetics catalog |
+| `horizon_set_profile` | Replace a player's whole profile (avatar, frame, up to 3 badges) |
+| `horizon_start_run` | Start a server-checked run: single-use ticket with a server seed, optionally bound to a board |
+| `horizon_submit_validated` | Submit a run result with the ticket and the SHA-256 input log hash (given, or computed locally from base64 bytes or text), optionally with `earned` server-owned values; rejections name their `code` |
+| `horizon_get_state` | Read the player's server-owned values (balance, earned today, daily cap per value key); read only |
+| `horizon_upload_evidence` | Upload the input log (text or base64, encoded locally) of a run whose submit result asked for evidence; rejections name their `code` |
 | `horizon_submit_feedback` | Submit user feedback (bug reports, feature requests) |
 | `horizon_create_log` | Create a server-side log entry (INFO, WARN, ERROR) |
 | `horizon_create_crash_report` | Submit a crash report (grouped by fingerprint, with regression detection) |
@@ -112,7 +122,7 @@ Resources (documentation) work without an API key. Only the live API tools requi
 
 ## Admin Tools (v1.2+)
 
-With an **Account Key** (creatable in your horizOn Dashboard -> API Keys -> Create -> **Account Key**), the MCP server exposes additional tools that let Claude manage your dashboard -- projects, remote config, news, email templates, gift codes, users, leaderboards, cloud-save data, crash reports, feedback, user logs, and SMTP.
+With an **Account Key** (creatable in your horizOn Dashboard -> API Keys -> Create -> **Account Key**), the MCP server exposes additional tools that let Claude manage your dashboard -- projects, remote config, news, email templates, gift codes, users, leaderboards, cloud-save data, crash reports, feedback, user logs, SMTP, and Validated Actions (rules, runs, player values and the evidence review).
 
 ### How to get your Account Key
 
@@ -153,6 +163,8 @@ When a key is project-scoped, the backend enforces that scope on direct HTTP cal
 
 ### Tool Groups
 
+Admin tools carry the same annotations as the player tools: list, get and statistics tools are read only, update and delete tools are marked destructive.
+
 | Prefix | Description |
 |--------|-------------|
 | `horizon_admin_projects_*` | Project API key management (create/update/regenerate/revoke/delete) |
@@ -167,6 +179,8 @@ When a key is project-scoped, the backend enforces that scope on direct HTTP cal
 | `horizon_admin_feedback_*` | Read user feedback |
 | `horizon_admin_userlogs_*` | Read user logs |
 | `horizon_admin_smtp_*` | Account SMTP configuration (password always returned masked) |
+| `horizon_admin_validated_evidence_*` | Validated Actions evidence review: list, quota, metadata, log download (base64 or hashes only), delete |
+| `horizon_admin_validated_rules_*`, `_usage_get`, `_runs_list`, `_state_*` | Validated Actions configuration: rule set per Project API key (get, replace, delete), run capacity of the hour, recent runs with rejection codes, server-owned player values (read, support correction) |
 
 ## What is horizOn?
 
@@ -181,6 +195,8 @@ Core features:
 - Localization
 - News and Announcements
 - Gift Codes
+- Player Profile (avatar, frame, badges)
+- Validated Actions (server-checked runs, validated only leaderboards, server-owned currency)
 - User Feedback
 - User Logs
 - Crash Reporting

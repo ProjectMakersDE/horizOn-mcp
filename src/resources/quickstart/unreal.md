@@ -114,7 +114,7 @@ Each manager lives in `Managers/Horizon<Feature>Manager.h`. Include the header o
 ### Leaderboards
 
 ```cpp
-// Submit a score (optional Metadata and BoardKey parameters follow the callback)
+// Submit a score (optional BoardKey follows the callback; the Metadata parameter before it is deprecated and ignored, pass TEXT(""))
 Horizon->Leaderboard->SubmitScore(12500, FOnRequestComplete::CreateLambda([](bool bSuccess, const FString& Error) { }));
 
 // Top 10 entries (second argument: use the local cache)
@@ -187,7 +187,38 @@ Horizon->News->LoadNews(20, TEXT("en"), true, FOnNewsComplete::CreateLambda(
 ```cpp
 Horizon->GiftCodes->Validate(TEXT("ABCD-1234"), FOnGiftCodeValidateComplete::CreateLambda([](bool bRequestSuccess, bool bValid) { }));
 Horizon->GiftCodes->Redeem(TEXT("ABCD-1234"), FOnGiftCodeRedeemComplete::CreateLambda([](bool bSuccess, const FString& GiftData, const FString& Message) { }));
+// Cosmetics unlocked by the last redeem: Horizon->GiftCodes->GetLastGrantedUnlocks()
 ```
+
+### Player Profile
+
+```cpp
+// Profile, unlocks and the cosmetics catalog with an "available" flag per entry
+Horizon->PlayerProfile->GetProfile(FOnPlayerProfileComplete::CreateLambda(
+    [](bool bSuccess, const FHorizonPlayerProfileResult& Result, const FString& ErrorCode, const FString& ErrorMessage) { }));
+
+// Replace the whole profile (empty string clears a slot, max 3 badges)
+Horizon->PlayerProfile->SetProfile(TEXT("avatar.zombie_07"), TEXT(""), { TEXT("badge.supporter") },
+    FOnPlayerProfileComplete::CreateLambda(
+        [](bool bSuccess, const FHorizonPlayerProfileResult& Result, const FString& ErrorCode, const FString& ErrorMessage) { }));
+```
+
+Leaderboard entries carry `Profile` (`AvatarId`, `FrameId`, `Badges`).
+
+### Validated Actions
+
+```cpp
+// Server-checked run: single-use ticket with a server seed (cloud only)
+Horizon->ValidatedActions->StartRun(TEXT("weekly"), FOnValidatedRunStarted::CreateLambda(
+    [](bool bSuccess, const FHorizonValidatedRun& Run, const FString& ErrorCode, const FString& ErrorMessage) { /* seed with Run.Seed */ }));
+
+// After the run: InputLog is the recorded TArray<uint8>, hashed with SHA-256 by the SDK
+Horizon->ValidatedActions->SubmitValidated(18250, InputLog, TEXT(""), TEXT("weekly"), {},
+    FOnValidatedSubmitComplete::CreateLambda(
+        [](bool bSuccess, const FHorizonValidatedSubmitResult& Result, const FString& ErrorCode, const FString& ErrorMessage) { }));
+```
+
+Boards with `bValidatedOnly` reject `SubmitScore` with `VALIDATED_SUBMIT_REQUIRED`. See `horizon://docs/validated-actions`.
 
 ### Feedback
 
@@ -242,6 +273,8 @@ Get the subsystem with the **Get Horizon Subsystem** node or use the async nodes
 - **Cloud Save Data**, **Cloud Load Data**
 - **Get Remote Config**, **Get All Remote Configs**, **Get Localization**, **Load News**
 - **Validate Gift Code**, **Redeem Gift Code**, **Report Bug**, **Submit Feedback**
+- **Get Player Profile**, **Set Player Profile**
+- **Start Run**, **Submit Validated**
 - **Record Exception**, **Report Crash**, **Send Email**
 
 ## Hello horizOn Example

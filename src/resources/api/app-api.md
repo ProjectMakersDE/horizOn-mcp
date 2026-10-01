@@ -15,7 +15,7 @@ X-API-Key: your-api-key-here
 Content-Type: application/json
 ```
 
-Leaderboard submit and cloud save also need the player's session from sign-in:
+Leaderboard submit, cloud save, gift code redeem and the player profile also need the player's session from sign-in:
 
 ```
 Authorization: Bearer <accessToken>
@@ -39,7 +39,7 @@ Create a new user account.
   "type": "ANONYMOUS | EMAIL | GOOGLE",
   "username": "string (optional, 1-50 chars)",
   "email": "string (required for EMAIL)",
-  "password": "string (required for EMAIL, 4-32 chars)",
+  "password": "string (required for EMAIL, 8-128 chars)",
   "anonymousToken": "string (required for ANONYMOUS, max 32 chars)",
   "googleAuthorizationCode": "string (required for GOOGLE)",
   "googleRedirectUri": "string (optional)"
@@ -207,12 +207,15 @@ List the leaderboard boards configured for the app API key.
       "name": "Weekly",
       "sortOrder": "DESC",
       "isActive": true,
-      "scoreCount": 10
+      "scoreCount": 10,
+      "validatedOnly": false
     }
   ],
   "totalElements": 1
 }
 ```
+
+`validatedOnly: true`: the board accepts scores only through Validated Actions.
 
 Use the returned `key` with the V2 board endpoints:
 
@@ -238,7 +241,7 @@ Submit a score. Only the player's best score is kept (higher wins on DESC boards
 }
 ```
 
-**Response (200):** empty body. `401` without a valid session, `403` when the session belongs to another user.
+**Response (200):** empty body. `401` without a valid session, `403` when the session belongs to another user, `403` with `"code": "VALIDATED_SUBMIT_REQUIRED"` on a validated only board and `403` with `"code": "PLAYER_BANNED"` for a player banned from the board (nothing is written in both cases).
 
 ---
 
@@ -255,7 +258,12 @@ Get top leaderboard entries.
 ```json
 {
   "entries": [
-    { "position": 1, "username": "string", "score": "number" }
+    {
+      "position": 1,
+      "username": "string",
+      "score": "number",
+      "profile": { "avatarId": "string | null", "frameId": "string | null", "badges": ["string"] }
+    }
   ]
 }
 ```
@@ -275,7 +283,8 @@ Get a user's rank.
 {
   "position": "number",
   "username": "string",
-  "score": "number"
+  "score": "number",
+  "profile": { "avatarId": "string | null", "frameId": "string | null", "badges": ["string"] }
 }
 ```
 
@@ -294,10 +303,17 @@ Get entries around a user's rank.
 ```json
 {
   "entries": [
-    { "position": "number", "username": "string", "score": "number" }
+    {
+      "position": "number",
+      "username": "string",
+      "score": "number",
+      "profile": { "avatarId": "string | null", "frameId": "string | null", "badges": ["string"] }
+    }
   ]
 }
 ```
+
+`profile` is present in every entry of top, rank and around (player avatar, frame and badges, see Player Profile below).
 
 ---
 
@@ -440,7 +456,8 @@ Validate a gift code without redeeming it.
 
 ### POST /api/v1/app/gift-codes/redeem
 
-Redeem a gift code.
+Redeem a gift code. Needs `Authorization: Bearer <accessToken>`; `userId` must be the session user.
+A request without a session is rejected with `401` (no transition window).
 
 **Request:**
 ```json
@@ -455,11 +472,170 @@ Redeem a gift code.
 {
   "success": "boolean",
   "message": "string",
-  "giftData": "string (JSON) | null"
+  "giftData": "string (JSON) | null",
+  "grantedUnlocks": ["string"]
 }
 ```
 
-**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `403` code or user of another API key, `404` unknown code.
+`grantedUnlocks`: cosmetic IDs from `giftData.grants` the player owns after the redemption, `[]` without grants.
+
+**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `401` missing, invalid or expired session, `403` code or user of another API key or session of another user, `404` unknown code, `409` `UNLOCK_LIMIT_REACHED` (more than 25 unlocks, code not used up).
+
+---
+
+## Player Profile
+
+Both endpoints need `Authorization: Bearer <accessToken>` of `userId`. Errors carry a `code`: `INVALID_BADGES`, `INVALID_COSMETIC_ID`, `COSMETIC_NOT_FOUND`, `COSMETIC_TYPE_MISMATCH` (400), `SESSION_REQUIRED` (401), `COSMETIC_LOCKED`, `SESSION_FORBIDDEN` (403), `PLAYER_NOT_FOUND` (404).
+
+### GET /api/v1/app/player-profile?userId={userId}
+
+Profile, unlocks and the cosmetics catalog of the API key with `available` per entry.
+
+**Response (200):**
+```json
+{
+  "userId": "string",
+  "profile": { "avatarId": "string | null", "frameId": "string | null", "badges": ["string"] },
+  "unlocks": ["string"],
+  "cosmetics": [
+    { "id": "string", "type": "avatar | frame | badge", "locked": "boolean", "available": "boolean" }
+  ],
+  "limits": { "maxBadges": 3, "maxUnlocks": 25 }
+}
+```
+
+---
+
+### PUT /api/v1/app/player-profile
+
+Replaces the whole visible profile (a missing, `null` or `""` slot is cleared, missing or `[]` badges clears them). Returns the GET body.
+
+**Request:**
+```json
+{
+  "userId": "string",
+  "avatarId": "string | null",
+  "frameId": "string | null",
+  "badges": ["string (0 to 3, distinct)"]
+}
+```
+
+---
+
+## Validated Actions
+
+Server-checked runs (cloud only). All four endpoints need `Authorization: Bearer <accessToken>` of `userId`. Errors carry a `code` and, when known, the `runId`: `SCORE_REQUIRED`, `PLAYER_NAME_REQUIRED` (400), `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN`, `SCORE_LIMIT_REACHED`, `PLAYER_BANNED` (403), `PLAYER_NOT_FOUND`, `LEADERBOARD_NOT_FOUND` (404), `TICKET_INVALID`, `TICKET_EXPIRED`, `TICKET_FOREIGN`, `TICKET_CONSUMED`, `LEADERBOARD_MISMATCH`, `STAGE_REQUIRED`, `STAGE_UNKNOWN`, `SCORE_ABOVE_MAX`, `SCORE_BELOW_MIN`, `STAGE_SCORE_ABOVE_MAX`, `STAGE_SCORE_BELOW_MIN`, `DURATION_TOO_SHORT`, `SCORE_RATE_TOO_HIGH`, `UNKNOWN_VALUE_KEY`, `DUPLICATE_VALUE_KEY`, `EARNED_ABOVE_MAX`, `EARNED_BELOW_MIN`, `INSUFFICIENT_BALANCE` (422), `RUN_RATE_LIMITED`, `RUN_CAPACITY_REACHED` (429, `Retry-After`), `VALIDATED_ACTIONS_UNAVAILABLE` (503). See `horizon://docs/validated-actions`.
+
+### POST /api/v1/app/validated-actions/runs
+
+Start a run: single-use ticket with a server seed. `leaderboardKey` (optional) binds it to a board.
+
+**Request:**
+```json
+{
+  "userId": "string",
+  "leaderboardKey": "string (optional)"
+}
+```
+
+**Response (200):**
+```json
+{
+  "runId": "string",
+  "ticket": "string (opaque, at most 512 characters)",
+  "seed": "number (0 to 2147483646)",
+  "leaderboardKey": "string | null",
+  "issuedAt": "string (ISO 8601 UTC)",
+  "expiresAt": "string (ISO 8601 UTC)",
+  "expiresInSeconds": "number"
+}
+```
+
+---
+
+### POST /api/v1/app/validated-actions/submit
+
+Submit the result of a run. Rules run before any write; the ticket is consumed (also on a rule rejection).
+
+**Request:**
+```json
+{
+  "userId": "string",
+  "ticket": "string",
+  "inputLogHash": "string (SHA-256 of the input log, 64 hex characters)",
+  "score": "number (required when a board is targeted)",
+  "stage": "string (optional)",
+  "leaderboardKey": "string (optional, defaults to the ticket's board)",
+  "earned": [{ "key": "string (value key of the rules)", "amount": "number (negative spends, optional, at most 64 entries)" }]
+}
+```
+
+**Response (200):**
+```json
+{
+  "accepted": true,
+  "runId": "string",
+  "leaderboardKey": "string | null",
+  "score": "number | null",
+  "bestScore": "number | null",
+  "isNewHighScore": "boolean",
+  "rank": "number | null",
+  "durationSeconds": "number",
+  "state": {
+    "day": "string (UTC day, YYYY-MM-DD)",
+    "values": [{ "key": "string", "balance": "number", "earnedToday": "number", "dailyCap": "number | null", "requested": "number (touched keys only)", "credited": "number (touched keys only)" }]
+  },
+  "evidence": null
+}
+```
+
+`evidence` is `null`, or `{ "required": true, "runId": "string", "uploadBefore": "string (ISO 8601 UTC, 24 hours)", "maxBytes": 32768 }` when the server asks for the input log (a new top N entry or a flagged run): upload it with `PUT /api/v1/app/validated-actions/runs/{runId}/evidence`.
+
+`state` is `null` when the rules define no values. `credited < requested` on a positive amount means the daily cap or `maxBalance` clamped it; a spend is credited in full or with `0` (grant a purchase only when `credited == requested`).
+
+---
+
+### GET /api/v1/app/validated-actions/state
+
+The player's server-owned values. Read only; only accepted validated runs change them.
+
+**Query:** `userId` (string, UUID)
+
+**Response (200):**
+```json
+{
+  "userId": "string",
+  "day": "string (UTC day, YYYY-MM-DD)",
+  "values": [{ "key": "string", "balance": "number", "earnedToday": "number", "dailyCap": "number | null" }]
+}
+```
+
+Every value key of the rules, sorted by key (balance `0` when never earned). Errors: `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN` (403), `PLAYER_NOT_FOUND` (404), 429 without body.
+
+---
+
+### PUT /api/v1/app/validated-actions/runs/{runId}/evidence
+
+Upload the input log of a run whose submit response had `evidence.required = true`, before `evidence.uploadBefore`. The SHA-256 of the decoded bytes must equal the `inputLogHash` sent with the run.
+
+**Request:**
+```json
+{
+  "userId": "string",
+  "log": "string (standard base64 of the raw input log, decoded at most maxBytes)"
+}
+```
+
+**Response (200):**
+```json
+{
+  "runId": "string",
+  "status": "UPLOADED",
+  "bytes": "number"
+}
+```
+
+Errors: `EVIDENCE_INVALID_ENCODING` (400), `SESSION_REQUIRED` (401), `SESSION_FORBIDDEN` (403), `EVIDENCE_NOT_REQUESTED` (404, also for a run of another player), `EVIDENCE_ALREADY_UPLOADED` (409), `EVIDENCE_EXPIRED` (410, the slot is freed), `EVIDENCE_TOO_LARGE` (413), `EVIDENCE_HASH_MISMATCH` (422, the request stays open until `uploadBefore`), 429 without body.
 
 ---
 

@@ -1,23 +1,27 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { createApiClientFromEnv } from "./api-client.js";
-import { noApiKeyResponse, errorResponse, jsonResponse, ADDITIVE_WRITE, API_ERRORS } from "./tool-helpers.js";
+import { noApiKeyResponse, errorResponse, jsonResponse, describeTool, ADDITIVE_WRITE } from "./tool-helpers.js";
 
 export function registerFeedbackTools(server: McpServer): void {
   server.registerTool("horizon_submit_feedback", {
     title: "Submit Feedback",
-    description:
-      "Sends player feedback, such as a bug report, a feature request or a general comment, to the horizOn dashboard, where the developer reads it. " +
-      "Use horizon_create_crash_report for crashes and horizon_create_log for technical events. " +
-      "category is free text; the horizOn SDKs use BUG, FEATURE and GENERAL. Each call creates a new entry. Returns \"ok\". " +
-      API_ERRORS,
+    description: describeTool({
+      summary: "Sends a message written by a player (bug report, feature request or comment) to the developer's feedback inbox in the horizOn dashboard.",
+      use: "the player fills in a feedback or bug report form in the game.",
+      avoid: "crashes and caught exceptions (use horizon_create_crash_report) or technical events the game logs by itself (use horizon_create_log).",
+      requires: "a userId from horizon_signup_* or horizon_signin_*; no session token.",
+      effects: "creates one feedback entry per call; a repeat creates a duplicate.",
+      returns: "the text \"ok\" when the entry was stored.",
+      errors: "An unknown userId, or one of another API key, is rejected: pass the ID from the sign-in result. 403 when the account's feedback limit is reached: delete old feedback in the dashboard.",
+    }),
     inputSchema: {
-      userId: z.string().uuid().describe("User ID (UUID) returned by a horizon_signup_* or horizon_signin_* tool"),
-      title: z.string().min(1).max(100).describe("Feedback title (1-100 characters)"),
-      message: z.string().min(1).max(2048).describe("Feedback message (1-2048 characters)"),
-      category: z.string().max(50).optional().describe("Feedback category, free text such as BUG, FEATURE or GENERAL (max 50 characters)"),
-      email: z.string().email().optional().describe("Contact email address"),
-      deviceInfo: z.string().max(500).optional().describe("Device information (max 500 characters)"),
+      userId: z.string().uuid().describe("Player user ID (UUID) from horizon_signup_* or horizon_signin_*"),
+      title: z.string().min(1).max(100).describe("Short summary shown in the dashboard list (1 to 100 characters)"),
+      message: z.string().min(1).max(2048).describe("Full feedback text (1 to 2048 characters)"),
+      category: z.string().max(50).optional().describe("Free text category (max 50 characters); the horizOn SDKs use BUG, FEATURE and GENERAL. Omit for none"),
+      email: z.string().email().optional().describe("Contact email address for a reply, if the player wants one"),
+      deviceInfo: z.string().max(500).optional().describe("Device and OS details for bug reports, for example 'Pixel 8, Android 14' (max 500 characters)"),
     },
     annotations: ADDITIVE_WRITE,
   }, async ({ userId, title, message, category, email, deviceInfo }) => {

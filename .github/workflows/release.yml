@@ -1,8 +1,9 @@
 name: Release
 
 on:
+  workflow_dispatch:
   push:
-    branches: [main]
+    branches: [release]
 
 permissions:
   contents: write
@@ -12,6 +13,7 @@ permissions:
 
 jobs:
   release:
+    if: github.ref == 'refs/heads/release'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
