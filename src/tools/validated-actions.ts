@@ -30,6 +30,9 @@ export const INPUT_LOG_HASH_PATTERN = /^[0-9a-fA-F]{64}$/;
 /** Standard base64 with optional padding, whitespace already removed. */
 const BASE64_PATTERN = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
 
+/** Version strings of the start context (E911): 1 to 64 printable ASCII characters. */
+export const CONTEXT_VERSION_PATTERN = /^[\x20-\x7E]{1,64}$/;
+
 /** Stage key rule of the server (`SubmitValidatedRequest.stage`). */
 export const STAGE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,31}$/;
 
@@ -151,6 +154,55 @@ export function resolveInputLogBytes(
   return { base64: raw.toString("base64"), bytes: raw.length, hash: computeInputLogHash(raw) };
 }
 
+/** Start context fields a game may declare at run start (E911, TASK-911). */
+export type StartContextInput = {
+  gameVersion?: string;
+  contentVersion?: string;
+  simulationVersion?: string;
+  replayFormatVersion?: string;
+  contentDigest?: string;
+  initialStateBase64?: string;
+};
+
+const CONTEXT_TEXT_FIELDS = ["gameVersion", "contentVersion", "simulationVersion", "replayFormatVersion"] as const;
+
+/**
+ * Builds the optional `context` object of a run start. Blank values count as
+ * absent (as on the server); `initialStateBase64` becomes `initialState`
+ * (standard base64, whitespace removed) and `contentDigest` is sent in lower
+ * case. Returns `{ context: undefined }` when nothing is given, so old
+ * request bodies stay unchanged, or an error text for a malformed base64.
+ */
+export function buildStartContext(
+  input: StartContextInput,
+): { context: Record<string, string> | undefined } | { error: string } {
+  const context: Record<string, string> = {};
+  for (const field of CONTEXT_TEXT_FIELDS) {
+    const value = input[field];
+    if (value !== undefined && value.trim() !== "") context[field] = value;
+  }
+  if (input.contentDigest !== undefined && input.contentDigest.trim() !== "") {
+    context.contentDigest = input.contentDigest.toLowerCase();
+  }
+  if (input.initialStateBase64 !== undefined) {
+    const compact = input.initialStateBase64.replace(/\s+/g, "");
+    if (compact !== "") {
+      if (!BASE64_PATTERN.test(compact)) {
+        return { error: "INITIAL_STATE_INVALID_ENCODING: initialStateBase64 is not valid standard base64 (no request sent)" };
+      }
+      context.initialState = compact;
+    }
+  }
+  return { context: Object.keys(context).length > 0 ? context : undefined };
+}
+
+const contextVersionSchema = (what: string) =>
+  z
+    .string()
+    .regex(CONTEXT_VERSION_PATTERN, "1 to 64 printable ASCII characters")
+    .optional()
+    .describe(`${what} (1 to 64 printable ASCII characters), stored in the run's start context. Optional`);
+
 const userIdSchema = z.string().uuid().describe("Player user ID (UUID) from horizon_signup_* or horizon_signin_*");
 
 const sessionTokenSchema = z
@@ -169,7 +221,8 @@ const leaderboardKeySchema = (purpose: string) =>
     .describe(purpose);
 
 const START_ERRORS =
-  "Errors carry a stable code in the body and the error result names it: 401 SESSION_REQUIRED, 403 SESSION_FORBIDDEN, " +
+  "Errors carry a stable code in the body and the error result names it: 400 for a bad context field, 400 INITIAL_STATE_INVALID_ENCODING (initialState not standard base64), " +
+  "413 INITIAL_STATE_TOO_LARGE (decoded initialState above the plan's evidenceMaxBytes), 401 SESSION_REQUIRED, 403 SESSION_FORBIDDEN, " +
   "404 PLAYER_NOT_FOUND or LEADERBOARD_NOT_FOUND, 429 RUN_RATE_LIMITED (per player and hour) or RUN_CAPACITY_REACHED (account per UTC hour; do not retry automatically, the wait can be an hour), " +
   "503 VALIDATED_ACTIONS_UNAVAILABLE (server has no ticket key). After 401 sign in again; after 403 SESSION_FORBIDDEN pass the userId that signed in.";
 
@@ -190,8 +243,12 @@ const STATE_RESULT_NOTE =
   "state is null when the rules define no values or the state write failed.";
 
 const EVIDENCE_RESULT_NOTE =
-  "evidence is null, or {required: true, runId, uploadBefore, maxBytes} when the server asks for the input log (the run became the player's row and is flagged or lands in the board's evidence top N): " +
+  "evidence is null, or {required: true, runId, uploadBefore, maxBytes} when the server asks for the input log (the run became the player's row and is flagged or lands in the board's evidence top N, or the run is sus): " +
   "upload exactly the logged bytes with horizon_upload_evidence before uploadBefore (24 hours); a log that was only hashed via inputLogHash must be kept by the caller.";
+
+const SUS_RESULT_NOTE =
+  "sus is true when the run was accepted but crossed a soft threshold of the rules (the flag names stay on the server); the run counts normally and the server keeps a review package. " +
+  "Rejected runs are never sus; an older server without the field reads as false.";
 
 const UPLOAD_ERRORS =
   "Errors carry a stable code in the body and the error result names it: 400 EVIDENCE_INVALID_ENCODING (not standard base64), 401 SESSION_REQUIRED, 403 SESSION_FORBIDDEN, " +
@@ -208,7 +265,9 @@ export function registerValidatedActionsTools(server: McpServer): void {
       summary: "Starts a server-checked run (Validated Actions): issues a single-use ticket with a server seed and starts the server's run timer.",
       use: "before a round whose score or earned currency must be checked by the server, and always for boards marked validatedOnly in horizon_list_leaderboards.",
       avoid: "normal boards where the client may write its own score (use horizon_submit_score) and reading balances (use horizon_get_state).",
-      requires: SESSION_REQUIRED + " Pass leaderboardKey to bind the ticket to a board (it must exist; 'default' is created on first use).",
+      requires:
+        SESSION_REQUIRED + " Pass leaderboardKey to bind the ticket to a board (it must exist; 'default' is created on first use). " +
+        "Optionally declare the start context (gameVersion, contentVersion, simulationVersion, replayFormatVersion, contentDigest, initialStateBase64); the server binds it with its own start values (rule version, cloud save, balances, seed) into the run, and a sus run keeps it in its review package.",
       effects: "issues a new ticket per call and counts against the run limits per player and per account; unused tickets simply expire.",
       returns:
         "{runId, ticket, seed, leaderboardKey, issuedAt, expiresAt, expiresInSeconds}. Seed the game's deterministic randomness with seed, record the input log, " +
@@ -221,14 +280,40 @@ export function registerValidatedActionsTools(server: McpServer): void {
       leaderboardKey: leaderboardKeySchema(
         "Board key to bind the ticket to, from horizon_list_leaderboards (1 to 64 characters: a-z, 0-9, _ and -). Omit for an unbound ticket (currency only runs, or choose the board at submit).",
       ),
+      gameVersion: contextVersionSchema("Game build version, for example \"1.4.2\""),
+      contentVersion: contextVersionSchema("Version of the game content (levels, balancing data) the run uses"),
+      simulationVersion: contextVersionSchema("Version of the deterministic simulation that replays the input log"),
+      replayFormatVersion: contextVersionSchema("Format version of the recorded input log"),
+      contentDigest: z
+        .string()
+        .regex(INPUT_LOG_HASH_PATTERN, "SHA-256 as 64 hex characters")
+        .optional()
+        .describe("SHA-256 of the game content the run uses, 64 hex characters (sent in lower case). Optional"),
+      initialStateBase64: z
+        .string()
+        .max(2_000_000)
+        .optional()
+        .describe(
+          "Bytes the simulation starts from as standard base64 (sent as context.initialState); decoded at most the plan's evidenceMaxBytes (32,768 bytes by default). Optional",
+        ),
     },
     annotations: ADDITIVE_WRITE,
-  }, async ({ userId, sessionToken, leaderboardKey }) => {
+  }, async ({ userId, sessionToken, leaderboardKey, gameVersion, contentVersion, simulationVersion, replayFormatVersion, contentDigest, initialStateBase64 }) => {
+    const built = buildStartContext({ gameVersion, contentVersion, simulationVersion, replayFormatVersion, contentDigest, initialStateBase64 });
+    if ("error" in built) {
+      return {
+        content: [{ type: "text" as const, text: built.error }],
+        isError: true,
+      };
+    }
+
     const client = createApiClientFromEnv();
     if (!client) return noApiKeyResponse();
 
     try {
-      const body = leaderboardKey ? { userId, leaderboardKey } : { userId };
+      const body: Record<string, unknown> = { userId };
+      if (leaderboardKey) body.leaderboardKey = leaderboardKey;
+      if (built.context) body.context = built.context;
       const result = await client.post(RUNS_PATH, body, sessionHeaders(sessionToken));
       return jsonResponse(result);
     } catch (error) {
@@ -251,7 +336,8 @@ export function registerValidatedActionsTools(server: McpServer): void {
         "consumes the ticket (single use, also when rejected); an accepted run writes the score (best score kept) and changes the balances of earned values. " +
         "The same ticket cannot be submitted twice.",
       returns:
-        "{accepted, runId, leaderboardKey, score, bestScore, isNewHighScore, rank, durationSeconds, state, evidence} plus inputLogHash (the hash that was sent). " +
+        "{accepted, runId, leaderboardKey, score, bestScore, isNewHighScore, rank, durationSeconds, state, evidence, sus} plus inputLogHash (the hash that was sent). " +
+        SUS_RESULT_NOTE + " " +
         STATE_RESULT_NOTE + " " +
         EVIDENCE_RESULT_NOTE,
       errors: SUBMIT_ERRORS,
@@ -343,7 +429,8 @@ export function registerValidatedActionsTools(server: McpServer): void {
 
     try {
       const result = await client.post<Record<string, unknown> | null>(SUBMIT_PATH, body, sessionHeaders(sessionToken));
-      return jsonResponse({ ...(result ?? {}), inputLogHash: resolved.hash });
+      const response = result ?? {};
+      return jsonResponse({ ...response, sus: response.sus === true, inputLogHash: resolved.hash });
     } catch (error) {
       return errorResponse(error);
     }

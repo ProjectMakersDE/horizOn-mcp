@@ -224,7 +224,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "Validated Actions",
       description:
-        "Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state (currency, daily caps), evidence upload (input log) and admin evidence review, rejection codes. SDK examples.",
+        "Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state (currency, daily caps), run start context, evidence upload (input log), admin evidence review with sus packages and package export, rejection codes. SDK examples.",
       mimeType: "text/markdown",
     },
     () => ({

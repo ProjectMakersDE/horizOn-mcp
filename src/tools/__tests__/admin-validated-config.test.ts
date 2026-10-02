@@ -124,6 +124,33 @@ describe("admin validated actions config tools over MCP", () => {
     expect(Object.fromEntries(url.searchParams)).toEqual({ apiKeyId: PROJECT_KEY, limit: "50" });
   });
 
+  it("lists only sus runs with sus true and passes the E911 run fields through", async () => {
+    const runs = {
+      runs: [
+        {
+          runId: "5b0b6c1e-8d0f-4c55-9b0e-0e6a4a8a3d11",
+          status: "ACCEPTED",
+          sus: true,
+          packageStatus: "ARCHIVED",
+          startContext: "STORED",
+        },
+      ],
+    };
+    request.mockResolvedValueOnce(new Response(JSON.stringify(runs)));
+
+    const result = (await client.callTool({
+      name: "horizon_admin_validated_runs_list",
+      arguments: { projectApiKeyId: PROJECT_KEY, sus: true },
+    })) as TextResult;
+    let { url } = lastCall();
+    expect(Object.fromEntries(url.searchParams)).toEqual({ apiKeyId: PROJECT_KEY, limit: "50", sus: "true" });
+    expect(JSON.parse(result.content[0].text)).toEqual(runs);
+
+    await client.callTool({ name: "horizon_admin_validated_runs_list", arguments: { projectApiKeyId: PROJECT_KEY, sus: false } });
+    ({ url } = lastCall());
+    expect(Object.fromEntries(url.searchParams)).toEqual({ apiKeyId: PROJECT_KEY, limit: "50" });
+  });
+
   it("rejects an unknown run status before any request", async () => {
     const result = (await client.callTool({
       name: "horizon_admin_validated_runs_list",
