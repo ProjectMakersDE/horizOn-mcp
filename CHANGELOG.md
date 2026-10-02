@@ -1,3 +1,10 @@
+# [1.7.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.6.0...v1.7.0) (2026-10-02)
+
+
+### Features
+
+* **validated-actions:** start context, sus signal and package export tools ([ecb82b3](https://github.com/ProjectMakersDE/horizOn-mcp/commit/ecb82b3755c01aad00be96be4ecb0e493abaf179))
+
 # [1.6.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.5.5...v1.6.0) (2026-10-01)
 
 
