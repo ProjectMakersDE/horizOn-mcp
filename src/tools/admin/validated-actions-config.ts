@@ -215,8 +215,10 @@ export function registerAdminValidatedActionsConfigTools(server: McpServer): voi
             "an Account Key with full-account access or the LEADERBOARD feature group; a project-scoped key only for its own projectApiKeyId.",
           effects: "None (read only).",
           returns:
-            "{runs: [{runId, userId, leaderboardKey, status, reason, score, stage, durationSeconds, issuedAt, expiresAt, consumedAt}]}. " +
-            "status is OPEN, EXPIRED, ACCEPTED, REJECTED or FAILED; reason is the rule or ticket code of a rejected run. Runs are kept only for hours; an empty list means none in that window.",
+            "{runs: [{runId, userId, leaderboardKey, status, reason, score, stage, durationSeconds, issuedAt, expiresAt, consumedAt, sus, packageStatus, startContext}]}. " +
+            "status is OPEN, EXPIRED, ACCEPTED, REJECTED or FAILED; reason is the rule or ticket code of a rejected run. " +
+            "sus is true for a run that was accepted but crossed a soft threshold; packageStatus is ARCHIVED, QUOTA_FULL, FAILED or null (its sus package, see horizon_admin_validated_evidence_list with sus true); " +
+            "startContext is STORED, SKIPPED_CAPACITY, FAILED or NOT_CAPTURED. Runs are kept only for hours; an empty list means none in that window.",
           errors:
             "400 INVALID_STATUS or INVALID_LIMIT for a bad filter. 404 API_KEY_NOT_FOUND for an unknown projectApiKeyId: list the keys with horizon_admin_projects_list. " +
             ERROR_NOTE,
@@ -230,15 +232,20 @@ export function registerAdminValidatedActionsConfigTools(server: McpServer): voi
           .optional()
           .describe("Status filter (OPEN, EXPIRED, ACCEPTED, REJECTED or FAILED), applied to the newest 1,000 runs. Omit for all"),
         limit: z.number().int().min(1).max(100).default(50).describe("Maximum number of runs, 1 to 100 (default 50)"),
+        sus: z
+          .boolean()
+          .optional()
+          .describe("true lists only sus runs (accepted, but a soft threshold was crossed). Omit or false for all runs"),
       },
       annotations: READ_ONLY,
     },
-    async ({ projectApiKeyId, status, limit }) => {
+    async ({ projectApiKeyId, status, limit, sus }) => {
       const client = getAdminClient();
       if (!client) return noAdminClientResponse();
       try {
         const params: Record<string, string> = { apiKeyId: projectApiKeyId, limit: String(limit) };
         if (status !== undefined) params.status = status;
+        if (sus === true) params.sus = "true";
         const result = await client.get(`${VALIDATED_ADMIN_PATH}/runs`, params);
         return jsonResponse(result);
       } catch (e) {

@@ -49,6 +49,17 @@ All app endpoints need `X-API-Key` **and** the player's session `Authorization: 
 |-------|------|----------|-------------|
 | `userId` | string (UUID) | Yes | The signed-in player |
 | `leaderboardKey` | string | No | Bind the ticket to this board (must exist, `default` is created on first use) |
+| `context` | object | No | Start context declared by the game (see below). Older SDKs omit it |
+
+`context` (every field optional, blank strings count as absent):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `gameVersion`, `contentVersion`, `simulationVersion`, `replayFormatVersion` | string | At most 64 printable ASCII characters each |
+| `contentDigest` | string | SHA-256 of the game content the run uses, 64 hex characters |
+| `initialState` | string (base64) | Bytes the simulation starts from, decoded at most `evidenceMaxBytes` |
+
+At run start the server also fixes, without client input, the rule set version, the player's current cloud save, the server-owned values, the seed and the start time, and binds everything into one canonical start context (server and client values kept apart). The bytes are held only while the run is open and are copied into a **sus package** when the run turns out sus (see [Sus packages](#sus-packages)). A full buffer never blocks a run; the parts are then kept as digests only. The response is unchanged.
 
 **Response (200):**
 
@@ -65,6 +76,8 @@ All app endpoints need `X-API-Key` **and** the player's session `Authorization: 
 ```
 
 `leaderboardKey` is `null` for an unbound ticket.
+
+Start errors besides the session and run limit codes: `400 INITIAL_STATE_INVALID_ENCODING` (`initialState` not standard base64), `413 INITIAL_STATE_TOO_LARGE` (decoded above `evidenceMaxBytes`), `400` without code for a bad `context` field.
 
 ### Submit Run
 
@@ -95,11 +108,12 @@ Blank `leaderboardKey` and `stage` count as absent. A run without board checks o
   "rank": 17,
   "durationSeconds": 734,
   "state": null,
-  "evidence": null
+  "evidence": null,
+  "sus": false
 }
 ```
 
-`bestScore` is the player's row after the write and `rank` its 1-based position. For a run without board `leaderboardKey`, `score`, `bestScore` and `rank` are `null` and `isNewHighScore` is `false`. `state` is the server-owned player state after the run (see below); it is `null` when the rules define no values. `evidence` is `null`, or `{"required": true, "runId": "...", "uploadBefore": "...Z", "maxBytes": 32768}` when the server asks for the input log (see [Evidence](#evidence)).
+`bestScore` is the player's row after the write and `rank` its 1-based position. For a run without board `leaderboardKey`, `score`, `bestScore` and `rank` are `null` and `isNewHighScore` is `false`. `state` is the server-owned player state after the run (see below); it is `null` when the rules define no values. `evidence` is `null`, or `{"required": true, "runId": "...", "uploadBefore": "...Z", "maxBytes": 32768}` when the server asks for the input log (see [Evidence](#evidence)). `sus` is `true` when the run was accepted but crossed a soft threshold of the rules; the game passes it on, the flag names stay on the server. Rejected runs are never sus, and an older server without the field reads as `false`.
 
 A run without board still applies `earned`, so a pure currency run needs no leaderboard.
 
@@ -137,7 +151,7 @@ Errors: `401 SESSION_REQUIRED`, `403 SESSION_FORBIDDEN`, `404 PLAYER_NOT_FOUND`,
 
 **Response (200):** `{ "runId": "...", "status": "UPLOADED", "bytes": 18234 }`
 
-Only after a submit answered with `evidence.required = true`, before `evidence.uploadBefore` (24 hours). The SHA-256 of the decoded bytes must equal the `inputLogHash` sent with the run. Checks in this order: encoded length, base64, decoded size, request exists for this player, not uploaded yet, window open, hash.
+Only after a submit answered with `evidence.required = true`, before `evidence.uploadBefore` (24 hours). One upload serves both a top N request and a sus package of the same run. The SHA-256 of the decoded bytes must equal the `inputLogHash` sent with the run. Checks in this order: encoded length, base64, decoded size, request exists for this player, not uploaded yet, window open, hash.
 
 Errors: `400 EVIDENCE_INVALID_ENCODING`, `401 SESSION_REQUIRED`, `403 SESSION_FORBIDDEN`, `404 EVIDENCE_NOT_REQUESTED` (also for a run of another player), `409 EVIDENCE_ALREADY_UPLOADED`, `410 EVIDENCE_EXPIRED` (the slot is freed), `413 EVIDENCE_TOO_LARGE`, `422 EVIDENCE_HASH_MISMATCH` (the request stays open: retry with the correct bytes until `uploadBefore`), `429` without body.
 
@@ -191,26 +205,35 @@ The hash is the SHA-256 of the **raw bytes** of the input log, written as 64 low
 
 ## Evidence
 
-The server requests the input log of a run when the run became the player's row on a board and is **flagged** (soft rule) or lands in the board's visible **top N** (`evidenceTopN`, set per board in the Dashboard, `0` = off). The submit result then carries `evidence.required = true`; the SDKs upload the log automatically (`AutoUploadEvidence`), agents call `horizon_upload_evidence`.
+The server requests the input log of a run when the run became the player's row on a board and is **flagged** (soft rule) or lands in the board's visible **top N** (`evidenceTopN`, set per board in the Dashboard, `0` = off), and for every **sus** run. The submit result then carries `evidence.required = true`; the SDKs upload the log automatically (`AutoUploadEvidence`), agents call `horizon_upload_evidence`.
 
 - **One slot per player and board.** A new improving run replaces the old evidence. Rows pushed out of the top N lose unflagged evidence at once.
 - **Quota per account** (`evidenceSlots`: FREE 50, BASIC 500, PRO 2,500, ENTERPRISE 25,000), shared by all API keys and boards. When it is full no log is requested. The sum of `evidenceTopN` over all boards must stay within the slots (`409 EVIDENCE_QUOTA_EXCEEDED` when saving a board).
 - **Upload window 24 hours.** A request that is never uploaded frees its slot. Uploaded evidence stays until it is deleted in the review (or its row is removed, the board deleted or reset).
-- **Review** in the Dashboard or with the admin API: list, metadata with `seed` and `logHash` for a local replay, log download, delete.
+- **Review** in the Dashboard or with the admin API: list, metadata with `seed` and `logHash` for a local replay, log download, package export, delete.
 
 ### Admin evidence review
 
-Dashboard session or account API key (`X-Account-API-Key`, feature group `LEADERBOARD`). Project-scoped account keys reach only the list, with their own `apiKeyId`.
+Dashboard session or account API key (`X-Account-API-Key`, feature group `LEADERBOARD`). Project-scoped account keys reach the list, the record metadata, the log download and the package export with their own `apiKeyId`; delete stays denied for them.
 
 | Method and path | Description |
 |---|---|
-| `GET /api/v1/admin/validated-actions/evidence?apiKeyId=&leaderboardKey=&status=&page=&size=` | Review list `{items, page, size, totalElements}`, newest request first; `status` `REQUESTED` or `UPLOADED`, `size` 1 to 100 (default 20). `leaderboardKey` needs `apiKeyId` (`400 API_KEY_REQUIRED`): the same board key can exist under several API keys |
-| `GET /api/v1/admin/validated-actions/evidence/quota` | `{used, limit, full, topNAllocated, maxBytes}` |
-| `GET /api/v1/admin/validated-actions/evidence/{runId}?apiKeyId=` | Item fields plus `seed` and `logHash` (hex); `404 EVIDENCE_NOT_FOUND` |
-| `GET /api/v1/admin/validated-actions/evidence/{runId}/log?apiKeyId=` | The log as `application/octet-stream`, header `X-Input-Log-Hash`; `404 EVIDENCE_NOT_UPLOADED` while requested |
-| `DELETE /api/v1/admin/validated-actions/evidence/{runId}?apiKeyId=` | Deletes the record and frees its slot (`204`) |
+| `GET /api/v1/admin/validated-actions/evidence?apiKeyId=&leaderboardKey=&status=&page=&size=&sus=` | Review list `{items, page, size, totalElements}`, newest request first; `status` `REQUESTED` or `UPLOADED`, `size` 1 to 100 (default 20). `leaderboardKey` needs `apiKeyId` (`400 API_KEY_REQUIRED`): the same board key can exist under several API keys. Rows whose run also has a sus package carry `sus: true`; `sus=true` lists the sus packages instead (see below) |
+| `GET /api/v1/admin/validated-actions/evidence/quota` | `{used, limit, full, topNAllocated, maxBytes, sus}`; `sus` is `{used, limit, full, maxPackageBytes, retentionDays, dropped, droppedSince, contextBufferUsed, contextBufferLimit}` |
+| `GET /api/v1/admin/validated-actions/evidence/{runId}?apiKeyId=` | Item fields plus `seed`, `logHash` (hex), `kind` (`TOP_N` or `SUS`) and `susPackage`; `404 EVIDENCE_NOT_FOUND` |
+| `GET /api/v1/admin/validated-actions/evidence/{runId}/log?apiKeyId=` | The log as `application/octet-stream`, header `X-Input-Log-Hash`; `404 EVIDENCE_NOT_UPLOADED` while requested. Also serves the log of a sus package |
+| `GET /api/v1/admin/validated-actions/evidence/{runId}/package?apiKeyId=` | The review package as a ZIP (see below) |
+| `DELETE /api/v1/admin/validated-actions/evidence/{runId}?apiKeyId=` | Deletes the top N record and the sus package of the run and frees both slots (`204`) |
 
 `apiKeyId` on the record endpoints is optional; when given it must belong to the account (`404 API_KEY_NOT_FOUND`) and own the record's board (`404 EVIDENCE_NOT_FOUND` otherwise).
+
+### Sus packages
+
+A sus run is accepted, but crossed a soft threshold of the rules. The server keeps a **sus package** for it (`susPackages` slots per plan, at most `susPackageMaxBytes` each, deleted after `susRetentionDays`): the start context, the rule set the run was checked against, the cloud save and initial state from the start, the input log (requested like top N evidence) and the result. When the slots are full a sus package is dropped (counted in the quota's `sus.dropped`); the run itself is not affected.
+
+- **List** with `sus=true`: items with `kind: "SUS"`, `sus: true`, `status` (`REQUESTED`, `UPLOADED` or `EXPIRED`, the state of the input log), `retainedUntil`, `packageBytes` and `missing` (parts not captured, for example `cloudSave:OMITTED_SIZE_LIMIT`, `startContext:SKIPPED_CAPACITY`, `inputLog:EXPIRED`); `leaderboardId` and `leaderboardKey` are `null` for a run without board.
+- **Metadata**: `susPackage` holds `evidenceStatus`, `uploadBefore`, `uploadedAt`, `createdAt`, `retainedUntil`, `bytes`, `flags`, `stage`, `durationMs`, `serverStartedAt`, `submittedAt`, `earned`, `startContext`, `startContextSha256`, `rules {sha256, source, status}`, `client {gameVersion, contentVersion, simulationVersion, replayFormatVersion, contentDigest}` and `parts [{name, status, bytes, sha256, revision}]` for `cloudSave`, `initialState`, `rules` and `inputLog`. Rule contents are only in the package.
+- **Package export**: `application/zip` named `<runId>.hzn-va-package.zip`, headers `X-Package-Integrity` (`ok` or `mismatch`) and `X-Package-Manifest-Sha256`. Files: `manifest.json` (IDs, run, result, `sus`, `flags`, `startContext`, `client`, `state`, `rules`, `evidence`, `parts`, `retention`, `files` and `integrity {verified, checks}`), `start-context.txt`, `rules.json`, `cloud-save.bin`, `initial-state.bin`, `input-log.bin` (when present) and `SHA256SUMS` (`sha256sum -c` format). Every byte part is hashed again at export; a mismatch does not block the download and is listed in `integrity.checks`. A top N record without package exports with `kind: "TOP_N"` and the missing parts as `NOT_CAPTURED`.
 
 Moderation (remove entry, clear flag, board ban, shadow ban, reset with archive) lives in the leaderboard admin API and the Dashboard. A player banned from a board gets `403 PLAYER_BANNED` on both submit paths.
 
@@ -315,14 +338,14 @@ curl "https://horizon.pm/api/v1/app/validated-actions/state?userId=USER_ID" \
 ### MCP tools
 
 1. `horizon_signin_anonymous` or `horizon_signin_email`: keep `userId` and `accessToken`.
-2. `horizon_start_run` with `userId`, `sessionToken` (the accessToken) and optionally `leaderboardKey`.
-3. `horizon_submit_validated` with `userId`, `sessionToken`, the `ticket`, `score` and exactly one of `inputLogHash`, `inputLogBase64` or `inputLog`, plus `earned` (`[{"key": "gold", "amount": 250}]`) when the rules define values. The result also shows the `inputLogHash` that was sent and the `state` with `requested` and `credited`. A key listed twice in `earned` fails locally with `DUPLICATE_VALUE_KEY` (no request sent, the ticket stays usable).
+2. `horizon_start_run` with `userId`, `sessionToken` (the accessToken) and optionally `leaderboardKey` and the start context: `gameVersion`, `contentVersion`, `simulationVersion`, `replayFormatVersion` (each 1 to 64 printable ASCII characters), `contentDigest` (64 hex) and `initialStateBase64` (sent as `context.initialState`; malformed base64 fails locally with `INITIAL_STATE_INVALID_ENCODING`). Without any of them no `context` is sent.
+3. `horizon_submit_validated` with `userId`, `sessionToken`, the `ticket`, `score` and exactly one of `inputLogHash`, `inputLogBase64` or `inputLog`, plus `earned` (`[{"key": "gold", "amount": 250}]`) when the rules define values. The result also shows the `inputLogHash` that was sent, the `state` with `requested` and `credited`, and `sus` (always present, `false` when an older server omits it). A key listed twice in `earned` fails locally with `DUPLICATE_VALUE_KEY` (no request sent, the ticket stays usable).
 4. `horizon_get_state` with `userId` and `sessionToken` to read the balances at any time.
 5. When the submit result has `evidence.required: true`: `horizon_upload_evidence` with `userId`, `sessionToken`, `runId` and the same log as exactly one of `inputLogBase64` or `inputLog` (the tool base64-encodes it and returns the `inputLogHash` of the uploaded bytes).
 
-Admin tools (need `HORIZON_ACCOUNT_API_KEY`): `horizon_admin_validated_evidence_list` (filters `projectApiKeyId`, `leaderboardKey` (only together with `projectApiKeyId`), `status`, `page`, `size`), `horizon_admin_validated_evidence_quota`, `horizon_admin_validated_evidence_get` (metadata with `seed` and `logHash`), `horizon_admin_validated_evidence_download` (`format: "base64"` returns the log as base64, `format: "hash"` only size and hashes; both compare the server's `X-Input-Log-Hash` with the SHA-256 of the downloaded bytes) and `horizon_admin_validated_evidence_delete`. Get, download and delete take an optional `projectApiKeyId` that must own the record's board.
+Admin tools (need `HORIZON_ACCOUNT_API_KEY`): `horizon_admin_validated_evidence_list` (filters `projectApiKeyId`, `leaderboardKey` (only together with `projectApiKeyId`), `status`, `sus`, `page`, `size`; `sus: true` lists the sus packages, `status: "EXPIRED"` only together with it), `horizon_admin_validated_evidence_quota` (with the `sus` slots), `horizon_admin_validated_evidence_get` (metadata with `seed`, `logHash`, `kind` and `susPackage`), `horizon_admin_validated_evidence_download` (`format: "base64"` returns the log as base64, `format: "hash"` only size and hashes; both compare the server's `X-Input-Log-Hash` with the SHA-256 of the downloaded bytes), `horizon_admin_validated_evidence_export` (writes the package ZIP to `outputPath`, default `<working directory>/<runId>.hzn-va-package.zip`, refuses an existing file unless `overwrite: true`; returns `path`, `bytes`, `sha256`, `integrity`, `integrityOk` and `manifestSha256`) and `horizon_admin_validated_evidence_delete`. Get, download, export and delete take an optional `projectApiKeyId` that must own the record.
 
-Configuration admin tools (same key): `horizon_admin_validated_rules_get` (rule set of a `projectApiKeyId`, the defaults with `configured: false` when none is saved, plus `limits`), `horizon_admin_validated_rules_set` (replaces the whole rule set; read, edit and send back the complete `rules` object), `horizon_admin_validated_rules_delete` (back to the defaults), `horizon_admin_validated_usage_get` (runs of the account in the current UTC hour against the plan limit), `horizon_admin_validated_runs_list` (recent runs of a `projectApiKeyId` with `status` and the rejection `reason`), `horizon_admin_validated_state_get` and `horizon_admin_validated_state_correct` (a player's balances; a correction sets the listed keys, stores an optional `note` and records the caller as `account-key:<id>`). Project-scoped Account Keys reach only `rules_get`, `runs_list` and `evidence_list` with their own `projectApiKeyId`.
+Configuration admin tools (same key): `horizon_admin_validated_rules_get` (rule set of a `projectApiKeyId`, the defaults with `configured: false` when none is saved, plus `limits`), `horizon_admin_validated_rules_set` (replaces the whole rule set; read, edit and send back the complete `rules` object), `horizon_admin_validated_rules_delete` (back to the defaults), `horizon_admin_validated_usage_get` (runs of the account in the current UTC hour against the plan limit), `horizon_admin_validated_runs_list` (recent runs of a `projectApiKeyId` with `status`, the rejection `reason`, `sus`, `packageStatus` and `startContext`; `sus: true` lists only sus runs), `horizon_admin_validated_state_get` and `horizon_admin_validated_state_correct` (a player's balances; a correction sets the listed keys, stores an optional `note` and records the caller as `account-key:<id>`). Project-scoped Account Keys reach only `rules_get`, `runs_list`, `evidence_list`, `evidence_get`, `evidence_download` and `evidence_export` with their own `projectApiKeyId`.
 
 Error results name the server `code`, for example `horizOn API error (HTTP 422, code DURATION_TOO_SHORT)`.
 
@@ -371,6 +394,8 @@ Error results name the server `code`, for example `horizOn API error (HTTP 422, 
 | 413 | `EVIDENCE_TOO_LARGE` | Upload: decoded log above `maxBytes` |
 | 422 | `EVIDENCE_HASH_MISMATCH` | Upload: SHA-256 of the log differs from the run's `inputLogHash` |
 | 404 | `EVIDENCE_NOT_FOUND` / `EVIDENCE_NOT_UPLOADED` | Admin: unknown run, or log still requested |
+| 400 | `INITIAL_STATE_INVALID_ENCODING` | Start: `context.initialState` is not standard base64 |
+| 413 | `INITIAL_STATE_TOO_LARGE` | Start: decoded `context.initialState` above `evidenceMaxBytes` |
 
 ## Self-hosted simpleServer
 

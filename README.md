@@ -45,7 +45,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/news` | In-game news and announcements with language filtering. SDK examples |
 | `horizon://docs/gift-codes` | Gift code validation and redemption for promotional rewards, including cosmetic unlocks via grants. SDK examples |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
-| `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, evidence upload and admin evidence review, rejection codes. SDK examples |
+| `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, start context, evidence upload, admin evidence review with sus packages and package export, rejection codes. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
 | `horizon://docs/user-logs` | Server-side event and error tracking. Requires BASIC tier or higher. SDK examples |
 | `horizon://docs/crash-reporting` | Crash report submission, session tracking, fingerprinting, breadcrumbs, and auto-regression detection. SDK examples |
@@ -88,8 +88,8 @@ Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempot
 | `horizon_redeem_gift_code` | Redeem a gift code for a user (returns `grantedUnlocks` for codes with cosmetic grants) |
 | `horizon_get_profile` | Get a player's profile (avatar, frame, badges), unlocks and the cosmetics catalog |
 | `horizon_set_profile` | Replace a player's whole profile (avatar, frame, up to 3 badges) |
-| `horizon_start_run` | Start a server-checked run: single-use ticket with a server seed, optionally bound to a board |
-| `horizon_submit_validated` | Submit a run result with the ticket and the SHA-256 input log hash (given, or computed locally from base64 bytes or text), optionally with `earned` server-owned values; rejections name their `code` |
+| `horizon_start_run` | Start a server-checked run: single-use ticket with a server seed, optionally bound to a board and with a start context (game, content, simulation and replay format versions, content digest, initial state as base64) |
+| `horizon_submit_validated` | Submit a run result with the ticket and the SHA-256 input log hash (given, or computed locally from base64 bytes or text), optionally with `earned` server-owned values; returns `sus` (accepted but over a soft threshold); rejections name their `code` |
 | `horizon_get_state` | Read the player's server-owned values (balance, earned today, daily cap per value key); read only |
 | `horizon_upload_evidence` | Upload the input log (text or base64, encoded locally) of a run whose submit result asked for evidence; rejections name their `code` |
 | `horizon_submit_feedback` | Submit user feedback (bug reports, feature requests) |
@@ -179,8 +179,8 @@ Admin tools carry the same annotations as the player tools: list, get and statis
 | `horizon_admin_feedback_*` | Read user feedback |
 | `horizon_admin_userlogs_*` | Read user logs |
 | `horizon_admin_smtp_*` | Account SMTP configuration (password always returned masked) |
-| `horizon_admin_validated_evidence_*` | Validated Actions evidence review: list, quota, metadata, log download (base64 or hashes only), delete |
-| `horizon_admin_validated_rules_*`, `_usage_get`, `_runs_list`, `_state_*` | Validated Actions configuration: rule set per Project API key (get, replace, delete), run capacity of the hour, recent runs with rejection codes, server-owned player values (read, support correction) |
+| `horizon_admin_validated_evidence_*` | Validated Actions evidence review: list (top N records or, with `sus: true`, sus packages), quota, metadata (with `susPackage`), log download (base64 or hashes only), package export (ZIP written to a local file, with the integrity headers), delete |
+| `horizon_admin_validated_rules_*`, `_usage_get`, `_runs_list`, `_state_*` | Validated Actions configuration: rule set per Project API key (get, replace, delete), run capacity of the hour, recent runs with rejection codes (filter `sus`), server-owned player values (read, support correction) |
 
 ## What is horizOn?
 

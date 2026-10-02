@@ -7,6 +7,7 @@ import {
   resolveInputLogBytes,
   findDuplicateEarnedKey,
   evidencePath,
+  buildStartContext,
 } from "../validated-actions.js";
 import { HorizonApiError } from "../api-client.js";
 
@@ -70,6 +71,7 @@ const SUBMIT_RESPONSE = {
   durationSeconds: 734,
   state: null,
   evidence: null,
+  sus: false,
 };
 
 const STATE_RESPONSE = {
@@ -130,6 +132,41 @@ describe("resolveInputLogBytes", () => {
     expect(evidencePath(RUN_RESPONSE.runId)).toBe(
       `/api/v1/app/validated-actions/runs/${RUN_RESPONSE.runId}/evidence`,
     );
+  });
+});
+
+describe("buildStartContext", () => {
+  it("omits the context when nothing or only blanks are given", () => {
+    expect(buildStartContext({})).toEqual({ context: undefined });
+    expect(buildStartContext({ gameVersion: " ", initialStateBase64: "  " })).toEqual({ context: undefined });
+  });
+
+  it("maps every field and renames initialStateBase64 to initialState", () => {
+    expect(
+      buildStartContext({
+        gameVersion: "1.4.2",
+        contentVersion: "content-7",
+        simulationVersion: "sim-3",
+        replayFormatVersion: "2",
+        contentDigest: HASH_ABC.toUpperCase(),
+        initialStateBase64: "YW\nJj",
+      }),
+    ).toEqual({
+      context: {
+        gameVersion: "1.4.2",
+        contentVersion: "content-7",
+        simulationVersion: "sim-3",
+        replayFormatVersion: "2",
+        contentDigest: HASH_ABC,
+        initialState: "YWJj",
+      },
+    });
+  });
+
+  it("rejects malformed base64 locally", () => {
+    const result = buildStartContext({ initialStateBase64: "not base64!" });
+    expect(result).toHaveProperty("error");
+    expect((result as { error: string }).error).toContain("INITIAL_STATE_INVALID_ENCODING");
   });
 });
 
@@ -417,6 +454,105 @@ describe("registerValidatedActionsTools", () => {
       { Authorization: "Bearer session-883" },
     );
     expect(JSON.parse(result.content[0].text)).toEqual(RUN_RESPONSE);
+  });
+
+  it("sends the start context only with the given fields", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const mockPost = vi.fn().mockResolvedValue(RUN_RESPONSE);
+    mockedCreateApiClient.mockReturnValue({ post: mockPost } as any);
+
+    const { handler } = registeredTools.get("horizon_start_run")!;
+    const result = await handler({
+      userId: USER_ID,
+      sessionToken: "s",
+      leaderboardKey: "weekly",
+      gameVersion: "1.4.2",
+      replayFormatVersion: "2",
+      contentDigest: HASH_ABC,
+      initialStateBase64: "YWJj",
+    });
+
+    expect(mockPost).toHaveBeenCalledWith(
+      "/api/v1/app/validated-actions/runs",
+      {
+        userId: USER_ID,
+        leaderboardKey: "weekly",
+        context: { gameVersion: "1.4.2", replayFormatVersion: "2", contentDigest: HASH_ABC, initialState: "YWJj" },
+      },
+      { Authorization: "Bearer s" },
+    );
+    expect(JSON.parse(result.content[0].text)).toEqual(RUN_RESPONSE);
+  });
+
+  it("fails locally on a malformed initial state and sends nothing", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const mockPost = vi.fn();
+    mockedCreateApiClient.mockReturnValue({ post: mockPost } as any);
+
+    const { handler } = registeredTools.get("horizon_start_run")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "s", initialStateBase64: "%%%" });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("INITIAL_STATE_INVALID_ENCODING");
+    expect(mockPost).not.toHaveBeenCalled();
+  });
+
+  it("names the initial state size code in the error result", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const body = JSON.stringify({ status: 413, code: "INITIAL_STATE_TOO_LARGE", message: "Initial state too large" });
+    mockedCreateApiClient.mockReturnValue({ post: vi.fn().mockRejectedValue(new HorizonApiError(413, body)) } as any);
+
+    const { handler } = registeredTools.get("horizon_start_run")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "s", initialStateBase64: "YWJj" });
+
+    expect(result.isError).toBe(true);
+    expect(result.content[0].text).toContain("HTTP 413, code INITIAL_STATE_TOO_LARGE");
+  });
+
+  it("validates the start context inputs", () => {
+    registerValidatedActionsTools(createMockServer());
+    const start = inputSchema("horizon_start_run");
+
+    expect(start.gameVersion.safeParse("1.4.2").success).toBe(true);
+    expect(start.gameVersion.safeParse("v".repeat(65)).success).toBe(false);
+    expect(start.gameVersion.safeParse("").success).toBe(false);
+    expect(start.contentVersion.safeParse("caf\u00e9").success).toBe(false);
+    expect(start.simulationVersion.safeParse("sim 3").success).toBe(true);
+    expect(start.replayFormatVersion.safeParse("line\nbreak").success).toBe(false);
+    expect(start.contentDigest.safeParse(HASH_ABC).success).toBe(true);
+    expect(start.contentDigest.safeParse("abc").success).toBe(false);
+    expect(start.initialStateBase64.safeParse("YWJj").success).toBe(true);
+
+    const text = description("horizon_start_run");
+    expect(text).toContain("INITIAL_STATE_INVALID_ENCODING");
+    expect(text).toContain("INITIAL_STATE_TOO_LARGE");
+  });
+
+  it("passes sus of an accepted run through", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    mockedCreateApiClient.mockReturnValue({ post: vi.fn().mockResolvedValue({ ...SUBMIT_RESPONSE, sus: true }) } as any);
+
+    const { handler } = registeredTools.get("horizon_submit_validated")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "s", ticket: TICKET, inputLogHash: HASH_ABC, score: 5 });
+
+    expect(JSON.parse(result.content[0].text)).toEqual({ ...SUBMIT_RESPONSE, sus: true, inputLogHash: HASH_ABC });
+    expect(description("horizon_submit_validated")).toContain("sus is true");
+  });
+
+  it("reads a missing sus of an older server as false", async () => {
+    registerValidatedActionsTools(createMockServer());
+
+    const { sus: _omitted, ...oldResponse } = SUBMIT_RESPONSE;
+    mockedCreateApiClient.mockReturnValue({ post: vi.fn().mockResolvedValue(oldResponse) } as any);
+
+    const { handler } = registeredTools.get("horizon_submit_validated")!;
+    const result = await handler({ userId: USER_ID, sessionToken: "s", ticket: TICKET, inputLogHash: HASH_ABC, score: 5 });
+
+    expect(JSON.parse(result.content[0].text).sus).toBe(false);
   });
 
   it("omits leaderboardKey for an unbound run", async () => {
