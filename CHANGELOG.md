@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.7.0...v1.8.0) (2026-10-10)
+
+
+### Features
+
+* **cloud-save:** expose the save revision and conditional saves ([c222cce](https://github.com/ProjectMakersDE/horizOn-mcp/commit/c222cceb5d65cbe708717971983c9100854fc76c))
+
 # [1.7.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.6.0...v1.7.0) (2026-10-02)
 
 
