@@ -123,7 +123,7 @@ curl -X POST https://horizon.pm/api/v1/app/user-logs/create \
 - **Log meaningful events** — Track milestones (tutorial complete, level up), not routine actions.
 - **Use error codes** — Consistent error codes make it easy to filter and analyze issues in the Dashboard.
 - **Truncate long messages** — Messages are limited to 1000 characters. Both SDKs auto-truncate.
-- **Be aware of rate limits** — Each log creation counts toward the 10 req/min limit. Batch or throttle logging.
+- **Be aware of rate limits** — Each log creation counts toward the account's per-minute rate limit. Batch or throttle logging.
 
 ## Tier Requirements
 

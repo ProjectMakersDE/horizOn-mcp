@@ -244,7 +244,7 @@ Edit your config resource at `addons/horizon_sdk/horizon_config.tres`:
 
 ## Rate Limit Best Practices
 
-The rate limit is **10 requests per minute per client** (all tiers). Plan your API calls:
+The rate limit counts all requests of an account per minute: **FREE 20, BASIC 120, PRO 600, ENTERPRISE 2,000** (defaults). Plan your API calls:
 
 ```gdscript
 func _ready():
