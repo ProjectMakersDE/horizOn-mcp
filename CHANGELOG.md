@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.8.0...v1.8.1) (2026-10-10)
+
+
+### Bug Fixes
+
+* **prompts:** state the real per-account rate limit ([2d54814](https://github.com/ProjectMakersDE/horizOn-mcp/commit/2d548145cb4070034696a4b850a2871503ff7c99))
+
 # [1.8.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.7.0...v1.8.0) (2026-10-10)
 
 
