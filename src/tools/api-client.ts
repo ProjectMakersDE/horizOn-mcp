@@ -135,6 +135,29 @@ export class HorizonApiClient {
     return parseBody<T>(response);
   }
 
+  /**
+   * POST that also returns the response headers (cloud save load answers
+   * X-Cloud-Save-Revision). Non-ok responses throw HorizonApiError like post.
+   */
+  async postWithHeaders<T>(
+    path: string,
+    body?: unknown,
+    headers?: Record<string, string>,
+  ): Promise<{ data: T; headers: Headers }> {
+    const response = await fetch(`${this.baseUrl}${path}`, {
+      method: "POST",
+      headers: { ...this.authHeaders(), ...headers },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      const responseBody = await response.text();
+      throw new HorizonApiError(response.status, responseBody);
+    }
+
+    return { data: await parseBody<T>(response), headers: response.headers };
+  }
+
   async put<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: "PUT",

@@ -80,6 +80,7 @@ export const USER_RANK_OUTPUT = lenientObject({
 export const LOAD_CLOUD_DATA_OUTPUT = lenientObject({
   found: z.boolean().describe("false when the player never saved"),
   saveData: z.string().describe("The stored save string, null when found is false"),
+  revision: z.number().describe("Server revision (0 = empty slot), to pass as expectedRevision when saving. Null when unknown"),
 });
 
 export const REMOTE_CONFIG_OUTPUT = lenientObject({
