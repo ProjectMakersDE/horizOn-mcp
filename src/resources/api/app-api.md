@@ -323,6 +323,8 @@ Get entries around a user's rank.
 
 Save data to the cloud (JSON mode). Replaces the previous save. Requires `Authorization: Bearer <accessToken>` of the same user.
 
+Optional header `If-Match: <revision>` (a plain number, not quoted): the save is only written while the stored save is still at that revision. Use `0` for an empty slot, otherwise the revision from load or from the last save. Without `If-Match` the save overwrites unconditionally.
+
 **Request:**
 ```json
 {
@@ -335,13 +337,14 @@ Save data to the cloud (JSON mode). Replaces the previous save. Requires `Author
 ```json
 {
   "success": true,
-  "dataSizeBytes": "number"
+  "dataSizeBytes": "number",
+  "revision": "number (new revision, 1 after the first save)"
 }
 ```
 
-**Binary mode:** `POST /api/v1/app/cloud-save/save?userId={userId}` with `Content-Type: application/octet-stream`.
+**Binary mode:** `POST /api/v1/app/cloud-save/save?userId={userId}` with `Content-Type: application/octet-stream`. `If-Match` and the response are the same as in JSON mode.
 
-**Status Codes:** `200` success, `403` exceeds tier size limit.
+**Status Codes:** `200` success, `403` exceeds tier size limit, `409` the save changed since the `If-Match` revision (another device saved first: nothing was written, load again and decide).
 
 **Tier limits (defaults):** FREE=1KB, BASIC=5KB, PRO=20KB, ENTERPRISE=250KB.
 
@@ -366,7 +369,9 @@ Load data from the cloud (JSON mode). Requires `Authorization: Bearer <accessTok
 }
 ```
 
-**Binary mode:** `GET /api/v1/app/cloud-save/load?userId={userId}` with `Accept: application/octet-stream`.
+**Response header:** `X-Cloud-Save-Revision: <revision>`, `0` for an empty slot. Send it back as `If-Match` on the next save. A missing header means the revision is unknown (for example a self-hosted simpleServer), not an empty slot. Browsers can read it: CORS exposes it for `/api/v1/app/**`.
+
+**Binary mode:** `POST /api/v1/app/cloud-save/load` with `Content-Type: application/json`, `Accept: application/octet-stream` and the same JSON body. The response is raw bytes (`200`) or an empty body (`204`) when no save exists, both with `X-Cloud-Save-Revision`.
 
 ---
 

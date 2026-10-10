@@ -31,7 +31,8 @@ The MCP tools require this token in their `sessionToken` input.
 
 **`POST /api/v1/app/cloud-save/save`**
 
-Saves user data to the cloud. Overwrites any existing save.
+Saves user data to the cloud. Overwrites any existing save, unless the request sends
+`If-Match: <revision>` (see [Saving From Several Devices](#saving-from-several-devices)).
 
 **Request Body (JSON mode):**
 
@@ -45,9 +46,12 @@ Saves user data to the cloud. Overwrites any existing save.
 ```json
 {
   "success": true,
-  "dataSizeBytes": 256
+  "dataSizeBytes": 256,
+  "revision": 4
 }
 ```
+
+`revision` is the new revision of the save (1 after the first save).
 
 **Binary mode:** `POST /api/v1/app/cloud-save/save?userId={userId}` with `Content-Type: application/octet-stream` and raw bytes in the body.
 
@@ -83,9 +87,32 @@ If no save data exists:
 }
 ```
 
+Every load response carries the header `X-Cloud-Save-Revision`: the save's revision, `0`
+for an empty slot.
+
 **Binary mode:** `POST /api/v1/app/cloud-save/load` with `Content-Type: application/json`,
 `Accept: application/octet-stream` and JSON body `{"userId":"<player-uuid>"}`.
-The response is raw bytes (`200`) or an empty body (`204`) when no save exists.
+The response is raw bytes (`200`) or an empty body (`204`) when no save exists, both with
+`X-Cloud-Save-Revision`.
+
+## Saving From Several Devices
+
+A plain save overwrites whatever is stored, so two devices of the same player overwrite each
+other silently. The revision prevents that:
+
+1. **Load** and keep the revision: `X-Cloud-Save-Revision` (REST), `revision` of
+   `horizon_load_cloud_data` (MCP), `Revision` of `LoadSnapshot()` / `LoadBytesSnapshot()`
+   (Unity). `0` means the slot is empty.
+2. **Save with that revision**: header `If-Match: <revision>` (a plain number), `expectedRevision`
+   of `horizon_save_cloud_data`, or `Save(data, revision)` / `SaveBytes(data, revision)` in
+   Unity. Keep the new `revision` from the response for the next save.
+3. **On `409`** another device saved first. Nothing was written. Load again, merge or let the
+   player choose, then save with the new revision. Never retry the old data blindly.
+
+A load without the revision header (for example on a self-hosted simpleServer) leaves the
+revision unknown. Treat that as unknown, not as an empty slot: the server cannot detect
+conflicts then. The Godot and Unreal SDKs do not send the revision yet: their saves overwrite
+unconditionally.
 
 ## Code Examples
 
@@ -153,6 +180,17 @@ string json = await CloudSaveManager.Instance.Load();
 byte[] data = GetBinaryData();
 await CloudSaveManager.Instance.SaveBytes(data);
 byte[] loadedBytes = await CloudSaveManager.Instance.LoadBytes();
+
+// Several devices: load with revision, save only if nothing changed meanwhile
+var snapshot = await CloudSaveManager.Instance.LoadSnapshot();
+if (snapshot.IsSuccess && snapshot.HasRevision)
+{
+    var result = await CloudSaveManager.Instance.Save("{\"level\": 6}", snapshot.Revision.Value);
+    if (result.IsConflict)
+    {
+        // Another device saved first: load again and decide, nothing was written
+    }
+}
 ```
 
 ### REST (cURL)
@@ -165,12 +203,20 @@ curl -X POST https://horizon.pm/api/v1/app/cloud-save/save \
   -H "Content-Type: application/json" \
   -d '{"userId": "user123", "saveData": "{\"level\":5,\"coins\":1000}"}'
 
-# Load data (JSON mode)
-curl -X POST https://horizon.pm/api/v1/app/cloud-save/load \
+# Load data (JSON mode), -i shows the X-Cloud-Save-Revision header
+curl -i -X POST https://horizon.pm/api/v1/app/cloud-save/load \
   -H "X-API-Key: YOUR_API_KEY" \
   -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
   -H "Content-Type: application/json" \
   -d '{"userId": "user123"}'
+
+# Save only if the save is still at revision 3 (409 otherwise)
+curl -X POST https://horizon.pm/api/v1/app/cloud-save/save \
+  -H "X-API-Key: YOUR_API_KEY" \
+  -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
+  -H "Content-Type: application/json" \
+  -H "If-Match: 3" \
+  -d '{"userId": "user123", "saveData": "{\"level\":6}"}'
 ```
 
 ## Best Practices
@@ -187,4 +233,5 @@ curl -X POST https://horizon.pm/api/v1/app/cloud-save/load \
 | 401 | Invalid API key | Check `X-API-Key` header |
 | 401 | Missing, invalid or expired player session | Sign in again and send the Bearer session |
 | 403 | Save exceeds tier limit | Reduce data size or upgrade tier |
+| 409 | Save changed since the `If-Match` revision | Load again, decide, save with the new revision |
 | 429 | Rate limit exceeded | Batch saves, save less frequently |

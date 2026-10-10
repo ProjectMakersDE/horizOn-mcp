@@ -76,8 +76,8 @@ Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempot
 | `horizon_get_leaderboard_top` | Get the top leaderboard entries with each player's profile, optionally by board key |
 | `horizon_get_user_rank` | Get a user's leaderboard rank, optionally by board key |
 | `horizon_get_leaderboard_around` | Get leaderboard entries around a user's position, optionally by board key |
-| `horizon_save_cloud_data` | Save cloud data for a user |
-| `horizon_load_cloud_data` | Load cloud save data for a user |
+| `horizon_save_cloud_data` | Save cloud data for a user, optionally only at an `expectedRevision` (409 on conflict) |
+| `horizon_load_cloud_data` | Load cloud save data for a user, with its `revision` |
 | `horizon_get_remote_config` | Get a single remote config value by key |
 | `horizon_get_all_remote_configs` | Get all remote config values |
 | `horizon_get_localization` | Get a single localized string by key, optionally for a specific language |

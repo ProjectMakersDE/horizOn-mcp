@@ -79,6 +79,32 @@ describe("HorizonApiClient", () => {
     expect(options.headers.Authorization).toBe("Bearer s");
   });
 
+  it("postWithHeaders returns the body and the response headers", async () => {
+    const fakeFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: new Headers({ "X-Cloud-Save-Revision": "5" }),
+      text: async () => JSON.stringify({ found: true }),
+    } as unknown as Response);
+    vi.stubGlobal("fetch", fakeFetch);
+
+    const client = new HorizonApiClient("test-key", "https://example.com");
+    const result = await client.postWithHeaders("/api/v1/test", { a: 1 }, { Authorization: "Bearer s" });
+
+    const [, options] = fakeFetch.mock.calls[0];
+    expect(options.method).toBe("POST");
+    expect(options.headers.Authorization).toBe("Bearer s");
+    expect(result.data).toEqual({ found: true });
+    expect(result.headers.get("x-cloud-save-revision")).toBe("5");
+  });
+
+  it("postWithHeaders throws HorizonApiError on a non-ok response", async () => {
+    vi.stubGlobal("fetch", mockFetchResponse({ error: "conflict" }, { status: 409 }));
+
+    const client = new HorizonApiClient("test-key", "https://example.com");
+    await expect(client.postWithHeaders("/api/v1/test", {})).rejects.toMatchObject({ status: 409 });
+  });
+
   it("GET merges extra headers such as a session", async () => {
     const fakeFetch = mockFetchResponse({ ok: true });
     vi.stubGlobal("fetch", fakeFetch);
