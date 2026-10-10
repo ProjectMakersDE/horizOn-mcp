@@ -43,10 +43,10 @@ horizOn offers four pricing tiers with different limits:
 |---------|------|-------|-----|------------|
 | **Cloud Save Size** | 1 KB | 5 KB | 20 KB | 250 KB |
 | **User Logs** | Not available | Available | Available | Available |
-| **Rate Limit** | 10 req/min | 10 req/min | 10 req/min | 10 req/min |
+| **Rate Limit** | 20 req/min | 120 req/min | 600 req/min | 2,000 req/min |
 | **All other features** | Available | Available | Available | Available |
 
-**Rate Limit:** All tiers are limited to **10 requests per minute per client**. Plan API calls carefully and use caching.
+**Rate Limit:** The limit counts all requests of an account per minute (defaults above). Above it the API returns `429` with a `Retry-After` header. Plan API calls carefully and use caching.
 
 ## API Structure
 

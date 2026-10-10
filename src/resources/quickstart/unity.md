@@ -328,7 +328,7 @@ if (data == null)
 |---------|------|-------|-----|------------|
 | Cloud Save | 1 KB | 5 KB | 20 KB | 250 KB |
 | User Logs | No | Yes | Yes | Yes |
-| Rate Limit | 10/min | 10/min | 10/min | 10/min |
+| Rate Limit | 20/min | 120/min | 600/min | 2,000/min |
 
 ## Efficient Startup Pattern
 

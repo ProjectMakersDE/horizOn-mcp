@@ -115,7 +115,7 @@ curl -X POST https://horizon.pm/api/v1/app/user-feedback/submit \
 - **Include device info for bug reports** — Both SDKs auto-collect device info; enable it for bug reports.
 - **Use categories** — Categorize feedback as `BUG`, `FEATURE`, or `GENERAL` for easier triage in the Dashboard.
 - **Add contact email** — Include the user's email if they want to receive follow-up responses.
-- **Rate limit awareness** — Feedback submission counts toward the 10 req/min limit.
+- **Rate limit awareness** — Feedback submission counts toward the account's per-minute rate limit.
 
 ## Common Errors
 

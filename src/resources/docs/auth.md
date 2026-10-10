@@ -277,4 +277,4 @@ curl -X POST https://horizon.pm/api/v1/app/user-management/signin \
 | 403 | User not verified | Complete email verification first |
 | 404 | User not found | User may not exist, try signup |
 | 409 | User already exists | Use signin instead of signup |
-| 429 | Rate limit exceeded | Wait before retrying (10 req/min limit) |
+| 429 | Rate limit exceeded | Wait for `Retry-After` before retrying (per-account limit per minute) |

@@ -283,7 +283,7 @@ The plugin ships `AHelloHorizonActor`. Set the API key and Backend Hosts in Proj
 
 ## Rate Limit Best Practices
 
-All tiers are limited to **10 requests per minute per client**. The SDK retries HTTP 429 responses automatically.
+The rate limit counts all requests of an account per minute: **FREE 20, BASIC 120, PRO 600, ENTERPRISE 2,000** (defaults). The SDK retries HTTP 429 responses automatically.
 
 - Load all remote configs and localizations once at startup
 - Use the `bUseCache` parameters for leaderboards, remote config and news
