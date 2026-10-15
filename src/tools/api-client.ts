@@ -188,10 +188,10 @@ export class HorizonApiClient {
     return parseBody<T>(response);
   }
 
-  async delete<T>(path: string, body?: unknown): Promise<T> {
+  async delete<T>(path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`, {
       method: "DELETE",
-      headers: this.authHeaders(),
+      headers: { ...this.authHeaders(), ...headers },
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 

@@ -30,7 +30,7 @@ Add to your MCP client configuration (Claude Desktop, Cursor, etc.):
 
 ## Features
 
-### Resources (19 docs)
+### Resources
 
 Documentation resources are served directly from the MCP server. No API key required.
 
@@ -46,6 +46,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/gift-codes` | Gift code validation and redemption for promotional rewards, including cosmetic unlocks via grants. SDK examples |
 | `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
+| `horizon://docs/inbox` | Session inbox, protected rewards, immutable broadcasts, server clock and safe publication retries |
 | `horizon://docs/statistics` | Atomic session counters, safe integer batches, explicit original IDs and cache/UTC recovery. SDK and admin examples |
 | `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, start context, evidence upload, admin evidence review with sus packages and package export, rejection codes. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
@@ -247,3 +248,7 @@ MIT
 ## Statistics tools
 
 `horizon_get_statistics`, `horizon_get_statistics_definitions` and `horizon_update_statistics` expose explicit session counters. Persist the original timestamp:UUID and immutable batch before posting; after a timeout reuse that intent, never generate a replacement ID automatically. Read `horizon://docs/statistics` or use `integrate-feature` with `feature=statistics` for engine guidance. Four Account Key tools inspect/replace definitions with If-Match, inspect one owned player and read tier limits (`horizon_admin_statistics_*`). Statistics are separate from player values.
+
+## Inbox tools
+
+Four player tools read, mark read, claim and remove inbox entries with the active session. Four `horizon_admin_inbox_*` tools manage immutable broadcasts or inspect an owned player with an INBOX-scoped Account Key. Read `horizon://docs/inbox` before publishing: persist the exact intent, use serverTime for new timestamps, and retain the original ID after an uncertain response. Protected rewards never silently expire or disappear.

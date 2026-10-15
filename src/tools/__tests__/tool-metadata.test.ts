@@ -45,6 +45,10 @@ const PLAYER_TOOLS = [
   "horizon_get_all_localizations",
   "horizon_get_localization_languages",
   "horizon_get_news",
+  "horizon_get_inbox",
+  "horizon_mark_inbox_read",
+  "horizon_claim_inbox",
+  "horizon_remove_inbox",
   "horizon_validate_gift_code",
   "horizon_redeem_gift_code",
   "horizon_get_profile",
@@ -206,7 +210,7 @@ describe("player tool metadata", () => {
       .map(([name]) => name)
       .sort();
     expect(destructive).toEqual(
-      ["horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_update_statistics", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
+      ["horizon_mark_inbox_read", "horizon_claim_inbox", "horizon_remove_inbox", "horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_update_statistics", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
     );
   });
 
@@ -227,7 +231,7 @@ describe("admin tool metadata", () => {
     const player = registerTools(false);
     const all = registerTools(true);
     const admin = [...all.keys()].filter((name) => !player.has(name));
-    expect(admin.length).toBe(95);
+    expect(admin.length).toBe(99);
     expect(admin.every((name) => name.startsWith("horizon_admin_"))).toBe(true);
   });
 
