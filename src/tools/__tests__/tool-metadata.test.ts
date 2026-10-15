@@ -56,6 +56,9 @@ const PLAYER_TOOLS = [
   "horizon_start_run",
   "horizon_submit_validated",
   "horizon_get_state",
+  "horizon_get_statistics",
+  "horizon_get_statistics_definitions",
+  "horizon_update_statistics",
   "horizon_upload_evidence",
   "horizon_submit_feedback",
   "horizon_create_log",
@@ -66,7 +69,7 @@ const PLAYER_TOOLS = [
   "horizon_get_email_status",
 ].sort();
 
-/** Read-only player tools that return an object and declare an outputSchema. */
+/** Structured player tools; statistics updates are an explicitly destructive idempotent write. */
 const STRUCTURED_TOOLS = [
   "horizon_test_connection",
   "horizon_check_auth",
@@ -83,6 +86,9 @@ const STRUCTURED_TOOLS = [
   "horizon_validate_gift_code",
   "horizon_get_profile",
   "horizon_get_state",
+  "horizon_get_statistics",
+  "horizon_get_statistics_definitions",
+  "horizon_update_statistics",
   "horizon_get_email_status",
 ].sort();
 
@@ -189,7 +195,7 @@ describe("player tool metadata", () => {
     const withOutput = [...tools].filter(([, config]) => config.outputSchema !== undefined).map(([name]) => name);
     expect(withOutput.sort()).toEqual(STRUCTURED_TOOLS);
     for (const name of STRUCTURED_TOOLS) {
-      expect(tools.get(name)?.annotations?.destructiveHint, name).toBe(false);
+      expect(tools.get(name)?.annotations?.destructiveHint, name).toBe(name === "horizon_update_statistics");
     }
   });
 
@@ -200,7 +206,7 @@ describe("player tool metadata", () => {
       .map(([name]) => name)
       .sort();
     expect(destructive).toEqual(
-      ["horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
+      ["horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_update_statistics", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
     );
   });
 
@@ -221,7 +227,7 @@ describe("admin tool metadata", () => {
     const player = registerTools(false);
     const all = registerTools(true);
     const admin = [...all.keys()].filter((name) => !player.has(name));
-    expect(admin.length).toBe(91);
+    expect(admin.length).toBe(95);
     expect(admin.every((name) => name.startsWith("horizon_admin_"))).toBe(true);
   });
 

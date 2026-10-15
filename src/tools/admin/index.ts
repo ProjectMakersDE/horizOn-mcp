@@ -23,6 +23,7 @@ import { registerAdminCrashesTools } from "./crashes.js";
 import { registerAdminSmtpTools } from "./smtp.js";
 import { registerAdminValidatedActionsTools } from "./validated-actions.js";
 import { registerAdminValidatedActionsConfigTools } from "./validated-actions-config.js";
+import { registerAdminStatisticsTools } from "./statistics.js";
 import { registerAdminPlayerValuesTools } from "./player-values.js";
 
 export function registerAllAdminTools(server: McpServer): boolean {
@@ -46,6 +47,7 @@ export function registerAllAdminTools(server: McpServer): boolean {
   registerAdminSmtpTools(server);
   registerAdminValidatedActionsTools(server);
   registerAdminValidatedActionsConfigTools(server);
+  registerAdminStatisticsTools(server);
   registerAdminPlayerValuesTools(server);
 
   return true;

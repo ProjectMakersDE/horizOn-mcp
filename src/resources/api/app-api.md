@@ -710,6 +710,9 @@ Create a user log entry. **Requires BASIC tier or higher.**
 | 429 | Too Many Requests (rate limited) |
 | 500 | Internal Server Error |
 
+## Statistics
+
+Matching player Bearer session required. GET `/api/v1/app/statistics?userId=<uuid>&definitionVersion=<optional>` loads a snapshot; GET `/api/v1/app/statistics/definitions?definitionVersion=<optional>` loads definitions. POST `/api/v1/app/statistics` accepts `{userId,operationId,updates:[{key,value}]}` as one atomic batch of1..100 distinct safe integer updates. Persist and reuse original timestamp:UUID+payload on uncertain outcomes. Retained replay first; mismatched payload409, expired/evicted unknown ID410, never rebook. `horizon://docs/statistics` documents UTC resets, versioned catalog, eight bounded receipts and the persistent eviction floor.
 ## Player Values
 
 All four routes require the Project API key and `Authorization: Bearer <player accessToken>` for the same `userId`.

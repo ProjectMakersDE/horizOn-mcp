@@ -10,6 +10,7 @@ import { registerGiftCodeTools } from "./gift-codes.js";
 import { registerPlayerProfileTools } from "./player-profile.js";
 import { registerPlayerValuesTools } from "./player-values.js";
 import { registerValidatedActionsTools } from "./validated-actions.js";
+import { registerStatisticsTools } from "./statistics.js";
 import { registerFeedbackTools } from "./feedback.js";
 import { registerUserLogTools } from "./user-logs.js";
 import { registerCrashReportingTools } from "./crash-reporting.js";
@@ -31,6 +32,7 @@ export function registerAllTools(server: McpServer): void {
   registerPlayerProfileTools(server);
   registerPlayerValuesTools(server);
   registerValidatedActionsTools(server);
+  registerStatisticsTools(server);
   registerFeedbackTools(server);
   registerUserLogTools(server);
   registerCrashReportingTools(server);
