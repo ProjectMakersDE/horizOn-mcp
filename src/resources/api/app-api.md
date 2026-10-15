@@ -468,7 +468,8 @@ A request without a session is rejected with `401` (no transition window).
 ```json
 {
   "code": "string",
-  "userId": "string"
+  "userId": "string",
+  "idempotencyId": "stable-redemption-intent"
 }
 ```
 
@@ -478,19 +479,33 @@ A request without a session is rejected with `401` (no transition window).
   "success": "boolean",
   "message": "string",
   "giftData": "string (JSON) | null",
-  "grantedUnlocks": ["string"]
+  "grantedUnlocks": ["string"],
+  "grantedValues": [],
+  "playerValues": null,
+  "replayed": false
 }
 ```
 
 `grantedUnlocks`: cosmetic IDs from `giftData.grants` the player owns after the redemption, `[]` without grants.
 
-**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `401` missing, invalid or expired session, `403` code or user of another API key or session of another user, `404` unknown code, `409` `UNLOCK_LIMIT_REACHED` (more than 25 unlocks, code not used up).
+Develop TASK-1007: supply an optional stable `idempotencyId` (1..128characters) and reuse it
+on retry. Response adds `grantedValues:[{key,amount}]`, `playerValues` (current PlayerValuesView
+or null) and `replayed`. Server-owned value rewards commit atomically with redemption/cosmetics;
+422 MAX_BALANCE_REACHED rolls back everything. Display the snapshot, never add the deltas twice.
+
+
+The example above shows the no-values response. With value rewards, `grantedValues` holds
+the original positive `{key,amount}` pairs and `playerValues` contains the current snapshot.
+Omitting `idempotencyId` preserves legacy behavior and may consume another redemption on retry.
+
+**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `401` missing, invalid or expired session, `403` code or user of another API key or session of another user, `404` unknown code, `409` idempotency conflict or `UNLOCK_LIMIT_REACHED` (more than25unlocks, code not used up), `422 MAX_BALANCE_REACHED` (all rewards and code consumption rolled back).
 
 ---
 
 ## Player Profile
 
 Both endpoints need `Authorization: Bearer <accessToken>` of `userId`. Errors carry a `code`: `INVALID_BADGES`, `INVALID_COSMETIC_ID`, `COSMETIC_NOT_FOUND`, `COSMETIC_TYPE_MISMATCH` (400), `SESSION_REQUIRED` (401), `COSMETIC_LOCKED`, `SESSION_FORBIDDEN` (403), `PLAYER_NOT_FOUND` (404).
+
 
 ### GET /api/v1/app/player-profile?userId={userId}
 

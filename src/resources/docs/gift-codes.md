@@ -50,6 +50,7 @@ Redeems a gift code and returns the associated reward data.
 |-------|------|----------|-------------|
 | `code` | string | Yes | The gift code to redeem |
 | `userId` | string | Yes | The user's ID (must be the session user) |
+| `idempotencyId` | string | Recommended | Stable1..128character ID for this intent, reused after timeout |
 
 **Response (200):**
 
@@ -65,6 +66,26 @@ Redeems a gift code and returns the associated reward data.
 `giftData` is a JSON string set by the developer in the Dashboard. Your app must parse and apply the rewards.
 
 `grantedUnlocks` lists the cosmetic IDs from `giftData.grants` the player owns after this redemption (always present, `[]` when the code has no grants). Reload the player profile when it is not empty.
+
+### Server-owned value rewards (Develop, TASK-1007)
+
+Admin create/update accepts `values:[{key:"gold",amount:100}]` separately from `giftData`.
+At most eight distinct configured keys, with positive safe integers within each definition's
+maximum balance. Omit on create for no rewards; omit on update to preserve; `[]` clears.
+
+Redeem adds `grantedValues`, `playerValues` and `replayed`. Code consumption, value grants and
+cosmetics commit together. `422 MAX_BALANCE_REACHED` leaves all of them unchanged. Display
+`playerValues.values` as authoritative balances, without adding `grantedValues` again locally.
+`giftData` still carries game-defined payloads and does not set server-owned balances.
+
+Supply one stable `idempotencyId` and retain it across retries. A retained value-redemption
+receipt returns original rewards and current balances without another grant, even after the
+bounded Player Values receipt ring advances. Legacy/no-value responses have `[]`, `null`,
+and `false` defaults respectively. Omission of an ID keeps legacy potentially repeated
+redemption behavior. Never create a new ID to resolve an uncertain response.
+
+The same app contract is implemented for simpleServer. Native SDK accessors are documented
+with their corresponding integration commits; the existing callbacks remain compatible.
 
 ### Cosmetic unlocks (`grants`)
 
