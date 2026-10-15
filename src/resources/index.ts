@@ -28,6 +28,9 @@ function loadDoc(relativePath: string): string {
  * Registers all horizOn documentation resources on the given server.
  */
 export function registerAllResources(server: McpServer): void {
+  server.registerResource("docs-inbox", "horizon://docs/inbox", {
+    title: "Player Inbox", description: "Bounded snapshots, broadcasts, protected overdue rewards and atomic claim recovery.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/inbox", mimeType: "text/markdown", text: loadDoc("docs/inbox.md") }] }));
   server.registerResource("docs-statistics", "horizon://docs/statistics", {
     title: "Player Statistics", description: "Atomic session counters, safe integers, explicit operation IDs, retries and SDK examples.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/statistics", mimeType: "text/markdown", text: loadDoc("docs/statistics.md") }] }));

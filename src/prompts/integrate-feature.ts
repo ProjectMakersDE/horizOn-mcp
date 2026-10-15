@@ -20,6 +20,7 @@ export function registerIntegrateFeaturePrompt(server: McpServer): void {
           "player-values",
           "validated-actions",
           "statistics",
+          "inbox",
           "feedback",
           "user-logs",
           "crash-reporting",
