@@ -24,6 +24,7 @@ import { registerAdminSmtpTools } from "./smtp.js";
 import { registerAdminValidatedActionsTools } from "./validated-actions.js";
 import { registerAdminValidatedActionsConfigTools } from "./validated-actions-config.js";
 import { registerAdminStatisticsTools } from "./statistics.js";
+import { registerAdminPlayerValuesTools } from "./player-values.js";
 
 export function registerAllAdminTools(server: McpServer): boolean {
   const client = createAdminApiClientFromEnv();
@@ -47,6 +48,7 @@ export function registerAllAdminTools(server: McpServer): boolean {
   registerAdminValidatedActionsTools(server);
   registerAdminValidatedActionsConfigTools(server);
   registerAdminStatisticsTools(server);
+  registerAdminPlayerValuesTools(server);
 
   return true;
 }

@@ -31,6 +31,11 @@ export function registerAllResources(server: McpServer): void {
   server.registerResource("docs-statistics", "horizon://docs/statistics", {
     title: "Player Statistics", description: "Atomic session counters, safe integers, explicit operation IDs, retries and SDK examples.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/statistics", mimeType: "text/markdown", text: loadDoc("docs/statistics.md") }] }));
+  server.registerResource("docs-player-values", "horizon://docs/player-values", {
+    title: "Player Values",
+    description: "Server-owned balances, atomic offer purchases, bounded idempotency, support corrections and safe client adjustments.",
+    mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/player-values", mimeType: "text/markdown", text: loadDoc("docs/player-values.md") }] }));
   // Overview
   server.registerResource(
     "overview",

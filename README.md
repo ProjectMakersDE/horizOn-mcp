@@ -30,7 +30,7 @@ Add to your MCP client configuration (Claude Desktop, Cursor, etc.):
 
 ## Features
 
-### Resources (18 docs)
+### Resources (19 docs)
 
 Documentation resources are served directly from the MCP server. No API key required.
 
@@ -44,6 +44,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/localization` | Server-side localized strings across 15 languages: per-key translations, single/all fetch, available languages. SDK examples |
 | `horizon://docs/news` | In-game news and announcements with language filtering. SDK examples |
 | `horizon://docs/gift-codes` | Gift code validation and redemption for promotional rewards, including cosmetic unlocks via grants. SDK examples |
+| `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
 | `horizon://docs/statistics` | Atomic session counters, safe integer batches, explicit original IDs and cache/UTC recovery. SDK and admin examples |
 | `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, start context, evidence upload, admin evidence review with sus packages and package export, rejection codes. SDK examples |
@@ -56,13 +57,15 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
 | `horizon://quickstart/unreal` | Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples |
 
-### Tools (34 tools)
+### Tools (38 tools)
 
 Live API tools that call the horizOn backend. Requires a valid API key.
 
 `horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated`, `horizon_get_state` and `horizon_upload_evidence` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
 
-Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), so clients can tell reads from writes. Destructive tools are `horizon_save_cloud_data` (replaces the save), `horizon_set_profile` (replaces the whole profile), `horizon_submit_validated` (consumes the ticket, can spend balances) and `horizon_cancel_email`. The read tools that return an object also declare an `outputSchema` and return `structuredContent` next to the JSON text. Each description names when to use the tool, which sibling to use instead, what it returns and how to recover from its errors.
+The four player-value tools also require the same player session. Never generate another operation ID automatically after an uncertain result.
+
+Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), so clients can tell reads from writes. Destructive tools are `horizon_save_cloud_data` (replaces the save), `horizon_set_profile` (replaces the whole profile), `horizon_submit_validated` (consumes the ticket, can spend balances) and `horizon_cancel_email`, plus `horizon_purchase_player_value_offer` and `horizon_adjust_player_value` (debit or credit exactly once per persisted operation ID). Many read tools that return an object also declare an `outputSchema` and return `structuredContent` next to the JSON text. Each description names when to use the tool, which sibling to use instead, what it returns and how to recover from its errors.
 
 | Tool | Description |
 |------|-------------|
@@ -87,6 +90,10 @@ Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempot
 | `horizon_get_news` | Get news articles with optional language filtering |
 | `horizon_validate_gift_code` | Validate a gift code without redeeming it |
 | `horizon_redeem_gift_code` | Redeem a gift code for a user (returns `grantedUnlocks` for codes with cosmetic grants) |
+| `horizon_get_player_values` | Read balances and operation window with the active player session |
+| `horizon_get_player_value_offers` | Read configured offers for the player |
+| `horizon_purchase_player_value_offer` | Purchase atomically with a caller-persisted operation ID |
+| `horizon_adjust_player_value` | Adjust within explicitly enabled limits with a stable ID and reason |
 | `horizon_get_profile` | Get a player's profile (avatar, frame, badges), unlocks and the cosmetics catalog |
 | `horizon_set_profile` | Replace a player's whole profile (avatar, frame, up to 3 badges) |
 | `horizon_start_run` | Start a server-checked run: single-use ticket with a server seed, optionally bound to a board and with a start context (game, content, simulation and replay format versions, content digest, initial state as base64) |
@@ -158,7 +165,7 @@ Both can be set together or individually. Admin tools only register when the acc
 
 ### Scope
 
-Account Keys inherit your account's tier (FREE/BASIC/PRO/ENTERPRISE) -- they grant no extra privileges. A key can be full-account, limited to a single Project API Key, limited to selected feature groups, or both. Platform-admin-only endpoints (Blog, Banner, System-Config) are automatically unreachable. A handful of ultra-sensitive endpoints (account deletion, credentials change, key management itself, subscription cancel) require a dashboard session and cannot be called via an Account Key.
+Account Keys inherit your account's tier (FREE/BASIC/PLUS/PRO/ENTERPRISE) -- they grant no extra privileges. A key can be full-account, limited to a single Project API Key, limited to selected feature groups, or both. Platform-admin-only endpoints (Blog, Banner, System-Config) are automatically unreachable. A handful of ultra-sensitive endpoints (account deletion, credentials change, key management itself, subscription cancel) require a dashboard session and cannot be called via an Account Key.
 
 When a key is project-scoped, the backend enforces that scope on direct HTTP calls too. Account-wide endpoints or ID-only endpoints that cannot prove project context are rejected for project-scoped keys.
 
@@ -168,6 +175,7 @@ Admin tools carry the same annotations as the player tools: list, get and statis
 
 | Prefix | Description |
 |--------|-------------|
+| `horizon_admin_player_values_*` | Read/replace catalogue with If-Match, read bounded history and perform audited idempotent corrections |
 | `horizon_admin_projects_*` | Project API key management (create/update/regenerate/revoke/delete) |
 | `horizon_admin_remoteconfig_*` | Remote config CRUD |
 | `horizon_admin_news_*` | Multilingual news (titles/messages as `{lang: content}`) |
@@ -197,6 +205,7 @@ Core features:
 - News and Announcements
 - Gift Codes
 - Player Profile (avatar, frame, badges)
+- Player Values (atomic configured purchases, safe adjustments, support history)
 - Validated Actions (server-checked runs, validated only leaderboards, server-owned currency)
 - User Feedback
 - User Logs
