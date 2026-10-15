@@ -28,6 +28,11 @@ function loadDoc(relativePath: string): string {
  * Registers all horizOn documentation resources on the given server.
  */
 export function registerAllResources(server: McpServer): void {
+  server.registerResource("docs-player-values", "horizon://docs/player-values", {
+    title: "Player Values",
+    description: "Server-owned balances, atomic offer purchases, bounded idempotency, support corrections and safe client adjustments.",
+    mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/player-values", mimeType: "text/markdown", text: loadDoc("docs/player-values.md") }] }));
   // Overview
   server.registerResource(
     "overview",
