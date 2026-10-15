@@ -709,3 +709,18 @@ Create a user log entry. **Requires BASIC tier or higher.**
 | 409 | Conflict (duplicate) |
 | 429 | Too Many Requests (rate limited) |
 | 500 | Internal Server Error |
+
+## Player Values
+
+All four routes require the Project API key and `Authorization: Bearer <player accessToken>` for the same `userId`.
+
+| Method | Path | Parameters |
+|---|---|---|
+| GET | `/api/v1/app/player-values` | Query `userId` |
+| GET | `/api/v1/app/player-values/offers` | Query `userId` |
+| POST | `/api/v1/app/player-values/purchase` | JSON `{userId, offerKey, operationId}` |
+| POST | `/api/v1/app/player-values/adjust` | JSON `{userId, key, amount, reason, operationId}` |
+
+Balances and signed deltas are safe integers, never floating-point currency. Mutations are atomic and replay the same stable operation ID. Preserve the original ID and payload after a timeout. Successful responses include current state and `{operationId, replayed, applied}`. Never apply a replayed delta to the state again. `operationWindow` reports server time and the oldest accepted operation time. Expired operations require reconciliation, not a fresh automatic purchase.
+
+Full definitions, limits, response fields, error recovery, SDK examples, operator tools and the simpleServer boundary: `horizon://docs/player-values`.

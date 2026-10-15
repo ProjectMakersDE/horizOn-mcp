@@ -8,6 +8,7 @@ import { registerLocalizationTools } from "./localization.js";
 import { registerNewsTools } from "./news.js";
 import { registerGiftCodeTools } from "./gift-codes.js";
 import { registerPlayerProfileTools } from "./player-profile.js";
+import { registerPlayerValuesTools } from "./player-values.js";
 import { registerValidatedActionsTools } from "./validated-actions.js";
 import { registerFeedbackTools } from "./feedback.js";
 import { registerUserLogTools } from "./user-logs.js";
@@ -28,6 +29,7 @@ export function registerAllTools(server: McpServer): void {
   registerNewsTools(server);
   registerGiftCodeTools(server);
   registerPlayerProfileTools(server);
+  registerPlayerValuesTools(server);
   registerValidatedActionsTools(server);
   registerFeedbackTools(server);
   registerUserLogTools(server);
