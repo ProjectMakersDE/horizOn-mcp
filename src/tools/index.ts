@@ -12,6 +12,7 @@ import { registerPlayerValuesTools } from "./player-values.js";
 import { registerValidatedActionsTools } from "./validated-actions.js";
 import { registerInboxTools } from "./inbox.js";
 import { registerStatisticsTools } from "./statistics.js";
+import { registerAchievementsTools } from "./achievements.js";
 import { registerFeedbackTools } from "./feedback.js";
 import { registerUserLogTools } from "./user-logs.js";
 import { registerCrashReportingTools } from "./crash-reporting.js";
@@ -34,6 +35,7 @@ export function registerAllTools(server: McpServer): void {
   registerPlayerValuesTools(server);
   registerValidatedActionsTools(server);
   registerStatisticsTools(server);
+  registerAchievementsTools(server);
   registerInboxTools(server);
   registerFeedbackTools(server);
   registerUserLogTools(server);

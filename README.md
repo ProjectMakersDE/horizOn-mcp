@@ -47,6 +47,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
 | `horizon://docs/inbox` | Session inbox, protected rewards, immutable broadcasts, server clock and safe publication retries |
+| `horizon://docs/achievements` | Visible versioned definitions, permanent unlock guards and durable Inbox reward delivery |
 | `horizon://docs/statistics` | Atomic session counters, safe integer batches, explicit original IDs and cache/UTC recovery. SDK and admin examples |
 | `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, start context, evidence upload, admin evidence review with sus packages and package export, rejection codes. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
@@ -252,3 +253,11 @@ MIT
 ## Inbox tools
 
 Four player tools read, mark read, claim and remove inbox entries with the active session. Four `horizon_admin_inbox_*` tools manage immutable broadcasts or inspect an owned player with an INBOX-scoped Account Key. Read `horizon://docs/inbox` before publishing: persist the exact intent, use serverTime for new timestamps, and retain the original ID after an uncertain response. Protected rewards never silently expire or disappear.
+
+### Achievements
+
+`horizon_get_achievements`, `horizon_unlock_achievement` and `horizon_deliver_achievement_rewards`
+expose player progress and pending Inbox handoff. Four `horizon_admin_achievements_*` tools manage
+the versioned catalog and inspect owned players with ACHIEVEMENTS scope. Read
+`horizon://docs/achievements` for hidden-definition caching, permanent key identity, full-Inbox
+recovery and the separate claim that credits balances. Engine prompts accept `feature=achievements`.

@@ -742,3 +742,20 @@ All four routes require the Project API key and `Authorization: Bearer <player a
 Balances and signed deltas are safe integers, never floating-point currency. Mutations are atomic and replay the same stable operation ID. Preserve the original ID and payload after a timeout. Successful responses include current state and `{operationId, replayed, applied}`. Never apply a replayed delta to the state again. `operationWindow` reports server time and the oldest accepted operation time. Expired operations require reconciliation, not a fresh automatic purchase.
 
 Full definitions, limits, response fields, error recovery, SDK examples, operator tools and the simpleServer boundary: `horizon://docs/player-values`.
+
+## Achievements
+
+All routes require the project key and matching player Bearer session.
+
+| Method | Path | Input |
+|---|---|---|
+| GET | `/api/v1/app/achievements` | Query `userId`, optional opaque `definitionVersion` |
+| POST | `/api/v1/app/achievements/unlock` | `{userId,key}` |
+| POST | `/api/v1/app/achievements/rewards/deliver` | `{userId,keys}` with one to eight distinct keys |
+
+Snapshots contain `userId`, `revision`, `definitionVersion`, `definitions`, `progress`, `limits`
+and `serverTime`. Null definitions preserve the matching cache; an empty array clears it.
+Unlock results add `newlyUnlocked`, `replayed` and `deliveryResults` beside `achievements`.
+Delivery results contain `achievements` and per-key `results`. Pending rewards keep their original
+values and remain recoverable when Inbox is full. Inbox claim performs the eventual balance credit.
+See `horizon://docs/achievements` for the complete contract and admin revision rules.
