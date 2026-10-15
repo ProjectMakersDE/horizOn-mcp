@@ -24,6 +24,12 @@ import {
   DESTRUCTIVE_WRITE,
 } from "./_utils.js";
 
+const valuesSchema = z.array(z.object({
+  key: z.string().regex(/^[a-z0-9][a-z0-9._-]{0,23}$/),
+  amount: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+})).max(8).refine(values => new Set(values.map(value => value.key)).size === values.length,
+  "Reward keys must be unique").describe("Up to eight positive safe-integer rewards for configured Player Values keys; separate from giftData");
+
 const SCOPE_ACCOUNT =
   "an Account Key with full-account access or the GIFT_CODES feature group; project-scoped keys are denied (403) because this call is account-wide or ID-based.";
 
@@ -54,7 +60,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           requires: SCOPE_ACCOUNT,
           effects: "None (read only).",
           returns:
-            "{giftCodes, total, page, size, totalPages}; each item has id, code, title, apiKeyId, apiKeyName, description, giftData (JSON string), currentTotalRedemptions, " +
+            "{giftCodes, total, page, size, totalPages}; each item has id, code, title, apiKeyId, apiKeyName, description, giftData (JSON string), values ([{key,amount}]), currentTotalRedemptions, " +
             "maxTotalRedemptions, maxRedemptionsPerUser, expiresAt, isRevoked, revokedReason, isActive, createdAt, updatedAt, isExpired, remainingRedemptions. " +
             "An empty giftCodes array means no codes exist or the page is past the end.",
         },
@@ -144,11 +150,11 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           effects:
             "Stores a new active code that is redeemable immediately and uses one gift code slot of the account plan until it is deleted.",
           returns:
-            "{id, code, title, apiKeyId, apiKeyName, giftData, maxTotalRedemptions, maxRedemptionsPerUser, expiresAt, isActive, createdAt}.",
+            "{id, code, title, apiKeyId, apiKeyName, giftData, values, maxTotalRedemptions, maxRedemptionsPerUser, expiresAt, isActive, createdAt}.",
           errors:
             "409 when the code already exists: choose another code or update the existing one. " +
             "403 when the plan's gift code limit is reached: delete unused codes with horizon_admin_giftcodes_delete (revoked codes still use a slot) or upgrade the plan. " +
-            "400 for invalid giftData grants (not an array, empty, more than 10, duplicate or unknown cosmetic IDs, COSMETIC_NOT_FOUND): fix giftData. " +
+            "400 INVALID_REQUEST for invalid values (unknown keys, duplicates, unsafe or nonpositive amounts, more than eight entries or exceeding configured maximum). 400 for invalid giftData grants (not an array, empty, more than 10, duplicate or unknown cosmetic IDs, COSMETIC_NOT_FOUND): fix giftData. " +
             "400 for an unknown projectApiKeyId or one of another account: check horizon_admin_projects_list.",
         },
         ADMIN_AUTH,
@@ -182,6 +188,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           .describe(
             'Reward payload as a JSON string (not an object), returned to the player on redeem, e.g. {"gold":100,"crystals":50}. An optional "grants" array (1 to 10 distinct cosmetic IDs from the catalog of the code\'s API key) unlocks player profile cosmetics on redeem; the server rejects unknown IDs with 400.',
           ),
+        values: valuesSchema.optional().describe("Server-owned Player Values rewards. Omit to preserve on update or default to empty on create; [] clears rewards"),
         maxTotalRedemptions: z
           .number()
           .int()
@@ -209,6 +216,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
       code,
       description,
       giftData,
+      values,
       maxTotalRedemptions,
       maxRedemptionsPerUser,
       expiresAt,
@@ -223,6 +231,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           giftData,
         };
         if (description !== undefined) body.description = description;
+        if (values !== undefined) body.values = values;
         if (maxTotalRedemptions !== undefined)
           body.maxTotalRedemptions = maxTotalRedemptions;
         if (maxRedemptionsPerUser !== undefined)
@@ -249,7 +258,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
             "changing the code value (not possible: create a new code with horizon_admin_giftcodes_create) or stopping redemptions (use horizon_admin_giftcodes_revoke).",
           requires: `gift code id from horizon_admin_giftcodes_list; ${SCOPE_ACCOUNT}`,
           effects:
-            "Overwrites the passed fields; later redemptions use the new values, past redemptions are not changed. Fields cannot be cleared back to empty or unlimited.",
+            "Overwrites the passed fields; later redemptions use the new values, past redemptions are not changed. Use values:[] to clear value rewards. Other cap fields cannot be cleared back to unlimited.",
           returns:
             "The updated gift code with the same fields as horizon_admin_giftcodes_get.",
           errors:
@@ -276,6 +285,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           .string()
           .optional()
           .describe("New reward payload as a JSON string; replaces the whole payload. An optional \"grants\" array (1 to 10 distinct cosmetic IDs) is validated like on create. Omit to keep"),
+        values: valuesSchema.optional().describe("Server-owned Player Values rewards. Omit to preserve on update or default to empty on create; [] clears rewards"),
         maxTotalRedemptions: z
           .number()
           .int()
@@ -300,6 +310,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
       title,
       description,
       giftData,
+      values,
       maxTotalRedemptions,
       maxRedemptionsPerUser,
       expiresAt,
@@ -310,6 +321,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
         const body: Record<string, unknown> = {};
         if (title !== undefined) body.title = title;
         if (description !== undefined) body.description = description;
+        if (values !== undefined) body.values = values;
         if (giftData !== undefined) body.giftData = giftData;
         if (maxTotalRedemptions !== undefined)
           body.maxTotalRedemptions = maxTotalRedemptions;

@@ -43,7 +43,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/remote-config` | Server-side key-value configuration: feature flags, game balance, A/B testing. SDK examples |
 | `horizon://docs/localization` | Server-side localized strings across 15 languages: per-key translations, single/all fetch, available languages. SDK examples |
 | `horizon://docs/news` | In-game news and announcements with language filtering. SDK examples |
-| `horizon://docs/gift-codes` | Gift code validation and redemption for promotional rewards, including cosmetic unlocks via grants. SDK examples |
+| `horizon://docs/gift-codes` | Gift code validation and redemption, cosmetic grants, server-owned value rewards and stable intent IDs. SDK examples |
 | `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
 | `horizon://docs/inbox` | Session inbox, protected rewards, immutable broadcasts, server clock and safe publication retries |
@@ -90,7 +90,7 @@ Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempot
 | `horizon_get_localization_languages` | List the languages that have localizations for the app |
 | `horizon_get_news` | Get news articles with optional language filtering |
 | `horizon_validate_gift_code` | Validate a gift code without redeeming it |
-| `horizon_redeem_gift_code` | Redeem a gift code for a user (returns `grantedUnlocks` for codes with cosmetic grants) |
+| `horizon_redeem_gift_code` | Redeem with a stable `idempotencyId`; returns `grantedUnlocks`, `grantedValues`, current `playerValues` and `replayed` |
 | `horizon_get_player_values` | Read balances and operation window with the active player session |
 | `horizon_get_player_value_offers` | Read configured offers for the player |
 | `horizon_purchase_player_value_offer` | Purchase atomically with a caller-persisted operation ID |

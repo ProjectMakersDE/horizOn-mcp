@@ -53,33 +53,36 @@ export function registerGiftCodeTools(server: McpServer): void {
   server.registerTool("horizon_redeem_gift_code", {
     title: "Redeem Gift Code",
     description: describeTool({
-      summary: "Redeems a gift code for a player: uses up one redemption and returns the reward data and any cosmetic unlocks.",
+      summary: "Redeems a gift code for a player: uses up one redemption and returns reward data, cosmetic unlocks and server-owned Player Values.",
       use: "the player confirms a code in the game. Check it first with horizon_validate_gift_code when unsure.",
       avoid: "only checking a code (use horizon_validate_gift_code, which uses nothing up).",
       requires: SESSION_REQUIRED,
-      effects: "each successful call uses up one redemption and cannot be undone; cosmetic grants are added to the player's unlocks. A repeat redeems again or fails when the per-player limit is reached.",
+      effects: "A new intent consumes one redemption atomically with all rewards. Reuse the same idempotencyId after a timeout: retained value receipts prevent another grant. Without an ID, repeats may redeem again. Never invent a new ID to resolve an uncertain outcome.",
       returns:
-        "{success, message, giftData, grantedUnlocks}. giftData is a JSON string with the reward set in the dashboard, which the game must parse and apply. " +
+        "{success, message, giftData, grantedUnlocks, grantedValues, playerValues, replayed}. giftData remains game-defined JSON. " +
+        "grantedValues contains the original value rewards; playerValues is the current server balance snapshot or null for legacy/no-value codes. Display that snapshot without adding the rewards locally. " +
         "grantedUnlocks lists the cosmetic IDs from giftData.grants the player owns after this redemption ([] without grants); show them with horizon_get_profile.",
       errors:
         "404 for an unknown code. 400 for an expired or revoked code or a reached limit: tell the player the code does not work. " +
+        "422 MAX_BALANCE_REACHED leaves the code and all rewards unconsumed. 409 Idempotency Conflict means the ID belongs to a different code/player. " +
         "409 UNLOCK_LIMIT_REACHED when the player would own more than 25 unlocks; the code is not used up. " +
         SESSION_ERRORS,
     }),
     inputSchema: {
       code: z.string().min(1).max(50).describe("Gift code as the player typed it (max 50 characters)"),
       userId: userIdSchema,
+      idempotencyId: z.string().trim().min(1).max(128).optional().describe("Stable ID for one redemption intent, retained across timeouts and retries. Omit only for legacy behavior; never replace an uncertain intent ID"),
       sessionToken: z.string().min(1).max(256).describe("accessToken from horizon_signin_email or horizon_signin_anonymous for this userId; sent as a Bearer session"),
     },
     annotations: ADDITIVE_WRITE,
-  }, async ({ code, userId, sessionToken }) => {
+  }, async ({ code, userId, sessionToken, idempotencyId }) => {
     const client = createApiClientFromEnv();
     if (!client) return noApiKeyResponse();
 
     try {
       const result = await client.post(
         "/api/v1/app/gift-codes/redeem",
-        { code, userId },
+        { code, userId, ...(idempotencyId === undefined ? {} : { idempotencyId }) },
         sessionHeaders(sessionToken),
       );
       return jsonResponse(result);
