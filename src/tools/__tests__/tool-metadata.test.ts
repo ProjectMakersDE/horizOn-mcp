@@ -46,6 +46,9 @@ const PLAYER_TOOLS = [
   "horizon_get_localization_languages",
   "horizon_get_news",
   "horizon_get_inbox",
+  "horizon_get_achievements",
+  "horizon_unlock_achievement",
+  "horizon_deliver_achievement_rewards",
   "horizon_mark_inbox_read",
   "horizon_claim_inbox",
   "horizon_remove_inbox",
@@ -231,7 +234,7 @@ describe("admin tool metadata", () => {
     const player = registerTools(false);
     const all = registerTools(true);
     const admin = [...all.keys()].filter((name) => !player.has(name));
-    expect(admin.length).toBe(99);
+    expect(admin.length).toBe(103);
     expect(admin.every((name) => name.startsWith("horizon_admin_"))).toBe(true);
   });
 
