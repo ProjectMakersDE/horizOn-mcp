@@ -27,6 +27,7 @@ export function registerIntegrateFeaturePrompt(server: McpServer): void {
           "shared-objects",
           "matches",
           "chat",
+          "marketplace",
           "inbox",
           "feedback",
           "user-logs",

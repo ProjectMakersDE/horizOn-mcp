@@ -28,6 +28,9 @@ function loadDoc(relativePath: string): string {
  * Registers all horizOn documentation resources on the given server.
  */
 export function registerAllResources(server: McpServer): void {
+  server.registerResource("docs-marketplace", "horizon://docs/marketplace", {
+    title: "Player Marketplace", description: "Atomic original-item escrow, exact prices, protected Inbox returns and scoped recovery.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/marketplace", mimeType: "text/markdown", text: loadDoc("docs/marketplace.md") }] }));
   server.registerResource("docs-chat", "horizon://docs/chat", {
     title: "Hosted Chat", description: "Direct/group/project text, metadata-only realtime, incremental snapshots, original receipts and scoped moderation.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/chat", mimeType: "text/markdown", text: loadDoc("docs/chat.md") }] }));

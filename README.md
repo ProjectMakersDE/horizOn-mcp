@@ -310,3 +310,10 @@ metadata/messages, report moderation, mute/ban and bounded cleanup. Read
 `horizon://docs/chat`; engine prompts accept `feature=chat`. simpleServer explicitly returns
 501 NOT_SUPPORTED for chat. These HTTP tools do not create a background WebSocket connection
 or polling loop. Use the existing native realtime managers for interactive feeds.
+
+## Marketplace
+
+The ten player and fourteen scoped operator tools preserve original-item escrow, atomic
+currency settlement, exact original intent and lossless Inbox returns. Read
+`horizon://docs/marketplace` for routes, original revisions, five-tier limits and recovery.
+Engine prompts accept `feature=marketplace`. No automatic trading, price polling or retries.
