@@ -1,3 +1,4 @@
+import { registerAdminMarketplaceTools } from "./marketplace.js";
 import { registerAdminChatTools } from "./chat.js";
 import { registerAdminMatchesTools } from "./matches.js";
 /**
@@ -63,6 +64,7 @@ export function registerAllAdminTools(server: McpServer): boolean {
   registerAdminSharedObjectsTools(server);
   registerAdminMatchesTools(server);
   registerAdminChatTools(server);
+  registerAdminMarketplaceTools(server);
   registerAdminInboxTools(server);
   registerAdminPlayerValuesTools(server);
 

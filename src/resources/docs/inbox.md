@@ -22,7 +22,7 @@ carry inbox content or grant a reward. simpleServer supports REST, not realtime.
 All three POST bodies are `{userId,entryId}`. Copy the full entry ID, including
 `message:` or `broadcast:`, from the snapshot. The API key and Bearer session stay
 in headers. Marking read does not claim. Claim returns
-`{entryId,replayed,inbox,playerValues}` and grants configured values atomically once.
+`{entryId,replayed,inbox,playerValues,items}` and grants configured values atomically once.
 Replace the value cache from the response, never apply its reward as a second delta.
 Retry an uncertain claim with the same entry ID; these tools do not retry for you.
 
@@ -64,3 +64,13 @@ through its local CLI, not hosted Account Key endpoints.
 
 SDK method names are documented with their respective SDK release. The REST
 contract above is authoritative; never invent native engine calls from tool names.
+
+## Protected original-item returns
+
+Trusted Marketplace messages can add `attachment.itemReturn:{listingId,instanceId,itemKey}`
+while retaining `values:[]`. Only the source feature creates these attachments. Operator
+compose/broadcast rejects them. Claim restores the exact escrowed original instance atomically,
+including original properties and creation time. `items:[{instanceId,itemKey}]` in the claim
+response is a receipt, including on replay after resale/discard, never a request to mint items.
+Refresh inventory explicitly. `INVENTORY_FULL` preserves the unclaimed return, even after expiry.
+Full Inbox preserves the listing as pending until an explicit return delivery or maintenance.

@@ -8,7 +8,7 @@ export const inboxEntryId = z.string().regex(/^(message|broadcast):[0-9a-fA-F]{8
   .describe("Exact stable entry ID from the inbox snapshot, including message: or broadcast: prefix");
 const session = { userId: valueUserId, sessionToken: z.string().min(1).max(256).describe("Player accessToken, sent only as Authorization Bearer") };
 const path = "/api/v1/app/inbox";
-const errors = "409 STATE_CONFLICT: retry the same entry ID. UNCLAIMED_REWARD: claim before removal. MAX_BALANCE_REACHED/DAILY_LIMIT_REACHED leaves the reward unclaimed. ENTRY_NOT_FOUND after removal/cleanup never grants again. " + SESSION_ERRORS;
+const errors = "409 STATE_CONFLICT: retry the same entry ID. UNCLAIMED_REWARD: claim before removal. MAX_BALANCE_REACHED/DAILY_LIMIT_REACHED/INVENTORY_FULL leaves the reward or original item unclaimed. ENTRY_NOT_FOUND after removal/cleanup never grants again. " + SESSION_ERRORS;
 
 export function registerInboxTools(server: McpServer): void {
   server.registerTool("horizon_get_inbox", {
@@ -24,7 +24,7 @@ export function registerInboxTools(server: McpServer): void {
   });
   for (const [suffix, name, title, effects, returns] of [
     ["read", "horizon_mark_inbox_read", "Mark Inbox Entry Read", "Marks this entry read without claiming its reward.", "Updated complete inbox snapshot."],
-    ["claim", "horizon_claim_inbox", "Claim Inbox Reward", "Atomically marks the entry claimed and grants its configured values once. No automatic retries or new action IDs. Overdue unclaimed rewards remain claimable.", "{entryId,replayed,inbox,playerValues}. Replace the value cache with playerValues; never apply the reward delta again."],
+    ["claim", "horizon_claim_inbox", "Claim Inbox Reward", "Atomically marks the entry claimed and grants its configured values or restores its exact escrowed original item once. No automatic retries or new action IDs. Overdue unclaimed rewards remain claimable.", "{entryId,replayed,inbox,playerValues,items}. Replace the value cache with playerValues; item references are receipts, never instructions to mint an item. Explicitly refresh inventory after a claim. Never apply a reward delta again."],
     ["remove", "horizon_remove_inbox", "Remove Inbox Entry", "Removes ordinary or already-claimed entries. Unclaimed valuable attachments are protected. Removal does not create a new claim opportunity.", "Updated complete inbox snapshot."],
   ] as const) {
     server.registerTool(name, {

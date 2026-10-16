@@ -788,3 +788,10 @@ Create and the seven gameplay actions use original `If-Match`. Result and ranked
 Admin base `/api/v1/admin/matches`: GET config/limits/base/{id}, PUT config,
 POST `{id}/cancel` and cleanup. All require `apiKeyId` and MATCHES scope.
 Configuration/cancel use original `If-Match`; cleanup processes one bounded batch.
+
+## Marketplace
+
+The ten player and fourteen scoped operator tools preserve original-item escrow, atomic
+currency settlement, exact original intent and lossless Inbox returns. Read
+`horizon://docs/marketplace` for routes, original revisions, five-tier limits and recovery.
+Engine prompts accept `feature=marketplace`. No automatic trading, price polling or retries.
