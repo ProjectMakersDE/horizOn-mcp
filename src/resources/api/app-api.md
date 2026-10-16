@@ -769,3 +769,11 @@ cancel, remove, block or unblock with `{userId,targetUserId,expectedRevision}`. 
 cancel also require the reviewed pending `requestId`. Responses replace the complete actor snapshot.
 Never replace a stale revision and blindly repeat after uncertainty; read and reconcile first.
 See `horizon://docs/friends` for atomic Inbox notices, block semantics, activity timestamps and limits.
+
+## Groups
+
+`/api/v1/app/groups` requires the project key and matching player Bearer session on every route.
+GET own/detail/member/pending snapshots, POST creation with `expectedPlayerRevision`, PUT full
+metadata with `expectedRevision`, and fourteen POST actions use the explicit group revision and
+original pending `requestId`. The server allocates group IDs. Read `horizon://docs/groups` for all
+paths, fields, limits, roles, atomic Inbox refusal and recovery after uncertain responses.
