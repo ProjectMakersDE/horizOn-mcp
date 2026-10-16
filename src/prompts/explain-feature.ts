@@ -20,6 +20,7 @@ export function registerExplainFeaturePrompt(server: McpServer): void {
           "validated-actions",
           "statistics",
           "achievements",
+          "friends",
           "inbox",
           "feedback",
           "user-logs",

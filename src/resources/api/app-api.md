@@ -759,3 +759,13 @@ Unlock results add `newlyUnlocked`, `replayed` and `deliveryResults` beside `ach
 Delivery results contain `achievements` and per-key `results`. Pending rewards keep their original
 values and remain recoverable when Inbox is full. Inbox claim performs the eventual balance credit.
 See `horizon://docs/achievements` for the complete contract and admin revision rules.
+
+## Friends
+
+Every route requires the project key and matching Bearer player session. GET `/api/v1/app/friends`
+uses `userId`; GET `/api/v1/app/friends/find` also uses an exact UUID or canonical public H-code
+`query`. Both are read-only. POST `/api/v1/app/friends/{action}` accepts request, accept, decline,
+cancel, remove, block or unblock with `{userId,targetUserId,expectedRevision}`. Accept, decline and
+cancel also require the reviewed pending `requestId`. Responses replace the complete actor snapshot.
+Never replace a stale revision and blindly repeat after uncertainty; read and reconcile first.
+See `horizon://docs/friends` for atomic Inbox notices, block semantics, activity timestamps and limits.
