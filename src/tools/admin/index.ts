@@ -26,6 +26,7 @@ import { registerAdminValidatedActionsConfigTools } from "./validated-actions-co
 import { registerAdminInboxTools } from "./inbox.js";
 import { registerAdminStatisticsTools } from "./statistics.js";
 import { registerAdminFriendsTools } from "./friends.js";
+import { registerAdminItemsTools } from "./items.js";
 import { registerAdminGroupsTools } from "./groups.js";
 import { registerAdminAchievementsTools } from "./achievements.js";
 import { registerAdminPlayerValuesTools } from "./player-values.js";
@@ -55,6 +56,7 @@ export function registerAllAdminTools(server: McpServer): boolean {
   registerAdminAchievementsTools(server);
   registerAdminFriendsTools(server);
   registerAdminGroupsTools(server);
+  registerAdminItemsTools(server);
   registerAdminInboxTools(server);
   registerAdminPlayerValuesTools(server);
 

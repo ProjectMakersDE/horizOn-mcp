@@ -28,6 +28,9 @@ function loadDoc(relativePath: string): string {
  * Registers all horizOn documentation resources on the given server.
  */
 export function registerAllResources(server: McpServer): void {
+  server.registerResource("docs-items", "horizon://docs/items", {
+    title: "Player Items", description: "Unique inventories, bounded property rules, revision-safe edits and atomic server-owned purchases.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/items", mimeType: "text/markdown", text: loadDoc("docs/items.md") }] }));
   server.registerResource("docs-groups", "horizon://docs/groups", {
     title: "Groups", description: "Bounded guilds, roles, invitations, exact revisions and safe leadership transfer.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/groups", mimeType: "text/markdown", text: loadDoc("docs/groups.md") }] }));

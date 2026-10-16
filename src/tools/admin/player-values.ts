@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { getAdminClient, noAdminClientResponse, jsonResponse, errorResponse, describeTool, ADMIN_AUTH, READ_ONLY, DESTRUCTIVE_WRITE } from "./_utils.js";
+import { itemRewards } from "../item-schemas.js";
 import { valueKey, safeValue, valueOperationId, valueUserId } from "../player-values.js";
 
 const projectApiKeyId = z.string().uuid().describe("Project API key UUID from horizon_admin_projects_list; must belong to this account");
@@ -11,9 +12,9 @@ const definitions = z.array(z.object({
   adjustment: z.object({ enabled: z.boolean().optional(), maxPerCall: safeValue.optional(), dailyLimit: safeValue.nullable().optional(), minimumBalance: safeValue.optional() }).optional(),
 })).max(64).describe("Complete definitions, at most the plan limit; omitted definitions are archived without deleting balances");
 const offers = z.array(z.object({
-  key: valueKey, name, active: z.boolean().optional(), costs: z.array(amount).min(1).max(8), rewards: z.array(amount).min(1).max(8),
+  key: valueKey, name, active: z.boolean().optional(), costs: z.array(amount).min(1).max(8), rewards: z.array(amount).max(8), itemRewards: itemRewards.optional(),
   purchasesPerDay: z.number().int().min(1).max(1000000).nullable().optional(),
-})).max(1000).describe("Complete offer catalogue, at most the plan limit; each has server-owned positive costs and rewards");
+}).refine(offer => offer.rewards.length > 0 || (offer.itemRewards?.length ?? 0) > 0, "Offer needs value rewards or item rewards")).max(1000).describe("Complete offer catalogue, at most the plan limit; each has server-owned positive costs and value/item rewards");
 const path = "/api/v1/admin/player-values";
 const access = "Account Key with PLAYER_VALUES scope and access to the selected project, or full-account access. Hosted horizOn only; simpleServer uses its local operator CLI.";
 const errors = "403 for an unavailable scope, 404 for an unknown or foreign project/player. 409 REVISION_CONFLICT: read configuration again and reconcile, never blindly overwrite. OPERATION_CONFLICT/OPERATION_EXPIRED: reconcile the original correction, never silently create a fresh ID.";
