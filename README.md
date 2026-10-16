@@ -301,3 +301,12 @@ result reports and original match-bound ranked-run recovery. Writes keep exact r
 make one HTTP attempt. Consensus does not award automatic rewards. simpleServer supports ordinary
 REST and explicitly excludes ranked validation/realtime. Read `horizon://docs/matches`; engine
 prompts accept `feature=matches`.
+
+### Hosted Chat (TASK-1014)
+
+Six app tools cover capabilities, deterministic channel open, incremental sync, original send,
+receipt reconciliation and reporting. Twelve CHAT-scoped admin tools expose word filters,
+metadata/messages, report moderation, mute/ban and bounded cleanup. Read
+`horizon://docs/chat`; engine prompts accept `feature=chat`. simpleServer explicitly returns
+501 NOT_SUPPORTED for chat. These HTTP tools do not create a background WebSocket connection
+or polling loop. Use the existing native realtime managers for interactive feeds.
