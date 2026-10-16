@@ -26,6 +26,27 @@ type ToolConfig = {
 
 /** Tool names are part of the public contract: renaming one is a breaking change. */
 const PLAYER_TOOLS = [
+  "horizon_get_groups",
+  "horizon_get_group",
+  "horizon_get_group_members",
+  "horizon_get_group_pending",
+  "horizon_create_group",
+  "horizon_update_group",
+  "horizon_join_group",
+  "horizon_request_group_join",
+  "horizon_invite_group_player",
+  "horizon_accept_group_invite",
+  "horizon_decline_group_invite",
+  "horizon_cancel_group_invite",
+  "horizon_accept_group_request",
+  "horizon_decline_group_request",
+  "horizon_cancel_group_request",
+  "horizon_leave_group",
+  "horizon_remove_group_member",
+  "horizon_set_group_member_role",
+  "horizon_transfer_group_leadership",
+  "horizon_delete_group",
+
   "horizon_get_friends",
   "horizon_find_player",
   "horizon_send_friend_request",
@@ -223,7 +244,7 @@ describe("player tool metadata", () => {
       .map(([name]) => name)
       .sort();
     expect(destructive).toEqual(
-      ["horizon_accept_friend_request", "horizon_decline_friend_request", "horizon_cancel_friend_request", "horizon_remove_friend", "horizon_block_player", "horizon_unblock_player", "horizon_mark_inbox_read", "horizon_claim_inbox", "horizon_remove_inbox", "horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_update_statistics", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
+      ["horizon_update_group", "horizon_accept_group_invite", "horizon_decline_group_invite", "horizon_cancel_group_invite", "horizon_accept_group_request", "horizon_decline_group_request", "horizon_cancel_group_request", "horizon_leave_group", "horizon_remove_group_member", "horizon_set_group_member_role", "horizon_transfer_group_leadership", "horizon_delete_group", "horizon_accept_friend_request", "horizon_decline_friend_request", "horizon_cancel_friend_request", "horizon_remove_friend", "horizon_block_player", "horizon_unblock_player", "horizon_mark_inbox_read", "horizon_claim_inbox", "horizon_remove_inbox", "horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_update_statistics", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
     );
   });
 
@@ -244,7 +265,7 @@ describe("admin tool metadata", () => {
     const player = registerTools(false);
     const all = registerTools(true);
     const admin = [...all.keys()].filter((name) => !player.has(name));
-    expect(admin.length).toBe(105);
+    expect(admin.length).toBe(111);
     expect(admin.every((name) => name.startsWith("horizon_admin_"))).toBe(true);
   });
 

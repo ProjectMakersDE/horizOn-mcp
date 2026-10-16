@@ -13,6 +13,7 @@ import { registerValidatedActionsTools } from "./validated-actions.js";
 import { registerInboxTools } from "./inbox.js";
 import { registerStatisticsTools } from "./statistics.js";
 import { registerFriendsTools } from "./friends.js";
+import { registerGroupsTools } from "./groups.js";
 import { registerAchievementsTools } from "./achievements.js";
 import { registerFeedbackTools } from "./feedback.js";
 import { registerUserLogTools } from "./user-logs.js";
@@ -38,6 +39,7 @@ export function registerAllTools(server: McpServer): void {
   registerStatisticsTools(server);
   registerAchievementsTools(server);
   registerFriendsTools(server);
+  registerGroupsTools(server);
   registerInboxTools(server);
   registerFeedbackTools(server);
   registerUserLogTools(server);

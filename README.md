@@ -47,6 +47,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
 | `horizon://docs/inbox` | Session inbox, protected rewards, immutable broadcasts, server clock and safe publication retries |
+| `horizon://docs/groups` | Guilds, roles, bounded member pages and revision-safe membership actions |
 | `horizon://docs/friends` | Atomic social relationships, explicit revisions and exact public friend-code lookup |
 | `horizon://docs/achievements` | Visible versioned definitions, permanent unlock guards and durable Inbox reward delivery |
 | `horizon://docs/statistics` | Atomic session counters, safe integer batches, explicit original IDs and cache/UTC recovery. SDK and admin examples |
@@ -269,3 +270,10 @@ recovery and the separate claim that credits balances. Engine prompts accept `fe
 revisions and pending request IDs. Two read-only `horizon_admin_friends_*` tools inspect owned state
 and current limits. Read `horizon://docs/friends`; both engine prompts accept `feature=friends`.
 After an uncertain response, read and reconcile the snapshot before any new player-confirmed action.
+
+### Groups
+
+Twenty player tools cover group snapshots, bounded member pages, pending entries, creation, metadata
+and fourteen explicit membership/role actions. Six read-only `horizon_admin_groups_*` tools inspect
+owned projects. All writes preserve reviewed revisions and pending IDs. Read `horizon://docs/groups`;
+both engine prompts accept `feature=groups`. Uncertain writes are never retried automatically.

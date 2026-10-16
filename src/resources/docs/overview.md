@@ -83,3 +83,7 @@ Content-Type: application/json
 | 409 | Conflict | User already exists (signup) |
 | 429 | Too Many Requests | Rate limit exceeded, wait and retry |
 | 500 | Server Error | Internal server error, retry later |
+
+Groups: bounded guilds/clans with leader, officer and member roles, open/request/invite joining,
+private JSON data and indexed member pages. `horizon://docs/groups` describes same-project session
+authentication, explicit revisions and pending identities, full-Inbox rollback and leadership transfer.
