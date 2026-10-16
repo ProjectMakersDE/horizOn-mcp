@@ -28,6 +28,9 @@ function loadDoc(relativePath: string): string {
  * Registers all horizOn documentation resources on the given server.
  */
 export function registerAllResources(server: McpServer): void {
+  server.registerResource("docs-matches", "horizon://docs/matches", {
+    title: "Asynchronous Matches", description: "Opaque turn state, exact revisions, immutable reports, bounded deadlines and original ranked-run recovery.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/matches", mimeType: "text/markdown", text: loadDoc("docs/matches.md") }] }));
   server.registerResource("docs-shared-objects", "horizon://docs/shared-objects", {
     title: "Shared Objects", description: "Opaque bounded world data, current permissions, exact revisions and trusted ordinary game notices.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/shared-objects", mimeType: "text/markdown", text: loadDoc("docs/shared-objects.md") }] }));

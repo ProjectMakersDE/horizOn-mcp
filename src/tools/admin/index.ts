@@ -1,3 +1,4 @@
+import { registerAdminMatchesTools } from "./matches.js";
 /**
  * Admin-tool registration entry point.
  *
@@ -59,6 +60,7 @@ export function registerAllAdminTools(server: McpServer): boolean {
   registerAdminGroupsTools(server);
   registerAdminItemsTools(server);
   registerAdminSharedObjectsTools(server);
+  registerAdminMatchesTools(server);
   registerAdminInboxTools(server);
   registerAdminPlayerValuesTools(server);
 

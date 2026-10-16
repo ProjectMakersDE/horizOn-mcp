@@ -293,3 +293,11 @@ Ten `horizon_admin_shared_*` tools manage owned collections and explicit cleanup
 `horizon_admin_inbox_send_ordinary` tool uses INBOX scope for a trusted backend's durable notice
 intent. Read `horizon://docs/shared-objects`; both engine prompts accept `feature=shared-objects`.
 Native SDK/PHP/deployment readiness must be checked against the installed version.
+
+## Asynchronous Matches
+
+Fourteen player tools and seven scoped admin tools cover bounded lobbies, opaque turns, immutable
+result reports and original match-bound ranked-run recovery. Writes keep exact revisions and
+make one HTTP attempt. Consensus does not award automatic rewards. simpleServer supports ordinary
+REST and explicitly excludes ranked validation/realtime. Read `horizon://docs/matches`; engine
+prompts accept `feature=matches`.

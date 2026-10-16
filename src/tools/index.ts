@@ -1,3 +1,4 @@
+import { registerMatchesTools } from "./matches.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { registerConnectionTools } from "./connection.js";
 import { registerAuthTools } from "./auth.js";
@@ -44,6 +45,7 @@ export function registerAllTools(server: McpServer): void {
   registerGroupsTools(server);
   registerItemsTools(server);
   registerSharedObjectsTools(server);
+  registerMatchesTools(server);
   registerInboxTools(server);
   registerFeedbackTools(server);
   registerUserLogTools(server);
