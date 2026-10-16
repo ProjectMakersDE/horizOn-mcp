@@ -777,3 +777,14 @@ GET own/detail/member/pending snapshots, POST creation with `expectedPlayerRevis
 metadata with `expectedRevision`, and fourteen POST actions use the explicit group revision and
 original pending `requestId`. The server allocates group IDs. Read `horizon://docs/groups` for all
 paths, fields, limits, roles, atomic Inbox refusal and recovery after uncertain responses.
+
+## Asynchronous matches
+
+Read `horizon://docs/matches` for permissions, opaque bytes, exact revision/recovery and limits.
+App base `/api/v1/app/matches`: GET base/limits/open/{id}, POST base and
+`{id}/{join,decline,start,turn,timeout,leave,cancel,result,ranked-run}`.
+Create and the seven gameplay actions use original `If-Match`. Result and ranked-run use
+`finalStateRevision` in the strict body. Player Bearer session is always required.
+Admin base `/api/v1/admin/matches`: GET config/limits/base/{id}, PUT config,
+POST `{id}/cancel` and cleanup. All require `apiKeyId` and MATCHES scope.
+Configuration/cancel use original `If-Match`; cleanup processes one bounded batch.

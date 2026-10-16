@@ -26,6 +26,20 @@ type ToolConfig = {
 
 /** Tool names are part of the public contract: renaming one is a breaking change. */
 const PLAYER_TOOLS = [
+  "horizon_get_matches",
+  "horizon_get_match_limits",
+  "horizon_find_open_matches",
+  "horizon_get_match",
+  "horizon_create_match",
+  "horizon_join_match",
+  "horizon_decline_match_invite",
+  "horizon_start_match",
+  "horizon_submit_match_turn",
+  "horizon_advance_match_timeout",
+  "horizon_leave_match",
+  "horizon_cancel_match",
+  "horizon_report_match_result",
+  "horizon_start_match_ranked_run",
   "horizon_get_shared_collections", "horizon_get_shared_usage", "horizon_get_shared_object", "horizon_query_shared_objects",
   "horizon_create_shared_object", "horizon_update_shared_object", "horizon_delete_shared_object",
   "horizon_get_items",
@@ -251,7 +265,7 @@ describe("player tool metadata", () => {
       .map(([name]) => name)
       .sort();
     expect(destructive).toEqual(
-      ["horizon_update_shared_object", "horizon_delete_shared_object", "horizon_adjust_item", "horizon_equip_item", "horizon_discard_item", "horizon_update_group", "horizon_accept_group_invite", "horizon_decline_group_invite", "horizon_cancel_group_invite", "horizon_accept_group_request", "horizon_decline_group_request", "horizon_cancel_group_request", "horizon_leave_group", "horizon_remove_group_member", "horizon_set_group_member_role", "horizon_transfer_group_leadership", "horizon_delete_group", "horizon_accept_friend_request", "horizon_decline_friend_request", "horizon_cancel_friend_request", "horizon_remove_friend", "horizon_block_player", "horizon_unblock_player", "horizon_mark_inbox_read", "horizon_claim_inbox", "horizon_remove_inbox", "horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_update_statistics", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
+      ["horizon_decline_match_invite", "horizon_start_match", "horizon_submit_match_turn", "horizon_advance_match_timeout", "horizon_leave_match", "horizon_cancel_match", "horizon_update_shared_object", "horizon_delete_shared_object", "horizon_adjust_item", "horizon_equip_item", "horizon_discard_item", "horizon_update_group", "horizon_accept_group_invite", "horizon_decline_group_invite", "horizon_cancel_group_invite", "horizon_accept_group_request", "horizon_decline_group_request", "horizon_cancel_group_request", "horizon_leave_group", "horizon_remove_group_member", "horizon_set_group_member_role", "horizon_transfer_group_leadership", "horizon_delete_group", "horizon_accept_friend_request", "horizon_decline_friend_request", "horizon_cancel_friend_request", "horizon_remove_friend", "horizon_block_player", "horizon_unblock_player", "horizon_mark_inbox_read", "horizon_claim_inbox", "horizon_remove_inbox", "horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_update_statistics", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
     );
   });
 
@@ -272,7 +286,7 @@ describe("admin tool metadata", () => {
     const player = registerTools(false);
     const all = registerTools(true);
     const admin = [...all.keys()].filter((name) => !player.has(name));
-    expect(admin.length).toBe(126);
+    expect(admin.length).toBe(133);
     expect(admin.every((name) => name.startsWith("horizon_admin_"))).toBe(true);
   });
 
