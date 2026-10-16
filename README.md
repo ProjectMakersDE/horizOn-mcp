@@ -47,6 +47,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
 | `horizon://docs/inbox` | Session inbox, protected rewards, immutable broadcasts, server clock and safe publication retries |
+| `horizon://docs/friends` | Atomic social relationships, explicit revisions and exact public friend-code lookup |
 | `horizon://docs/achievements` | Visible versioned definitions, permanent unlock guards and durable Inbox reward delivery |
 | `horizon://docs/statistics` | Atomic session counters, safe integer batches, explicit original IDs and cache/UTC recovery. SDK and admin examples |
 | `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, start context, evidence upload, admin evidence review with sus packages and package export, rejection codes. SDK examples |
@@ -261,3 +262,10 @@ expose player progress and pending Inbox handoff. Four `horizon_admin_achievemen
 the versioned catalog and inspect owned players with ACHIEVEMENTS scope. Read
 `horizon://docs/achievements` for hidden-definition caching, permanent key identity, full-Inbox
 recovery and the separate claim that credits balances. Engine prompts accept `feature=achievements`.
+
+### Friends
+
+`horizon_get_friends`, `horizon_find_player` and seven explicit social-action tools preserve reviewed
+revisions and pending request IDs. Two read-only `horizon_admin_friends_*` tools inspect owned state
+and current limits. Read `horizon://docs/friends`; both engine prompts accept `feature=friends`.
+After an uncertain response, read and reconcile the snapshot before any new player-confirmed action.

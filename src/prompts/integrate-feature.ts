@@ -21,6 +21,7 @@ export function registerIntegrateFeaturePrompt(server: McpServer): void {
           "validated-actions",
           "statistics",
           "achievements",
+          "friends",
           "inbox",
           "feedback",
           "user-logs",

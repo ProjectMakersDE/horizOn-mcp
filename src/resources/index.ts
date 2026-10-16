@@ -28,6 +28,9 @@ function loadDoc(relativePath: string): string {
  * Registers all horizOn documentation resources on the given server.
  */
 export function registerAllResources(server: McpServer): void {
+  server.registerResource("docs-friends", "horizon://docs/friends", {
+    title: "Friends", description: "Atomic requests, friendships, blocks, exact public lookup and revision recovery.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/friends", mimeType: "text/markdown", text: loadDoc("docs/friends.md") }] }));
   server.registerResource("docs-achievements", "horizon://docs/achievements", {
     title: "Player Achievements", description: "Versioned visible definitions, statistic/manual unlocks and durable Inbox rewards.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/achievements", mimeType: "text/markdown", text: loadDoc("docs/achievements.md") }] }));
