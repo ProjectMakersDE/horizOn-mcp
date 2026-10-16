@@ -25,6 +25,7 @@ export function registerExplainFeaturePrompt(server: McpServer): void {
           "items",
           "shared-objects",
           "matches",
+          "chat",
           "inbox",
           "feedback",
           "user-logs",
