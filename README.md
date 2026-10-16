@@ -47,6 +47,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
 | `horizon://docs/inbox` | Session inbox, protected rewards, immutable broadcasts, server clock and safe publication retries |
+| `horizon://docs/items` | Unique inventory, bounded item properties and atomic server-owned purchases |
 | `horizon://docs/groups` | Guilds, roles, bounded member pages and revision-safe membership actions |
 | `horizon://docs/friends` | Atomic social relationships, explicit revisions and exact public friend-code lookup |
 | `horizon://docs/achievements` | Visible versioned definitions, permanent unlock guards and durable Inbox reward delivery |
@@ -277,3 +278,10 @@ Twenty player tools cover group snapshots, bounded member pages, pending entries
 and fourteen explicit membership/role actions. Six read-only `horizon_admin_groups_*` tools inspect
 owned projects. All writes preserve reviewed revisions and pending IDs. Read `horizon://docs/groups`;
 both engine prompts accept `feature=groups`. Uncertain writes are never retried automatically.
+
+## Items
+
+Five player tools read inventory/catalog and explicitly adjust, equip or discard an instance. Four
+`horizon_admin_items_*` tools inspect owned state, page the catalog, edit one template using If-Match
+and read tier limits. Player-value offers accept bounded `itemRewards` and grant them atomically with
+the debit. Read `horizon://docs/items`; both engine prompts accept `feature=items`.
