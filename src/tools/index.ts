@@ -14,6 +14,7 @@ import { registerInboxTools } from "./inbox.js";
 import { registerStatisticsTools } from "./statistics.js";
 import { registerFriendsTools } from "./friends.js";
 import { registerItemsTools } from "./items.js";
+import { registerSharedObjectsTools } from "./shared-objects.js";
 import { registerGroupsTools } from "./groups.js";
 import { registerAchievementsTools } from "./achievements.js";
 import { registerFeedbackTools } from "./feedback.js";
@@ -42,6 +43,7 @@ export function registerAllTools(server: McpServer): void {
   registerFriendsTools(server);
   registerGroupsTools(server);
   registerItemsTools(server);
+  registerSharedObjectsTools(server);
   registerInboxTools(server);
   registerFeedbackTools(server);
   registerUserLogTools(server);

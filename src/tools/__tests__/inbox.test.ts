@@ -94,9 +94,9 @@ describe("inbox over actual MCP transport", () => {
     expect((await call("horizon_admin_inbox_publish", { ...publish, expectedRevision: -1 })).isError).toBe(true);
     expect(request).not.toHaveBeenCalled();
   });
-  it("discovers all eight tools, the resource and engine prompts", async () => {
+  it("discovers all nine tools including trusted ordinary delivery, the resource and engine prompts", async () => {
     const tools = await client.listTools();
-    expect(tools.tools.filter(t => t.name.includes("inbox"))).toHaveLength(8);
+    expect(tools.tools.filter(t => t.name.includes("inbox"))).toHaveLength(9);
     const resource = await client.readResource({ uri: "horizon://docs/inbox" });
     expect(resource.contents[0]).toMatchObject({ text: expect.stringContaining("serverTime") });
     for (const name of ["integrate-feature", "explain-feature"]) {

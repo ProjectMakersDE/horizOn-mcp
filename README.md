@@ -285,3 +285,11 @@ Five player tools read inventory/catalog and explicitly adjust, equip or discard
 `horizon_admin_items_*` tools inspect owned state, page the catalog, edit one template using If-Match
 and read tier limits. Player-value offers accept bounded `itemRewards` and grant them atomically with
 the debit. Read `horizon://docs/items`; both engine prompts accept `feature=items`.
+
+## Shared Objects
+
+Seven player tools expose bounded opaque shared objects, typed queries and exact-revision writes.
+Ten `horizon_admin_shared_*` tools manage owned collections and explicit cleanup. A separate
+`horizon_admin_inbox_send_ordinary` tool uses INBOX scope for a trusted backend's durable notice
+intent. Read `horizon://docs/shared-objects`; both engine prompts accept `feature=shared-objects`.
+Native SDK/PHP/deployment readiness must be checked against the installed version.
