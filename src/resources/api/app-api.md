@@ -436,69 +436,18 @@ Get news entries.
 
 ---
 
-## Gift Codes
+## Gift Codes: V2
 
-### POST /api/v1/app/gift-codes/validate
+`POST /api/v1/app/gift-codes/validate` with `{code,userId}` is sessionless, read-only and valid-only.
+Add `includeIntent:true` with the player's Bearer session to read `{valid,protocolVersion:2,campaignId,expectedCount,configRevision}` without reservation. Persist the entire original identity before consuming.
 
-Validate a gift code without redeeming it.
+`POST /api/v1/app/gift-codes/redeem` needs the Project API key, the original player's Bearer session and `{protocolVersion:2,code,userId,campaignId,expectedCount,configRevision}`. Count/revision are canonical nonnegative Int64 strings, never JSON numbers; range 0..9223372036854775807. The immutable campaign UUID owns the action even if the visible code is later reused. Do not send idempotencyId with V2.
 
-**Request:**
-```json
-{
-  "code": "string",
-  "userId": "string"
-}
-```
+Success includes `{success,campaignId,count,configRevision,alreadyApplied,replayed,giftData,grantedValues,grantedUnlocks,playerValues}`. Fresh count is original expectedCount+1 and revision matches the original. Replay has a higher current count/current revision, both flags true, null giftData and empty grants; replace balances from current playerValues. Consumption and grants commit atomically. Never apply server value deltas locally.
 
-**Response (200):**
-```json
-{
-  "valid": "boolean"
-}
-```
+V1 is closed with 409 UPGRADE_REQUIRED. An unmigrated campaign returns409 MIGRATION_REQUIRED. COUNT_AHEAD, CAMPAIGN_CHANGED, COUNTER_EXHAUSTED and STATE_CONFLICT never authorize an automatic new intent. Mixed/malformed fields reject 400 INVALID_REQUEST. Other auth/capacity/balance/cosmetic failures retain their domain codes and roll back fresh consumption. Preserve the original tuple after all uncertain errors; explicitly retry it, never advance expectedCount from a response.
 
----
-
-### POST /api/v1/app/gift-codes/redeem
-
-Redeem a gift code. Needs `Authorization: Bearer <accessToken>`; `userId` must be the session user.
-A request without a session is rejected with `401` (no transition window).
-
-**Request:**
-```json
-{
-  "code": "string",
-  "userId": "string",
-  "idempotencyId": "stable-redemption-intent"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": "boolean",
-  "message": "string",
-  "giftData": "string (JSON) | null",
-  "grantedUnlocks": ["string"],
-  "grantedValues": [],
-  "playerValues": null,
-  "replayed": false
-}
-```
-
-`grantedUnlocks`: cosmetic IDs from `giftData.grants` the player owns after the redemption, `[]` without grants.
-
-Develop TASK-1007: supply an optional stable `idempotencyId` (1..128characters) and reuse it
-on retry. Response adds `grantedValues:[{key,amount}]`, `playerValues` (current PlayerValuesView
-or null) and `replayed`. Server-owned value rewards commit atomically with redemption/cosmetics;
-422 MAX_BALANCE_REACHED rolls back everything. Display the snapshot, never add the deltas twice.
-
-
-The example above shows the no-values response. With value rewards, `grantedValues` holds
-the original positive `{key,amount}` pairs and `playerValues` contains the current snapshot.
-Omitting `idempotencyId` preserves legacy behavior and may consume another redemption on retry.
-
-**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `401` missing, invalid or expired session, `403` code or user of another API key or session of another user, `404` unknown code, `409` idempotency conflict or `UNLOCK_LIMIT_REACHED` (more than25unlocks, code not used up), `422 MAX_BALANCE_REACHED` (all rewards and code consumption rolled back).
+MCP: horizon_prepare_gift_code returns a local seven-field intent including projectScope. Persist it, then call horizon_redeem_gift_code({intent,sessionToken}); no hidden retries or store. See horizon://docs/gift-codes for recovery, SDK examples and exact admin strings.
 
 ---
 

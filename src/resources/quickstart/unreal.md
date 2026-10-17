@@ -182,13 +182,11 @@ Horizon->News->LoadNews(20, TEXT("en"), true, FOnNewsComplete::CreateLambda(
     }));
 ```
 
-### Gift Codes
+### Gift Codes V2
 
-```cpp
-Horizon->GiftCodes->Validate(TEXT("ABCD-1234"), FOnGiftCodeValidateComplete::CreateLambda([](bool bRequestSuccess, bool bValid) { }));
-Horizon->GiftCodes->Redeem(TEXT("ABCD-1234"), FOnGiftCodeRedeemComplete::CreateLambda([](bool bSuccess, const FString& GiftData, const FString& Message) { }));
-// Cosmetics unlocked by the last redeem: Horizon->GiftCodes->GetLastGrantedUnlocks()
-```
+Use `PrepareRedemption(Code,FOnGiftCodePrepareComplete)` to obtain an `FHorizonGiftCodeIntent`, persist the full original with the provided SaveGame sample, then explicitly call `RedeemPrepared(Intent,FOnGiftCodeRedeemResultComplete)`. Matching Blueprint nodes are `PrepareRedemptionCode`/`OnPrepared` and `RedeemPreparedCode`/`OnRedeemResult`. A timeout or restart retries the original saved intent, never a freshly prepared count.
+
+Counts/revisions are exact strings. Replay returns current state with empty gifts/grants. V1 is closed with UPGRADE_REQUIRED; MIGRATION_REQUIRED requires operator reconciliation. Do not automatically consume on startup or replace unresolved originals. See `horizon://docs/gift-codes`.
 
 ### Player Profile
 
@@ -272,7 +270,7 @@ Get the subsystem with the **Get Horizon Subsystem** node or use the async nodes
 - **Submit Leaderboard Score**, **Get Top Scores**, **Get Leaderboard Rank**
 - **Cloud Save Data**, **Cloud Load Data**
 - **Get Remote Config**, **Get All Remote Configs**, **Get Localization**, **Load News**
-- **Validate Gift Code**, **Redeem Gift Code**, **Report Bug**, **Submit Feedback**
+- **Validate Gift Code**, **PrepareRedemptionCode**, **RedeemPreparedCode**, **Report Bug**, **Submit Feedback**
 - **Get Player Profile**, **Set Player Profile**
 - **Start Run**, **Submit Validated**
 - **Record Exception**, **Report Crash**, **Send Email**

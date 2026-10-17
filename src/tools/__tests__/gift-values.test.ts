@@ -48,30 +48,10 @@ describe("gift-code values over actual MCP transport", () => {
     }
     expect(request).not.toHaveBeenCalled();
   });
-  it("forwards the same intent identity and current snapshot on repeated redemption", async () => {
-    const response = { success: true, giftData: "{}", grantedUnlocks: [], grantedValues: values,
-      playerValues: { userId, values: [{ key: "gold", balance: 7 }] }, replayed: true };
-    request.mockImplementation(async () => new Response(JSON.stringify(response), { status: 200 }));
-    const intent = { code: "REWARD", userId, sessionToken: "fixture-session", idempotencyId: "stable-reward-intent" };
-    for (let index = 0; index < 2; index++) {
-      const result = await call("horizon_redeem_gift_code", intent);
-      expect(JSON.parse((result.content as { text: string }[])[0].text)).toEqual(response);
-      expect(body(index)).toEqual({ code: "REWARD", userId, idempotencyId: intent.idempotencyId });
-      expect(new Headers(calls()[index][1].headers).get("Authorization")).toBe("Bearer fixture-session");
-    }
-  });
-  it("keeps the legacy request shape and does not generate hidden intent IDs", async () => {
-    await call("horizon_redeem_gift_code", { code: "REWARD", userId, sessionToken: "fixture-session" });
-    expect(body()).toEqual({ code: "REWARD", userId });
-    const invalid = await call("horizon_redeem_gift_code", { code: "REWARD", userId, sessionToken: "fixture-session", idempotencyId: "   " });
-    expect(invalid.isError).toBe(true);
-    expect(request).toHaveBeenCalledTimes(1);
-  });
-  it("keeps maximum-balance errors actionable and never retries them", async () => {
-    request.mockImplementation(async () => new Response(JSON.stringify({ code: "MAX_BALANCE_REACHED", message: "Reward does not fit" }), { status: 422 }));
-    const result = await call("horizon_redeem_gift_code", { code: "REWARD", userId, sessionToken: "fixture-session", idempotencyId: "unchanged-intent" });
+  it("rejects V1 locally without generating a hidden counter", async () => {
+    const result = await call("horizon_redeem_gift_code", { code: "REWARD", userId, sessionToken: "fixture-session", idempotencyId: "original-v1" });
     expect(result.isError).toBe(true);
-    expect(JSON.stringify(result)).toContain("MAX_BALANCE_REACHED");
-    expect(request).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(result)).toContain("UPGRADE_REQUIRED");
+    expect(request).not.toHaveBeenCalled();
   });
 });

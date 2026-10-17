@@ -12,6 +12,7 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
+import { checkedGiftAdmin } from "../gift-v2.js";
 import {
   getAdminClient,
   noAdminClientResponse,
@@ -60,8 +61,8 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           requires: SCOPE_ACCOUNT,
           effects: "None (read only).",
           returns:
-            "{giftCodes, total, page, size, totalPages}; each item has id, code, title, apiKeyId, apiKeyName, description, giftData (JSON string), values ([{key,amount}]), currentTotalRedemptions, " +
-            "maxTotalRedemptions, maxRedemptionsPerUser, expiresAt, isRevoked, revokedReason, isActive, createdAt, updatedAt, isExpired, remainingRedemptions. " +
+            "{giftCodes, total, page, size, totalPages}; each item has id, code, title, apiKeyId, apiKeyName, description, giftData (JSON string), values ([{key,amount}]), currentTotalRedemptions (compatibility number), exactCurrentTotalRedemptions (exact Int64 decimal string), " +
+            "maxTotalRedemptions, maxRedemptionsPerUser, expiresAt, isRevoked, revokedReason, isActive, createdAt, updatedAt, isExpired, remainingRedemptions (compatibility number), exactRemainingRedemptions (canonical string, null alone means unlimited). " +
             "An empty giftCodes array means no codes exist or the page is past the end.",
         },
         ADMIN_AUTH,
@@ -91,7 +92,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           page: String(page),
           size: String(size),
         });
-        return jsonResponse(result);
+        return jsonResponse(checkedGiftAdmin(result, "list"));
       } catch (e) {
         return errorResponse(e);
       }
@@ -111,8 +112,8 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           requires: `gift code id from horizon_admin_giftcodes_list; ${SCOPE_ACCOUNT}`,
           effects: "None (read only).",
           returns:
-            "{id, code, title, apiKeyId, apiKeyName, description, giftData, currentTotalRedemptions, maxTotalRedemptions, maxRedemptionsPerUser, expiresAt, " +
-            "isRevoked, revokedReason, isActive, createdAt, updatedAt, isExpired, remainingRedemptions}; remainingRedemptions is null without a total cap.",
+            "{id, code, title, apiKeyId, apiKeyName, description, giftData, exactCurrentTotalRedemptions, currentTotalRedemptions (compatibility only), maxTotalRedemptions, maxRedemptionsPerUser, expiresAt, " +
+            "isRevoked, revokedReason, isActive, createdAt, updatedAt, isExpired, remainingRedemptions, exactRemainingRedemptions}; use exact decimal strings, never compatibility numbers for exact counts; only null means unlimited, exhausted is \"0\".",
           errors: NOT_FOUND,
         },
         ADMIN_AUTH,
@@ -127,7 +128,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
       if (!client) return noAdminClientResponse();
       try {
         const result = await client.get(`/api/v1/admin/gift-codes/${id}`);
-        return jsonResponse(result);
+        return jsonResponse(checkedGiftAdmin(result, "record"));
       } catch (e) {
         return errorResponse(e);
       }
@@ -193,12 +194,14 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           .number()
           .int()
           .positive()
+          .max(2147483647)
           .optional()
           .describe("Maximum number of redemptions across all players (positive integer). Omit for unlimited"),
         maxRedemptionsPerUser: z
           .number()
           .int()
           .positive()
+          .max(2147483647)
           .optional()
           .describe("Maximum number of redemptions per player (positive integer). Omit for no per-player cap"),
         expiresAt: z
@@ -290,12 +293,14 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           .number()
           .int()
           .positive()
+          .max(2147483647)
           .optional()
           .describe("New maximum number of redemptions across all players (positive integer). Omit to keep"),
         maxRedemptionsPerUser: z
           .number()
           .int()
           .positive()
+          .max(2147483647)
           .optional()
           .describe("New maximum number of redemptions per player (positive integer). Omit to keep"),
         expiresAt: z
@@ -349,7 +354,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
             "Deletes a gift code by UUID (soft delete): it can no longer be redeemed, disappears from lists and statistics, and frees its plan slot.",
           use: "removing a code for good or freeing a slot when horizon_admin_giftcodes_getLimits shows none left.",
           avoid:
-            "only stopping redemptions while keeping the record and its history (use horizon_admin_giftcodes_revoke).",
+            "only stopping fresh redemptions while keeping the campaign record (use horizon_admin_giftcodes_revoke).",
           requires: `gift code id from horizon_admin_giftcodes_list; ${SCOPE_ACCOUNT}`,
           effects:
             "Irreversible through the API: the code is marked deleted and inactive and its code value gets a _DELETED_ suffix, so the same code value can be created again.",
@@ -384,7 +389,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
       description: describeTool(
         {
           summary:
-            "Revokes a gift code so every further redeem attempt is rejected, while the code, its redemption history and the revocation reason stay visible.",
+            "Revokes a gift code so fresh V2 consumption is rejected, while its permanent counters and revocation reason remain available.",
           use: "stopping a leaked or mistaken code immediately while keeping its record.",
           avoid:
             "removing the code and freeing its slot (use horizon_admin_giftcodes_delete) or only shortening its lifetime (set expiresAt with horizon_admin_giftcodes_update).",
@@ -438,7 +443,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
           requires: SCOPE_ACCOUNT,
           effects: "None (read only).",
           returns:
-            "{totalCodes, activeCodes, revokedCodes, expiredCodes, totalRedemptions} over non-deleted codes; activeCodes counts only codes that are still redeemable (not revoked, not expired). All zero when the account has no codes.",
+            "{totalCodes, activeCodes, revokedCodes, expiredCodes, totalRedemptions (compatibility number), exactTotalRedemptions (arbitrary-size canonical decimal string)} over non-deleted codes; activeCodes counts only codes that are still redeemable (not revoked, not expired). All zero when the account has no codes.",
         },
         ADMIN_AUTH,
       ),
@@ -458,7 +463,7 @@ export function registerAdminGiftCodesTools(server: McpServer): void {
         const result = await client.get(
           "/api/v1/admin/gift-codes/statistics",
         );
-        return jsonResponse(result);
+        return jsonResponse(checkedGiftAdmin(result, "statistics"));
       } catch (e) {
         return errorResponse(e);
       }

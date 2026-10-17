@@ -43,7 +43,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/remote-config` | Server-side key-value configuration: feature flags, game balance, A/B testing. SDK examples |
 | `horizon://docs/localization` | Server-side localized strings across 15 languages: per-key translations, single/all fetch, available languages. SDK examples |
 | `horizon://docs/news` | In-game news and announcements with language filtering. SDK examples |
-| `horizon://docs/gift-codes` | Gift code validation and redemption, cosmetic grants, server-owned value rewards and stable intent IDs. SDK examples |
+| `horizon://docs/gift-codes` | Gift code validation and redemption, cosmetic grants, server-owned value rewards, compact V2 original intents and exact counter strings. SDK examples |
 | `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
 | `horizon://docs/inbox` | Session inbox, protected rewards, immutable broadcasts, server clock and safe publication retries |
@@ -62,11 +62,11 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
 | `horizon://quickstart/unreal` | Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples |
 
-### Tools (38 tools)
+### Player tools
 
 Live API tools that call the horizOn backend. Requires a valid API key.
 
-`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated`, `horizon_get_state` and `horizon_upload_evidence` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
+`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_prepare_gift_code`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated`, `horizon_get_state` and `horizon_upload_evidence` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
 
 The four player-value tools also require the same player session. Never generate another operation ID automatically after an uncertain result.
 
@@ -94,7 +94,8 @@ Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempot
 | `horizon_get_localization_languages` | List the languages that have localizations for the app |
 | `horizon_get_news` | Get news articles with optional language filtering |
 | `horizon_validate_gift_code` | Validate a gift code without redeeming it |
-| `horizon_redeem_gift_code` | Redeem with a stable `idempotencyId`; returns `grantedUnlocks`, `grantedValues`, current `playerValues` and `replayed` |
+| `horizon_prepare_gift_code` | Read-only V2 preparation; persist all seven original intent fields before consume |
+| `horizon_redeem_gift_code` | Explicit consume/retry of that saved `intent`; current state on replay, no automatic replacement or V1 translation |
 | `horizon_get_player_values` | Read balances and operation window with the active player session |
 | `horizon_get_player_value_offers` | Read configured offers for the player |
 | `horizon_purchase_player_value_offer` | Purchase atomically with a caller-persisted operation ID |
