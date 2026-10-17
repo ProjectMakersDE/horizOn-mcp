@@ -152,16 +152,17 @@ for entry in news:
     print("%s: %s" % [entry.title, entry.message])
 ```
 
-### Gift Codes
+### Gift Codes V2
 
 ```gdscript
-var is_valid = await Horizon.giftCodes.validate("ABCD-1234")
-if is_valid:
-    var result = await Horizon.giftCodes.redeem("ABCD-1234")
-    if result.get("success", false):
-        print("Rewards: %s" % result.get("giftData", ""))
-        print("Unlocked: %s" % result.get("grantedUnlocks", []))
+var intent = await Horizon.giftCodes.prepareRedemption("PROMO2024")
+# Save all intent fields durably before consume; keep unresolved originals.
+if not intent.is_empty():
+    var result = await Horizon.giftCodes.redeemPrepared(intent)
+# Explicit restart retry loads the original and calls redeemPrepared again.
 ```
+
+Counts/revisions are exact strings. Replay returns current state with empty gifts/grants. V1 is closed with UPGRADE_REQUIRED; MIGRATION_REQUIRED requires operator reconciliation. Do not automatically consume on startup or replace unresolved originals. See `horizon://docs/gift-codes`.
 
 ### Player Profile
 
