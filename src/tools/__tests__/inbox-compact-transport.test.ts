@@ -9,14 +9,14 @@ const operationId = "33333333-3333-4333-8333-333333333333", entryId = "message:4
 const intent = { projectApiKeyId, userId, operationId, expectedRevision: 17, issuedAt: "2026-10-17T12:00:00.000Z", expiresAt: "2026-10-27T12:00:00.000Z", freeText: "é".repeat(300) };
 const entries = Array.from({length:552},(_,i)=>({id:`message:00000000-0000-4000-8000-${String(i).padStart(12,"0")}`,kind:"message",type:"group_invite",reference:operationId,textKey:"horizon.groups.invite",parameters:{groupId:operationId},read:false,claimed:false,overdue:false,attachment:null}));
 const itemReturn = {listingId:operationId,instanceId:userId,itemKey:"seagull_hat"};
-let client: Client, http: Server, bytes: number, revision: number, drop: boolean;
+let client: Client, http: Server, bytes: number, retentionDays: number, revision: number, drop: boolean;
 let accepted: string | null;
 let requests: {path:string;body:Record<string,unknown>;headers:Record<string,unknown>}[];
 const call=(name:string,args:Record<string,unknown>)=>client.callTool({name,arguments:args});
 const data=(result:Awaited<ReturnType<typeof call>>)=>JSON.parse((result.content as {text:string}[])[0].text);
 
 beforeEach(async()=>{
-  bytes=1024;revision=17;drop=false;accepted=null;requests=[];
+  bytes=1024;retentionDays=14;revision=17;drop=false;accepted=null;requests=[];
   vi.stubEnv("HORIZON_API_KEY","fixture-project-key");vi.stubEnv("HORIZON_ACCOUNT_API_KEY","fixture-account-key");
   vi.spyOn(console,"error").mockImplementation(()=>{});
   http=httpServer(async(req,res)=>{
@@ -24,15 +24,20 @@ beforeEach(async()=>{
     const body=chunks.length?JSON.parse(Buffer.concat(chunks).toString()):{};
     requests.push({path:req.url!,body,headers:req.headers});res.setHeader("Content-Type","application/json");
     if(req.url==="/api/v1/admin/inbox/messages"){
-      if(Buffer.byteLength(body.freeText)>bytes){res.statusCode=400;res.end(JSON.stringify({code:"INVALID_REQUEST"}));return;}
-      if(accepted===JSON.stringify(body)){res.end(JSON.stringify({entryId,replayed:true}));return;}
+      // Policy110: immutable retained identity/body is checked before mutable operator quotas.
+      const previous=accepted===null?null:JSON.parse(accepted);
+      if(previous&&["apiKeyId","userId","operationId","expectedRevision","issuedAt"].every(key=>previous[key]===body[key])){
+        if(accepted!==JSON.stringify(body)){res.statusCode=409;res.end(JSON.stringify({code:"OPERATION_CONFLICT"}));return;}
+        res.end(JSON.stringify({entryId,replayed:true}));return;
+      }
+      if(Buffer.byteLength(body.freeText)>bytes||Date.parse(body.expiresAt)-Date.parse(body.issuedAt)>retentionDays*86400000){res.statusCode=400;res.end(JSON.stringify({code:"INVALID_REQUEST"}));return;}
       if(body.expectedRevision!==revision){res.statusCode=409;res.end(JSON.stringify({code:"REVISION_CONFLICT"}));return;}
       accepted=JSON.stringify(body);revision++;if(drop){drop=false;req.socket.destroy();return;}
       res.end(JSON.stringify({entryId,replayed:false}));return;
     }
     const snapshot={userId,cursor:"opaque",revision,broadcastRevision:4,serverTime:intent.issuedAt,pollAfterSeconds:120,unchanged:false,
       entries:[...entries,{id:entryId,kind:"message",type:"marketplace",reference:operationId,textKey:"marketplace.item_return",parameters:{},read:false,claimed:false,overdue:true,attachment:{values:[],itemReturn}}],
-      counts:{group_invite:{total:552,unread:552,claimable:0},marketplace:{total:1,unread:1,claimable:1}},limits:{targeted:2,broadcasts:10,freeTexts:1,freeTextBytes:bytes,freeTextRetentionDays:14}};
+      counts:{group_invite:{total:552,unread:552,claimable:0},marketplace:{total:1,unread:1,claimable:1}},limits:{targeted:2,broadcasts:10,freeTexts:1,freeTextBytes:bytes,freeTextRetentionDays:retentionDays}};
     if(req.url==="/api/v1/app/inbox/claim"){res.end(JSON.stringify({entryId,replayed:true,inbox:snapshot,playerValues:{values:[]},items:[{instanceId:userId,itemKey:"seagull_hat"}]}));return;}
     res.end(JSON.stringify(snapshot));
   });
@@ -49,9 +54,19 @@ describe("compact Inbox through actual MCP and loopback HTTP",()=>{
   });
   it("does not automatically retry a lost reply and preserves the original revision after newer limits",async()=>{
     drop=true;const first=await call("horizon_admin_inbox_send_ordinary",intent);expect(first.isError).toBe(true);expect(requests).toHaveLength(1);
-    bytes=20;const current=data(await call("horizon_admin_inbox_player_get",{projectApiKeyId,userId}));expect(current.revision).toBe(18);expect(current.limits.freeTextBytes).toBe(20);
-    const rejected=await call("horizon_admin_inbox_send_ordinary",structuredClone(intent));expect(rejected.isError).toBe(true);expect(JSON.stringify(rejected)).toContain("INVALID_REQUEST");
-    bytes=1024;const replay=data(await call("horizon_admin_inbox_send_ordinary",structuredClone(intent)));expect(replay).toEqual({entryId,replayed:true});expect(requests[0].body).toEqual(requests[2].body);expect(requests[0].body).toEqual(requests[3].body);expect(requests).toHaveLength(4);
+    bytes=20;retentionDays=1;const current=data(await call("horizon_admin_inbox_player_get",{projectApiKeyId,userId}));expect(current.revision).toBe(18);expect(current.limits.freeTextBytes).toBe(20);expect(current.limits.freeTextRetentionDays).toBe(1);
+    const replay=await call("horizon_admin_inbox_send_ordinary",structuredClone(intent));expect(replay.isError).not.toBe(true);expect(data(replay)).toEqual({entryId,replayed:true});expect(requests[0].body).toEqual(requests[2].body);expect(requests).toHaveLength(3);expect(revision).toBe(18);
+  });
+  it("keeps changed originals conflicting and new effects under the lowered byte and retention policy",async()=>{
+    expect((await call("horizon_admin_inbox_send_ordinary",intent)).isError).not.toBe(true);const original=accepted;
+    bytes=20;retentionDays=1;
+    for(const change of [{freeText:"different"},{expiresAt:"2026-10-18T12:00:00.000Z"}]){
+      const result=await call("horizon_admin_inbox_send_ordinary",{...intent,...change});expect(result.isError).toBe(true);expect(JSON.stringify(result)).toContain("OPERATION_CONFLICT");
+    }
+    for(const change of [{freeText:"x".repeat(21),expiresAt:"2026-10-18T12:00:00.000Z"},{freeText:"short"}]){
+      const result=await call("horizon_admin_inbox_send_ordinary",{...intent,operationId:"55555555-5555-4555-8555-555555555555",expectedRevision:18,...change});expect(result.isError).toBe(true);expect(JSON.stringify(result)).toContain("INVALID_REQUEST");
+    }
+    expect(accepted).toBe(original);expect(revision).toBe(18);expect(requests).toHaveLength(5);
   });
   it("preserves all source entries, configured limits and item-return descriptors above lowered caps",async()=>{
     for(const [name,args] of [["horizon_get_inbox",{userId,sessionToken:"fixture-player"}],["horizon_admin_inbox_player_get",{projectApiKeyId,userId}]] as const){
