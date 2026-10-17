@@ -82,17 +82,11 @@ the complete definition and original catalog If-Match. Cleanup removes at most t
 objects with atomic charge refund. It does not loop automatically.
 
 `horizon_admin_inbox_send_ordinary` uses **INBOX** scope at POST /api/v1/admin/inbox/messages.
-Only a trusted game backend may use it after its own authoritative outcome verification. Persist
-the original project/user/operationId UUID/issuedAt/expiresAt/textKey/reference/parameters before
-sending. Fixed expiry must be after issuance and within seven days. Parameters are at most eight
-strings with ASCII key `[A-Za-z0-9_-]{1,32}` and 120 UTF-8 bytes per value. Text key/reference are
-at most 128 UTF-16 units and 512 UTF-8 bytes, textKey nonblank. No attachments or caller source/type.
-The response is `{entryId,replayed}`. A replay never recreates a removed ordinary notice.
-
-Full/unavailable Inbox keeps the original pending intent until its deadline, then terminal expired.
-Lost ACK retries keep every original field. Receipt-floor errors without retained delivery become
-unconfirmed. Never replace the operation ID or reward an unconfirmed run. This endpoint does not
-verify combat, grant rewards or accept client Account Keys.
+It sends plain `freeText` under the original player Inbox `expectedRevision`, not a copied
+localization/source payload. Persist project, user, operation UUID, original revision,
+issuedAt, expiresAt and freeText before sending. See `horizon://docs/inbox` for current
+operator limits and uncertain-response handling. This endpoint does not verify combat or
+grant rewards. Never replace an uncertain original with a fresh revision or ID.
 
 ## Integration state and recipes
 

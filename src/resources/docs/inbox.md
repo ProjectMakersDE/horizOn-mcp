@@ -6,8 +6,7 @@ cannot replace a player session. Retain the returned cursor only for that player
 project and session. Serialize refreshes and discard responses from old sessions.
 
 `unchanged=true` contains no entries: keep the previous complete snapshot. Otherwise
-replace it, including removals and expiry. Respect `pollAfterSeconds` (at least 120
-seconds). Hosted realtime invalidations request a new HTTP snapshot; they never
+replace it, including removals and expiry. Respect the returned `pollAfterSeconds` (120 seconds by default). Hosted realtime invalidations request a new HTTP snapshot; they never
 carry inbox content or grant a reward. simpleServer supports REST, not realtime.
 
 ## Player actions
@@ -74,3 +73,24 @@ including original properties and creation time. `items:[{instanceId,itemKey}]` 
 response is a receipt, including on replay after resale/discard, never a request to mint items.
 Refresh inventory explicitly. `INVENTORY_FULL` preserves the unclaimed return, even after expiry.
 Full Inbox preserves the listing as pending until an explicit return delivery or maintenance.
+
+
+## Separate personal plain text
+
+`horizon_admin_inbox_send_ordinary` posts to `/api/v1/admin/inbox/messages` with an INBOX-scoped
+Account Key. First inspect the selected player's Inbox. Persist the complete immutable intent:
+`projectApiKeyId`, `userId`, UUID `operationId`, player `expectedRevision`, `issuedAt`, `expiresAt`
+and `freeText`. The project field becomes `apiKeyId` in the HTTP body; the other six fields are
+forwarded unchanged. The endpoint rejects attachments and old textKey/reference/parameters bodies.
+
+Use the current response limits `freeTexts`, `freeTextBytes` and `freeTextRetentionDays`. Defaults
+are two messages, 256 UTF-8 bytes and seven days, but the administrator can change them in System
+Config. The tool does not impose those defaults as fixed limits. Existing snapshots above a lowered
+limit remain complete. Expiry is later than issuance, and timestamps have millisecond precision.
+
+The response is `{entryId,replayed}`. Its entry ID is opaque and derived from the entire original
+attempt. Preserve the original revision even after a newer snapshot or lost reply. Do not clear an
+unconfirmed attempt, change its text/expiry or automatically create a replacement. Reconcile a
+terminal policy/revision/expiry failure explicitly. The tool never sends a second attempt itself.
+Source notifications resolve authoritative friend, group, match and marketplace records instead of
+copying their payload. Plain text stays a separate bounded ordinary message type.
