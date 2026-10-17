@@ -34,3 +34,17 @@ Account Key tools require full-account or STATISTICS feature scope. A project-sc
 - `horizon_admin_statistics_limits(projectApiKeyId)` reads plan limits.
 
 The app REST contract is `GET /api/v1/app/statistics?userId=&definitionVersion?`, `GET /api/v1/app/statistics/definitions?definitionVersion?`, `POST /api/v1/app/statistics` with `{userId,operationId,updates:[{key,value}]}`. Cloud and simpleServer share this REST surface. simpleServer configures its catalog through SQL and has no hosted admin/billing surface. Realtime/chat remain Cloud-only.
+
+## Configurable limits and compact storage
+
+Catalog size is read from `horizon_admin_statistics_limits` and enforced by the server's
+System Config. The MCP schema does not impose the old 100-definition tier ceiling. Existing
+snapshots remain readable after an administrator lowers the limit. A new replacement or
+update is still checked against current server policy; read the actual error before changing
+the original intent.
+
+The hosted compact format stores one current counter tuple per used definition and up to
+eight 56-byte original operation guards, without old response copies. simpleServer uses the
+same semantics with its SQL compact representation and `STATISTICS_DEFINITIONS` operator
+setting. An explicit retry always sends the same operation ID and payload; never generate a
+replacement after an uncertain outcome.

@@ -14,8 +14,8 @@ export const statisticDefinition = z.object({
   reset: z.enum(["none", "daily", "weekly"]),
   maxPerUpdate: statisticInteger.refine(value => value > 0).optional(),
 });
-export const statisticUpdates = z.array(z.object({ key: statisticKey, value: statisticInteger })).min(1).max(100)
-  .refine(updates => new Set(updates.map(update => update.key)).size === updates.length, "Duplicate statistic key").describe("Original immutable batch of 1 to 100 distinct statistic keys with safe integer values");
+export const statisticUpdates = z.array(z.object({ key: statisticKey, value: statisticInteger })).min(1).max(2147483647)
+  .refine(updates => new Set(updates.map(update => update.key)).size === updates.length, "Duplicate statistic key").describe("Original immutable batch of distinct statistic keys with safe integer values; server enforces the current System Config definition limit, which can exceed tier defaults");
 export const statisticVersion = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 export const statisticsCatalogOutput = {
   definitionVersion: statisticVersion,
