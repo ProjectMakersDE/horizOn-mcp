@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
-import { getAdminClient, noAdminClientResponse, jsonResponse, errorResponse, describeTool, ADMIN_AUTH, READ_ONLY, DESTRUCTIVE_WRITE } from "./_utils.js";
+import { getAdminClient, noAdminClientResponse, jsonResponse, errorResponse, describeTool, ADMIN_AUTH, READ_ONLY, DESTRUCTIVE_WRITE, IDEMPOTENT_WRITE } from "./_utils.js";
 import { safeValue, valueKey, valueOperationId, valueUserId } from "../player-values.js";
 
 const project = { projectApiKeyId: z.string().uuid().describe("Owned project API key UUID, sent as apiKeyId") };
@@ -12,15 +12,15 @@ const errors = "403: wrong feature/project scope. 404: unknown or foreign entity
 
 export function registerAdminInboxTools(server: McpServer): void {
   server.registerTool("horizon_admin_inbox_broadcasts_get", {
-    title: "Get Inbox Broadcasts", description: describeTool({ summary: "Reads the retained project broadcast catalogue, revision and tier limits.", use: "before publication or removal.", avoid: "reading one player's messages; use horizon_admin_inbox_player_get.", requires, effects: "None (read only).", returns: "{apiKeyId,revision,serverTime,entries,limits}. Reward broadcasts remain retained even after expiry.", errors }, ADMIN_AUTH),
+    title: "Get Inbox Broadcasts", description: describeTool({ summary: "Reads the retained project broadcast catalogue, revision and current System Config limits.", use: "before publication or removal.", avoid: "reading one player's messages; use horizon_admin_inbox_player_get.", requires, effects: "None (read only).", returns: "{apiKeyId,revision,serverTime,entries,limits}. Reward broadcasts remain retained even after expiry.", errors }, ADMIN_AUTH),
     inputSchema: project, annotations: READ_ONLY,
   }, async ({ projectApiKeyId }) => {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();
     try { return jsonResponse(await client.get(path + "/broadcasts", { apiKeyId: projectApiKeyId })); } catch (error) { return errorResponse(error); }
   });
   server.registerTool("horizon_admin_inbox_publish", {
-    title: "Publish Immutable Inbox Broadcast", description: describeTool({ summary: "Publishes one immutable broadcast for currently active players registered no later than publication, including later-reactivated players.", use: "the operator has reviewed text, audience, expiry and permanent reward retention.", avoid: "editing a published reward or clearing capacity by deleting rewards.", requires: requires + " Persist operationId and the exact body before sending. Anchor new timestamps to catalogue serverTime plus elapsed time.",
-      effects: "One catalogue write, no player fanout. Rewards remain claimable after expiry and permanently consume catalogue capacity. Same ID/body replays before stale If-Match validation; the tool never retries automatically.", returns: "Catalogue with fresh serverTime and operation:{operationId,entryId,replayed}.", errors: "400 INVALID_REQUEST for unknown value keys, amounts above configured maximum, expiry outside the next 30 days or a message above 1024 UTF-8 bytes including server fields. " + errors }, ADMIN_AUTH),
+    title: "Publish Immutable Inbox Broadcast", description: describeTool({ summary: "Publishes one immutable broadcast for currently active players registered no later than publication, including later-reactivated players.", use: "the operator has reviewed text, audience, expiry and permanent reward retention.", avoid: "editing a published reward or clearing capacity by deleting rewards.", requires: requires + " Persist operationId, original expectedRevision and the exact body before sending. Anchor new timestamps to catalogue serverTime plus elapsed time.",
+      effects: "One catalogue write, no player fanout. Rewards remain claimable after expiry and permanently consume catalogue capacity. Same ID/body/original revision replays before current If-Match validation; the tool never retries automatically.", returns: "Catalogue with fresh serverTime and operation:{operationId,entryId,replayed}.", errors: "400 INVALID_REQUEST for unknown value keys, amounts above configured maximum, expiry outside the next 30 days or a message above 1024 UTF-8 bytes including server fields. " + errors }, ADMIN_AUTH),
     inputSchema: { ...project, expectedRevision: revision, operationId: valueOperationId,
       type: z.string().regex(/^[A-Za-z0-9._-]{1,32}$/).describe("Application notification category, at most 32 characters"), reference: z.string().max(128).default("").describe("Optional application reference, retained unchanged on retry"),
       textKey: z.string().min(1).max(128).refine(v => v.trim().length > 0).describe("Nonblank localization key for the displayed message"),
@@ -46,4 +46,31 @@ export function registerAdminInboxTools(server: McpServer): void {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();
     try { return jsonResponse(await client.get(path + "/players/" + encodeURIComponent(userId), { apiKeyId: projectApiKeyId })); } catch (error) { return errorResponse(error); }
   });
+  const instant = z.iso.datetime({ offset: true }).refine(value => {
+    const millis = Date.parse(value), fraction = value.match(/\.(\d+)(?:Z|[+-])/i)?.[1] ?? "";
+    return Number.isSafeInteger(millis) && millis >= 0 && !/[1-9]/.test(fraction.slice(3));
+  }, "Nonnegative timestamp with millisecond precision in the safe integer range");
+  server.registerTool("horizon_admin_inbox_send_ordinary", {
+    title: "Send Trusted Personal Inbox Text", description: describeTool({
+      summary: "Sends one ordinary plain-text message under the player's original Inbox revision.",
+      use: "after reading horizon_admin_inbox_player_get and persisting the complete original recipient, revision, UUID, times and text.",
+      avoid: "reward attachments, source notification copies, automatic retries, or replacing IDs/revisions after a lost reply.",
+      requires: "INBOX Account Key scope and matching project. Read current freeTexts, freeTextBytes and freeTextRetentionDays from limits; these are operator configurable, not fixed tariff ceilings. Anchor issuedAt to the snapshot serverTime.",
+      effects: "One atomic delivery with active-player scope validation. No per-player purchase copies or receipt history. No automatic retries. Full Inbox or uncertainty keeps the original pending intent.",
+      returns: "{entryId,replayed}. The entry ID is an opaque message-prefixed UUID derived by the server from the original attempt.",
+      errors: "INBOX_FULL leaves delivery pending. REVISION_CONFLICT/STATE_CONFLICT requires reconciliation with the original revision. INVALID_REQUEST can mean changed operator limits or expired intent. Never refresh a revision to replay an uncertain attempt." }, ADMIN_AUTH),
+    inputSchema: z.object({ ...project, userId: valueUserId,
+      operationId: z.string().uuid().describe("Original durable UUID, never regenerated on retry"),
+      expectedRevision: safeValue.describe("Original player Inbox revision, not broadcast revision. Persist and retry unchanged"),
+      issuedAt: instant.describe("Original issuance time anchored to serverTime, unchanged on retry"),
+      expiresAt: instant.describe("Original expiry after issuedAt and within configured freeTextRetentionDays; never extend on retry"),
+      freeText: z.string().min(1).refine(value => value.trim().length > 0 && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value), "Nonblank valid Unicode")
+        .describe("Plain text within current freeTextBytes; no localization envelope or attachments"),
+    }).strict(), annotations: IDEMPOTENT_WRITE,
+  }, async ({ projectApiKeyId, ...intent }) => {
+    if (Date.parse(intent.expiresAt) <= Date.parse(intent.issuedAt)) return errorResponse(new Error("INVALID_REQUEST: Expiry must follow the original issuance time"));
+    const client = getAdminClient(); if (!client) return noAdminClientResponse();
+    try { return jsonResponse(await client.post(path + "/messages", { apiKeyId: projectApiKeyId, ...intent })); } catch (error) { return errorResponse(error); }
+  });
+
 }

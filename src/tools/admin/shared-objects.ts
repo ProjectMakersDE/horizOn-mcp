@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { getAdminClient, noAdminClientResponse, jsonResponse, errorResponse, describeTool, ADMIN_AUTH, READ_ONLY, DESTRUCTIVE_WRITE, IDEMPOTENT_WRITE } from "./_utils.js";
-import { sharedKey, sharedRevision, sharedData, sharedDefinition, sharedQuery, sharedPage, sharedPageQuery, sharedText } from "../shared-object-schemas.js";
+import { sharedKey, sharedRevision, sharedData, sharedDefinition, sharedQuery, sharedPage, sharedPageQuery } from "../shared-object-schemas.js";
 import { sharedErrors } from "../shared-objects.js";
 
 const project = { projectApiKeyId: z.string().uuid().describe("Owned project UUID sent as apiKeyId") };
@@ -81,21 +81,5 @@ export function registerAdminSharedObjectsTools(server: McpServer): void {
   }, async ({ projectApiKeyId }) => {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();
     try { return jsonResponse(await client.post(path("/cleanup", projectApiKeyId))); } catch (error) { return errorResponse(error); }
-  });
-  const instant = z.iso.datetime({ offset: true }).refine(value => !/\.\d{4,}/.test(value), "At most millisecond precision");
-  server.registerTool("horizon_admin_inbox_send_ordinary", {
-    title: "Deliver Trusted Ordinary Notice", description: describeTool({ summary: "Delivers a replay-safe ordinary notice for a trusted game backend's durable original intent.",
-      use: "after authoritative outcome verification and persisting operationId/issuedAt/expiry/content together.", avoid: "rewards; use horizon_admin_shared_object_get for original defense data. Avoid asserting victory without authoritative evidence, new IDs after a lost response, or client Account Keys.",
-      requires: "INBOX Account Key scope plus matching project. This endpoint does not itself verify game outcomes.",
-      effects: "One atomic delivery under active-user fence. Full/unavailable inbox retains original pending intent until fixed expiry. Receipt-floor errors become unconfirmed, never a replacement ID. No attachments or automatic retries.",
-      returns: "{entryId,replayed}", errors: "INBOX_FULL stays pending, expired intent is terminal, OPERATION_CONFLICT rejects changed content, STATE_CONFLICT retains original intent. Scope/ownership rules apply." }, ADMIN_AUTH),
-    inputSchema: { ...project, userId: z.string().uuid().describe("Target player UUID belonging to the selected project"), operationId: z.string().uuid().describe("Original durable intent UUID, never replaced after uncertainty"), issuedAt: instant.describe("Original intent issuance time, fixed before first delivery"), expiresAt: instant.describe("Original fixed expiry within seven days; never extend on retry"),
-      textKey: sharedText(512).min(1).max(128).refine(value => value.trim().length > 0).describe("Nonblank localization key for the ordinary message, maximum 128 characters"), reference: sharedText(512).max(128).describe("Immutable game reference bound to the original verified outcome"),
-      parameters: z.record(z.string().regex(/^[A-Za-z0-9_-]{1,32}$(?![\s\S])/), sharedText(120)).refine(value => Object.keys(value).length <= 8).describe("Original localization parameters, up to eight bounded string values") }, annotations: IDEMPOTENT_WRITE,
-  }, async ({ projectApiKeyId, ...intent }) => {
-    const issued = Date.parse(intent.issuedAt), expires = Date.parse(intent.expiresAt);
-    if (!Number.isFinite(issued) || !Number.isFinite(expires) || issued < 0 || expires <= issued || expires - issued > 604800000) return errorResponse(new Error("INVALID_REQUEST: Fixed ordinary expiry must be within seven days of issuance"));
-    const client = getAdminClient(); if (!client) return noAdminClientResponse();
-    try { return jsonResponse(await client.post("/api/v1/admin/inbox/messages", { apiKeyId: projectApiKeyId, ...intent })); } catch (error) { return errorResponse(error); }
   });
 }

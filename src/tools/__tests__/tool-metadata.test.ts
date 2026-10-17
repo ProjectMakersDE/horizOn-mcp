@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { z } from "zod/v4";
 import { registerAllTools } from "../index.js";
 import { createServer } from "../../server.js";
 import { errorResponse, noApiKeyResponse, structuredResponse, describeTool, API_ERRORS } from "../tool-helpers.js";
@@ -19,7 +20,7 @@ type Describable = { description?: string };
 type ToolConfig = {
   title?: string;
   description?: string;
-  inputSchema?: Record<string, Describable>;
+  inputSchema?: Record<string, Describable> | z.ZodObject;
   outputSchema?: unknown;
   annotations?: Annotations;
 };
@@ -222,8 +223,9 @@ function expectAnnotations(name: string, annotations: Annotations | undefined): 
   }
 }
 
-function expectParameterDescriptions(name: string, inputSchema: Record<string, Describable> | undefined): void {
-  for (const [param, schema] of Object.entries(inputSchema ?? {})) {
+function expectParameterDescriptions(name: string, inputSchema: ToolConfig["inputSchema"]): void {
+  const parameters = inputSchema instanceof z.ZodObject ? inputSchema.shape : inputSchema;
+  for (const [param, schema] of Object.entries(parameters ?? {})) {
     expect(schema.description, `${name}.${param} has no description`).toBeDefined();
     expect((schema.description as string).length, `${name}.${param} description too short`).toBeGreaterThanOrEqual(15);
     expect(schema.description as string, `${name}.${param}: contains a dash`).not.toMatch(/[–—]/);

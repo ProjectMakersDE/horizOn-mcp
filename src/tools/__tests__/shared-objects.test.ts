@@ -103,17 +103,6 @@ describe("shared objects through real MCP transport", () => {
     expect((await call("admin_shared_object_create",{...project,collection,expectedRevision:0,...data})).isError).toBe(true);
     expect(request).not.toHaveBeenCalled();
   });
-  it("sends only original trusted ordinary intent and rejects extended expiry",async()=>{
-    const intent={userId,operationId:objectId,issuedAt:"2026-10-16T00:00:00.000Z",expiresAt:"2026-10-17T00:00:00Z",textKey:"battle.result",reference:"defense",parameters:{result:"confirmed"}};
-    await call("admin_inbox_send_ordinary",{...project,...intent});
-    expect(calls()[0][0]).toBe("http://fixture.invalid/api/v1/admin/inbox/messages");expect(JSON.parse(calls()[0][1].body as string)).toEqual({apiKeyId:projectApiKeyId,...intent});
-    request.mockImplementationOnce(async()=>new Response(JSON.stringify({code:"INBOX_FULL"}),{status:422}));
-    expect((await call("admin_inbox_send_ordinary",{...project,...intent})).isError).toBe(true);
-    for(const changes of [{expiresAt:"2026-10-24T00:00:00Z"},{expiresAt:intent.issuedAt},{issuedAt:"2026-10-16T00:00:00.000001Z"},
-      {parameters:{"bad.dot":"x"}},{textKey:" "},{reference:"r".repeat(129)}])expect((await call("admin_inbox_send_ordinary",{...project,...intent,...changes})).isError).toBe(true);
-    expect(request).toHaveBeenCalledTimes(2);expect(calls()[0][1].headers).toHaveProperty("X-Account-API-Key","fixture-account-key");
-    expect(calls()[0][1].headers).not.toHaveProperty("Authorization");
-  });
   it("exposes honest documentation engine prompts and read-only query annotations",async()=>{
     const {tools}=await client.listTools();
     expect(tools.filter(t=>t.name.includes("shared_")||t.name==="horizon_admin_inbox_send_ordinary")).toHaveLength(18);
