@@ -3,7 +3,7 @@ import { createServer as createHttpServer, type Server, type IncomingHttpHeaders
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { createServer } from "../../server.js";
-import { BSON_DOCUMENT_BYTES, MATCH_STATE_BYTES, SHARED_OBJECT_BYTES } from "../feature-bounds.js";
+import { BSON_DOCUMENT_BYTES, GROUP_WRITE_FRAME_BYTES, MATCH_STATE_BYTES, SHARED_OBJECT_BYTES } from "../feature-bounds.js";
 
 const userId="550e8400-e29b-41d4-a716-446655440000", peer="650e8400-e29b-41d4-a716-446655440001";
 const projectApiKeyId="750e8400-e29b-41d4-a716-446655440002", objectId="850e8400-e29b-41d4-a716-446655440003";
@@ -77,7 +77,24 @@ describe("configured policies over real MCP and loopback HTTP",()=>{
   value(await call("get_group_members",{...session,groupId:objectId}));value(await call("admin_groups_list",project));
   expect(requests.slice(3,5).map(r=>r.url.searchParams.get("limit"))).toEqual(["1","1"]);
   expect(value(await call("get_groups",session)).groups).toHaveLength(257);expect(requests).toHaveLength(6);
-  expect((await call("create_group",{...session,name:"x",description:"",joinMode:"open",data:{x:"x".repeat(BSON_DOCUMENT_BYTES)},expectedPlayerRevision:7})).isError).toBe(true);expect(requests).toHaveLength(6);
+  expect((await call("create_group",{...session,name:"x",description:"",joinMode:"open",data:{x:Infinity},expectedPlayerRevision:7})).isError).toBe(true);expect(requests).toHaveLength(6);
+ },30000);
+ it("forwards one unchanged numeric Group array whose client JSON exceeds the server storage envelope",async()=>{
+  // Actual Jackson2.19.2 read/write proof:0.000001 becomes1.0E-6. With2M values,
+  // client JSON is18,000,012 bytes; server dataJson is14,000,012 before BSON metadata.
+  const count=2_000_000,data={values:Array<number>(count).fill(0.000001)};
+  const clientBytes=Buffer.byteLength(JSON.stringify(data));expect(clientBytes).toBe(18_000_012);
+  expect(clientBytes).toBeGreaterThan(BSON_DOCUMENT_BYTES);
+  expect(Buffer.byteLength('{"values":[]}')+count*"1.0E-6".length+count-1).toBe(14_000_012);
+  const fields={userId,name:"Numeric data",description:"",joinMode:"invite",data,expectedPlayerRevision:7};
+  const original=JSON.stringify(fields);expect(Buffer.byteLength(original)).toBeLessThan(GROUP_WRITE_FRAME_BYTES);
+  reply=()=>({groups:{revision:8},group:{id:objectId,revision:1}});
+  value(await call("create_group",{...fields,sessionToken:session.sessionToken}));
+  expect(requests).toHaveLength(1);expect(requests[0].method).toBe("POST");
+  expect(requests[0].body.expectedPlayerRevision).toBe(7);
+  expect(requests[0].body.data.values).toHaveLength(count);
+  expect(requests[0].body.data.values.every((v:number)=>v===0.000001)).toBe(true);
+  expect(requests[0].bytes).toBe(Buffer.byteLength(original));expect(JSON.stringify(requests[0].body)).toBe(original);
  },30000);
  it("accepts256 PV identities,1001 offers and correction keys, with current empty-delta replay untouched",async()=>{
   const definitions=Array.from({length:256},(_,i)=>({key:"v"+i,name:"Value"+i,initialBalance:0,maxBalance:10000}));

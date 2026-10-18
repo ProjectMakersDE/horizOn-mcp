@@ -52,7 +52,9 @@ Bearer session and matching `userId`. Public group IDs never authorize mutation.
 and safe integer revisions are used consistently with Friends. Known chronology may be omitted/null
 when unknown. Data is a finite JSON object under current maxDataBytes/maxDataDepth (defaults2048/16).
 The technical storage ceiling is the complete16 MiB BSON document, including metadata; Groups
-create/update HTTP inputs allow100663296 UTF-8 bytes for necessary JSON escaping. These frames
+create/update HTTP inputs allow100663296 UTF-8 bytes for necessary JSON escaping. The MCP input
+uses this transport bound for data; JavaScript and server number formatting can differ, so client
+JSON bytes cannot substitute for the server's stored dataJson/BSON validation. These frames
 are separate from policy. MCP adds no default byte/depth clamp and does not truncate retained reads.
 
 ## Reads

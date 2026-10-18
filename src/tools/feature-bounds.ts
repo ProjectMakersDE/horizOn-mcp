@@ -1,6 +1,9 @@
 /** Technical representation bounds from the Server114 contract, not tier defaults. */
 export const INT32_MAX = 2_147_483_647;
 export const BSON_DOCUMENT_BYTES = 16 * 1024 * 1024;
+// Server114 Groups write transport. JSON escaping and number normalization mean
+// client JSON bytes are not the stored dataJson/BSON size; the server validates it.
+export const GROUP_WRITE_FRAME_BYTES = 6 * BSON_DOCUMENT_BYTES;
 export const SHARED_OBJECT_BYTES = 1024 * 1024;
 // Server MatchLimitService:14,648 KiB. Its Base64 fits the20,003,500-byte write frame.
 export const MATCH_STATE_BYTES = 14_648 * 1024;

@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { createApiClientFromEnv, sessionHeaders } from "./api-client.js";
 import { describeTool, noApiKeyResponse, errorResponse, jsonResponse, READ_ONLY, IDEMPOTENT_WRITE, DESTRUCTIVE_WRITE, SESSION_REQUIRED, SESSION_ERRORS } from "./tool-helpers.js";
-import { BSON_DOCUMENT_BYTES, GROUP_PAGE_MAX, groupJsonBytes } from "./feature-bounds.js";
+import { BSON_DOCUMENT_BYTES, GROUP_PAGE_MAX, GROUP_WRITE_FRAME_BYTES, groupJsonBytes } from "./feature-bounds.js";
 
 const session = {
   userId: z.string().uuid().describe("Signed-in player matching the Bearer session"),
@@ -17,8 +17,8 @@ const metadata = {
   description: utf8(BSON_DOCUMENT_BYTES).describe("Public description under current maxDescriptionBytes"), joinMode: z.enum(["open", "request", "invite"]).describe("Whether players join directly, request admission or need an invitation"),
   data: z.record(z.string(), z.unknown()).superRefine((value, ctx) => {
     const bytes = groupJsonBytes(value);
-    if (bytes === null || bytes > BSON_DOCUMENT_BYTES) ctx.addIssue({ code: "custom", message: "Finite JSON object must fit the technical16 MiB BSON representation; current configured byte/depth limits also apply" });
-  }).describe("Required finite JSON object; current maxDataBytes/maxDataDepth are server policies. No default2048-byte/depth16 clamp. Only members/admins can read it."),
+    if (bytes === null || bytes > GROUP_WRITE_FRAME_BYTES) ctx.addIssue({ code: "custom", message: "Finite JSON object must fit the technical100663296-byte Groups write frame; the server checks the complete HTTP/BSON envelope and current byte/depth policies" });
+  }).describe("Required finite JSON object; current maxDataBytes/maxDataDepth are server policies. Client JSON bytes can differ from stored dataJson after number normalization; the server validates the complete stored representation. No default2048-byte/depth16 clamp. Only members/admins can read it."),
 };
 const path = "/api/v1/app/groups";
 const errors = "Use horizon_get_groups and horizon_get_group_pending to reconcile state. 409 REVISION_CONFLICT or uncertain response: read and reconcile intent, never refresh the revision and repeat automatically. Pending decisions require the original requestId; REQUEST_NOT_FOUND means it was removed/replaced. INBOX_FULL rolls back the entire action. 403 rejects group role, session or bilateral block violations. 429 is reported without automatic retry. " + SESSION_ERRORS;
