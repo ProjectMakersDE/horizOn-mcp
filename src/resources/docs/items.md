@@ -39,7 +39,8 @@ An Account Key needs `ITEMS` and access to the selected project. Four admin tool
 Catalog set writes one template at `/api/v1/admin/items/catalog/{key}?apiKeyId=...`, with the reviewed
 catalog revision in `If-Match`. Its `definition` contains name, type, rarity, active, baseProperties
 and propertyRules. It returns `{revision,definition,limits,serverTime}`. Player inspection returns
-`{inventory,receipts}`. There is no admin tool to mint or delete a player's items.
+`{inventory,receipts}`; new source-owned grants create no recipient receipt copy. Legacy originals
+remain migration-owned until source protection is transferred atomically. There is no admin tool to mint or delete a player's items.
 
 Keys/type/rarity/property keys match `[a-z][a-z0-9_]{0,63}`. Names are nonblank and at most 120 UTF-8
 bytes. Properties are a flat object with at most 16 fields and 256 canonical UTF-8 bytes. Values are
@@ -55,7 +56,7 @@ grants and property edits. Its existing instances can still be equipped and disc
 edits do not rewrite existing instance properties. `equipped` is a boolean, not a game-specific slot
 system. Set `active:false` to archive a permanent key; there is no hard delete or key reuse.
 
-| Tier | Lifetime catalog keys | Inventory instances | Retained grant receipts |
+| Installation defaults | Lifetime catalog keys | Inventory instances | Legacy receipt policy |
 |---|---:|---:|---:|
 | FREE | 20 | 10 | 10 |
 | BASIC | 200 | 25 | 20 |
@@ -63,6 +64,9 @@ system. Set `active:false` to archive a permanent key; there is no hard delete o
 | PRO | 1000 | 75 | 30 |
 | ENTERPRISE | 5000 | 150 | 50 |
 
+All three policies are administrator configurable; defaults are not maxima. Source-owned grants
+use the source's original consume guard, without a personal invoice/receipt history. Technical
+catalog slots are UInt16; the property/template/delta/grant format bounds above remain separate.
 Use returned limits as authority. Downgrades preserve existing items and keys. New grants or keys
 need capacity; existing definitions remain editable. These conservative limits are not a cluster
 throughput guarantee.
@@ -77,17 +81,17 @@ supported. Catalog entries must already exist and be active when the purchase ex
 Use `horizon_purchase_player_value_offer` with the original persisted timestamp:UUID operation ID
 and existing player-value contract. The server grants items and debits values in one transaction.
 `INVENTORY_FULL` or another rejected grant leaves balances, receipts, daily counts and inventory
-unchanged. Purchase responses include original `items:[{instanceId,itemKey}]` references. Old
+unchanged. Fresh purchase responses include committed `items:[{instanceId,itemKey}]` references. Old
 responses can omit that field and mean an empty list. After success, refresh inventory explicitly.
 After uncertainty, retry only the original purchase intent. Never buy again merely to recover a lost
-inventory refresh. Replays retain original references even after an item was discarded or the offer
-or template was changed. The bounded receipt/expiry rules still apply.
+inventory refresh. Replay returns current state with empty applied/items and alreadyApplied=true;
+it never recreates a discarded/transferred item. The source's original guard/expiry rules apply.
 
 ## Integration sequence
 
 For Unity, Godot and Unreal, use the installed SDK's Items manager when available and verify its
-actual method signatures. The native adapters are being integrated under TASK-1011; this resource
-does not imply that a published SDK already includes them. REST and MCP use the fixed contract above.
+actual method signatures. This resource does not imply that a published SDK already includes
+the current contracts. REST and MCP use the contract above with current server policies.
 
 1. Sign in, read inventory and one catalog page.
 2. Review the configured offer and persist its original purchase intent before any send.

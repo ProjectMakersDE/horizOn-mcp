@@ -61,7 +61,7 @@ their group objects after leave with mode=owner, ownerId=self and the original g
 them unless writePolicy=dashboard. Other group members still need current permission. Scoped
 admin cleanup remains available after owner/group deletion. Quota failures preserve all data.
 
-| Tier | Permanent collections/project | Account storage charge | Decoded object bytes |
+| Installation defaults | Permanent collections/project | Account storage charge | Decoded object bytes |
 |---|---:|---:|---:|
 | FREE | 2 | 5 MiB | 2048 |
 | BASIC | 10 | 50 MiB | 8192 |
@@ -69,9 +69,14 @@ admin cleanup remains available after owner/group deletion. Quota failures prese
 | PRO | 25 | 250 MiB | 32768 |
 | ENTERPRISE | 100 | 2 GiB | 65536 |
 
-maxObjectsPerOwner is 1..100. Charges include decoded bytes plus 8192 metadata/index allowance per
-object and 512 per retained owner usage. Read returned limits as authority. These conservative
-allowances are not a guarantee that the aggregate fixed cluster has spare capacity.
+All three tier policies are administrator configurable; the table does not cap higher values.
+maxObjectsPerOwner is a positive Int32 collection setting, independent of the default100.
+Configured object bytes may reach1048576, the existing1 MiB decoded query envelope. Create/update
+transport frames are1402200 encoded UTF-8 bytes, including Base64/JSON metadata. Three search
+fields,120-byte names,96-byte search strings and TTL60..2592000 seconds are technical contracts.
+Reductions preserve existing reads/deletes. Charges include decoded bytes plus8192 per object and
+512 per retained owner ledger; these are quota allowances, not measured BSON/index/disk bytes or
+a cluster-capacity guarantee. Read returned limits as authority.
 
 ## Trusted administration and ordinary notices
 
@@ -90,9 +95,8 @@ grant rewards. Never replace an uncertain original with a fresh revision or ID.
 
 ## Integration state and recipes
 
-TASK-1012 is being integrated. Do not assume a published Unity/Godot/Unreal SDK or deployed server
-already supports it. Inspect the installed version and exact native method signatures. Native
-adapters and simpleServer REST parity remain separate acceptance gates. Hosted admin routes are
+Inspect the installed Unity/Godot/Unreal version and exact native method signatures before using
+these contracts. simpleServer supports REST within its documented ENV/SQL frames. Hosted admin routes are
 not simpleServer APIs; its operator uses a local trusted CLI. Realtime/chat remain hosted-only.
 
 World map: owner-write/all-read grid collection, explicit marker create/update and bounded rectangle

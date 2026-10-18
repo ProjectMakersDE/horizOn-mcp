@@ -28,14 +28,14 @@ export function registerAdminChatTools(server: McpServer): void {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();
     try { return jsonResponse(await client.get(base(projectApiKeyId) + "/channels", chatQuery(query))); } catch (error) { return errorResponse(error); }
   });
-  server.registerTool("horizon_admin_chat_channel_get", { title: "Inspect Chat Channel", description: doc("Reads up to 100 currently retained messages for authorized moderation.",
-    "Read only, plain text including messages hidden by player-to-player blocks. Does not extend retention.", "{channel,messages,serverTime}"),
+  server.registerTool("horizon_admin_chat_channel_get", { title: "Inspect Chat Channel", description: doc("Reads the current bounded channel text window for authorized moderation.",
+    "Read only, current project20/seven-day or private15/30-second text windows, including messages hidden by player-to-player blocks. Does not extend retention.", "{channel,messages,serverTime}"),
     inputSchema: { ...project, channelId: chatId }, annotations: READ_ONLY }, async ({ projectApiKeyId, channelId }) => {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();
     try { return jsonResponse(await client.get(base(projectApiKeyId) + "/channels/" + channelId)); } catch (error) { return errorResponse(error); }
   });
   server.registerTool("horizon_admin_chat_message_delete", { title: "Delete Chat Message", description: doc("Deletes one immutable message at its channel's original revision.",
-    "Destructive CAS, one HTTP attempt. Removes channel/author references, preserves original send receipts and report snapshots.", "{channel,deleted:true,serverTime}"),
+    "Destructive CAS, one HTTP attempt. Removes the original message/channel reference; the player time fence prevents rebooking an unknown old send. Independent shared report snapshots remain, without a personal receipt copy.", "{channel,deleted:true,serverTime}"),
     inputSchema: { ...project, channelId: chatId, messageId: chatId, expectedRevision: chatRevision }, annotations: DESTRUCTIVE_WRITE }, async ({ projectApiKeyId, channelId, messageId, expectedRevision }) => {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();
     try { return jsonResponse(await client.delete(base(projectApiKeyId) + "/channels/" + channelId + "/messages/" + messageId, undefined, { "If-Match": String(expectedRevision) })); } catch (error) { return errorResponse(error); }
@@ -53,7 +53,7 @@ export function registerAdminChatTools(server: McpServer): void {
     try { return jsonResponse(await client.post(base(projectApiKeyId) + "/reports/" + reportId + "/resolve", { status }, { "If-Match": String(expectedRevision) })); } catch (error) { return errorResponse(error); }
   });
   server.registerTool("horizon_admin_chat_report_delete", { title: "Delete Resolved Chat Report", description: doc("Deletes an explicitly resolved report at the original revision.",
-    "Destructive CAS, one attempt. Frees the retained slot but keeps the reporter's replay protection. Open reports cannot be deleted by this route.", "{deleted:true,serverTime}"),
+    "Destructive CAS, one attempt. Frees the resolved shared report slot; there is no permanent per-player receipt. A later explicit report of a still-visible original message remains subject to current rate/permission checks. Never retry implicitly after deletion. Open reports cannot be deleted here.", "{deleted:true,serverTime}"),
     inputSchema: { ...project, reportId: chatId, expectedRevision: chatRevision }, annotations: DESTRUCTIVE_WRITE }, async ({ projectApiKeyId, reportId, expectedRevision }) => {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();
     try { return jsonResponse(await client.delete(base(projectApiKeyId) + "/reports/" + reportId, undefined, { "If-Match": String(expectedRevision) })); } catch (error) { return errorResponse(error); }

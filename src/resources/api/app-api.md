@@ -676,7 +676,7 @@ Create a user log entry. **Requires BASIC tier or higher.**
 
 ## Statistics
 
-Matching player Bearer session required. GET `/api/v1/app/statistics?userId=<uuid>&definitionVersion=<optional>` loads a snapshot; GET `/api/v1/app/statistics/definitions?definitionVersion=<optional>` loads definitions. POST `/api/v1/app/statistics` accepts `{userId,operationId,updates:[{key,value}]}` as one atomic batch of1..100 distinct safe integer updates. Persist and reuse original timestamp:UUID+payload on uncertain outcomes. Retained replay first; mismatched payload409, expired/evicted unknown ID410, never rebook. `horizon://docs/statistics` documents UTC resets, versioned catalog, eight bounded receipts and the persistent eviction floor.
+Matching player Bearer session required. GET `/api/v1/app/statistics?userId=<uuid>&definitionVersion=<optional>` loads a snapshot; GET `/api/v1/app/statistics/definitions?definitionVersion=<optional>` loads definitions. POST `/api/v1/app/statistics` accepts `{userId,operationId,updates:[{key,value}]}` as one atomic batch of distinct configured safe-integer keys, including more than100 when configured. Persist and reuse the original timestamp:UUID+payload after uncertainty. Retained replay precedes current catalog checks; mismatched payload409, expired/evicted unknown ID410, never rebook. See `horizon://docs/statistics` for current policies and technical frames.
 ## Player Values
 
 All four routes require the Project API key and `Authorization: Bearer <player accessToken>` for the same `userId`.
@@ -688,7 +688,7 @@ All four routes require the Project API key and `Authorization: Bearer <player a
 | POST | `/api/v1/app/player-values/purchase` | JSON `{userId, offerKey, operationId}` |
 | POST | `/api/v1/app/player-values/adjust` | JSON `{userId, key, amount, reason, operationId}` |
 
-Balances and signed deltas are safe integers, never floating-point currency. Mutations are atomic and replay the same stable operation ID. Preserve the original ID and payload after a timeout. Successful responses include current state and `{operationId, replayed, applied}`. Never apply a replayed delta to the state again. `operationWindow` reports server time and the oldest accepted operation time. Expired operations require reconciliation, not a fresh automatic purchase.
+Balances and signed deltas are safe integers, never floating-point currency. Mutations are atomic and replay the original stable ID/payload. The response includes current state and operation:{operationId,replayed,alreadyApplied,applied,items}. Replay has empty applied/items and never grants or debits again. `operationWindow` reports server time/oldest accepted time. Internal source-owned grants keep no recipient invoice/history copy. Expired/uncertain operations require reconciliation, never a fresh automatic purchase.
 
 Full definitions, limits, response fields, error recovery, SDK examples, operator tools and the simpleServer boundary: `horizon://docs/player-values`.
 
@@ -705,8 +705,10 @@ All routes require the project key and matching player Bearer session.
 Snapshots contain `userId`, `revision`, `definitionVersion`, `definitions`, `progress`, `limits`
 and `serverTime`. Null definitions preserve the matching cache; an empty array clears it.
 Unlock results add `newlyUnlocked`, `replayed` and `deliveryResults` beside `achievements`.
-Delivery results contain `achievements` and per-key `results`. Pending rewards keep their original
-values and remain recoverable when Inbox is full. Inbox claim performs the eventual balance credit.
+New unlocks commit completion bits and configured rewards immediately in the same transaction;
+deliveryResults is empty and there is no new Inbox reward copy. Compact progress is complete with
+unknown chronology nullable. The compatibility rewards/deliver route only reads per-key status;
+legacy pending originals require verified cold settlement and never authorize a replacement claim.
 See `horizon://docs/achievements` for the complete contract and admin revision rules.
 
 ## Friends

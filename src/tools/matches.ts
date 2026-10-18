@@ -3,6 +3,7 @@ import { z } from "zod/v4";
 import { createApiClientFromEnv, sessionHeaders } from "./api-client.js";
 import { describeTool, noApiKeyResponse, errorResponse, jsonResponse, READ_ONLY, DESTRUCTIVE_WRITE, IDEMPOTENT_WRITE, SESSION_REQUIRED, SESSION_ERRORS } from "./tool-helpers.js";
 import { matchId, matchRevision, matchInteger, matchBytes, matchIds, matchPage, matchCreate, matchQuery } from "./match-schemas.js";
+import { MATCH_STATE_BYTES } from "./feature-bounds.js";
 
 const session = { userId: z.string().uuid().describe("Active player matching the session and project"), sessionToken: z.string().min(1).max(256).describe("Player accessToken sent only as Bearer") };
 const base = "/api/v1/app/matches";
@@ -14,7 +15,7 @@ const doc = (summary: string, effects: string, returns: string) => describeTool(
 export function registerMatchesTools(server: McpServer): void {
   for (const [name, suffix, title] of [["get_matches", "", "Get My Matches"], ["get_match_limits", "/limits", "Get Match Limits"]] as const) {
     server.registerTool("horizon_" + name, { title, description: doc("Reads the player's " + (suffix ? "five-tier limits and project capabilities." : "bounded active, invited and recent match summaries."),
-      "Read only. Respect pollAfterSeconds on refresh.", suffix ? "{limits,config,capabilities,pollAfterSeconds,serverTime}" : "{userId,revision,active,invites,recent,limits,pollAfterSeconds,serverTime}"),
+      "Read only. Respect pollAfterSeconds on refresh. Retained state is not truncated after System Config reductions.", suffix ? "{limits,config,capabilities,pollAfterSeconds,serverTime}; limits include activeMatches,stateBytes,retainedMatches,pendingInvites,settlementMatches,historyRetentionSeconds,rankedSettlementSeconds. Zero completed history is valid." : "{userId,revision,active,invites,recent,pendingResults,limits,pollAfterSeconds,serverTime}; minimal pendingResults retain matchId,finalStateRevision,ownRankedRunId and expiresAt independently of completed detail history."),
       inputSchema: session, annotations: READ_ONLY }, async ({ userId, sessionToken }) => {
       const client = createApiClientFromEnv(); if (!client) return noApiKeyResponse();
       try { return jsonResponse(await client.get(base + suffix, { userId }, sessionHeaders(sessionToken))); } catch (error) { return errorResponse(error); }
@@ -34,7 +35,7 @@ export function registerMatchesTools(server: McpServer): void {
     try { return jsonResponse(await client.get(base + "/" + id, { userId }, sessionHeaders(sessionToken))); } catch (error) { return errorResponse(error); }
   });
   server.registerTool("horizon_create_match", { title: "Create Match", description: doc("Creates one server-ID lobby under the original player-ledger revision.",
-    "One HTTP attempt. Reserves creator active/history and bounded invite slots atomically. Lost response: reconcile horizon_get_matches with the original intent.", "{match,playerRevision,pollAfterSeconds,serverTime}"),
+    "One HTTP attempt. Reserves active and settlement capacity plus bounded invite slots atomically. Completed detail history is separate; FREE defaults to zero. Lost response: reconcile horizon_get_matches with the original intent.", "{match,playerRevision,pollAfterSeconds,serverTime}"),
     inputSchema: { ...session, expectedRevision: matchRevision, settings: matchCreate }, annotations: IDEMPOTENT_WRITE }, async ({ userId, sessionToken, expectedRevision, settings }) => {
     if (settings.inviteeIds.includes(userId)) return errorResponse(new Error("INVALID_REQUEST: Creator cannot invite themself"));
     const client = createApiClientFromEnv(); if (!client) return noApiKeyResponse();
@@ -48,7 +49,7 @@ export function registerMatchesTools(server: McpServer): void {
       "{match,pollAfterSeconds,serverTime}; departing lobby actors receive metadata only and lose point-read access."),
       inputSchema: { ...session, matchId, expectedRevision: matchRevision,
         ...(action === "start" ? { turnOrder: matchIds(8).min(2).describe("Every joined participant in the explicit turn order") } : {}),
-        ...(action === "turn" ? { dataBase64: matchBytes(8192), finish: z.boolean().describe("True freezes final bytes and opens reporting without choosing a winner") } : {}) },
+        ...(action === "turn" ? { dataBase64: matchBytes(MATCH_STATE_BYTES), finish: z.boolean().describe("True freezes final bytes and opens reporting without choosing a winner") } : {}) },
       annotations: action === "join" ? IDEMPOTENT_WRITE : DESTRUCTIVE_WRITE }, async ({ sessionToken, matchId: id, expectedRevision, ...body }) => {
       const client = createApiClientFromEnv(); if (!client) return noApiKeyResponse();
       try { return jsonResponse(await client.post(base + "/" + id + "/" + action, body, { ...sessionHeaders(sessionToken), "If-Match": String(expectedRevision) })); } catch (error) { return errorResponse(error); }

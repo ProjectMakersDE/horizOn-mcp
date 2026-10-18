@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { createApiClientFromEnv, sessionHeaders } from "./api-client.js";
 import { describeTool, noApiKeyResponse, errorResponse, jsonResponse, READ_ONLY, IDEMPOTENT_WRITE, DESTRUCTIVE_WRITE, SESSION_REQUIRED, SESSION_ERRORS } from "./tool-helpers.js";
+import { BSON_DOCUMENT_BYTES, GROUP_PAGE_MAX, groupJsonBytes } from "./feature-bounds.js";
 
 const session = {
   userId: z.string().uuid().describe("Signed-in player matching the Bearer session"),
@@ -9,17 +10,15 @@ const session = {
 };
 const groupId = z.string().uuid().describe("Exact group UUID in the current project; never an authorization credential");
 const revision = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER).describe("Exact reviewed revision; never replace automatically after an uncertain response");
-const page = { afterUserId: z.string().uuid().optional().describe("Last user UUID from the preceding member page"), limit: z.number().int().min(1).max(50).default(50).describe("Explicit member page size from 1 to 50") };
+const page = { afterUserId: z.string().uuid().optional().describe("Last user UUID from the preceding member page"), limit: z.number().int().min(1).max(GROUP_PAGE_MAX).default(1).describe("Explicit page size no larger than current memberPageSize; default1 stays valid after a reduction. Never automatically follow pages") };
 const utf8 = (max: number) => z.string().refine(value => Buffer.byteLength(value, "utf8") <= max, `At most ${max} UTF-8 bytes`);
 const metadata = {
-  name: utf8(120).refine(value => value.trim().length > 0, "A nonblank name is required").describe("Group display name, at most 120 UTF-8 bytes"),
-  description: utf8(1024).describe("Public description, at most 1024 UTF-8 bytes"), joinMode: z.enum(["open", "request", "invite"]).describe("Whether players join directly, request admission or need an invitation"),
-  data: z.record(z.string(), z.json()).superRefine((value, ctx) => {
-    if (Buffer.byteLength(JSON.stringify(value), "utf8") > 2048) ctx.addIssue({ code: "custom", message: "Group data exceeds 2048 UTF-8 bytes" });
-    const depth = (item: unknown, level: number): boolean => level <= 16 &&
-      (item === null || typeof item !== "object" || Object.values(item).every(child => depth(child, level + 1)));
-    if (!depth(value, 0)) ctx.addIssue({ code: "custom", message: "Group data exceeds depth 16" });
-  }).describe("Required JSON object; up to 2048 serialized UTF-8 bytes, depth 16. Only members/admins can read it."),
+  name: utf8(BSON_DOCUMENT_BYTES).refine(value => value.trim().length > 0, "A nonblank name is required").describe("Nonblank display name under current maxNameBytes; server enforces the complete BSON envelope"),
+  description: utf8(BSON_DOCUMENT_BYTES).describe("Public description under current maxDescriptionBytes"), joinMode: z.enum(["open", "request", "invite"]).describe("Whether players join directly, request admission or need an invitation"),
+  data: z.record(z.string(), z.unknown()).superRefine((value, ctx) => {
+    const bytes = groupJsonBytes(value);
+    if (bytes === null || bytes > BSON_DOCUMENT_BYTES) ctx.addIssue({ code: "custom", message: "Finite JSON object must fit the technical16 MiB BSON representation; current configured byte/depth limits also apply" });
+  }).describe("Required finite JSON object; current maxDataBytes/maxDataDepth are server policies. No default2048-byte/depth16 clamp. Only members/admins can read it."),
 };
 const path = "/api/v1/app/groups";
 const errors = "Use horizon_get_groups and horizon_get_group_pending to reconcile state. 409 REVISION_CONFLICT or uncertain response: read and reconcile intent, never refresh the revision and repeat automatically. Pending decisions require the original requestId; REQUEST_NOT_FOUND means it was removed/replaced. INBOX_FULL rolls back the entire action. 403 rejects group role, session or bilateral block violations. 429 is reported without automatic retry. " + SESSION_ERRORS;
@@ -36,8 +35,8 @@ export function registerGroupsTools(server: McpServer): void {
         requires: SESSION_REQUIRED + (suffix === "pending" ? " Leader/officer membership." : suffix === "members" ? " Group membership." : ""),
         effects: "None (read only).", returns: suffix === "" ? "MyGroupsView with memberships, pending invitations/requests, revision, limits and serverTime."
           : suffix === "detail" ? "GroupView: public metadata for nonmembers, with data/myRole only for members."
-          : suffix === "members" ? "{groupId,revision,members,nextAfterUserId,serverTime}; at most 50 public member profiles. A changed revision between pages requires explicit reconciliation."
-          : "{groupId,revision,invitations,joinRequests,serverTime}; at most 20 entries per direction.", errors }),
+          : suffix === "members" ? "{groupId,revision,members,nextAfterUserId,serverTime}; one requested page under current memberPageSize. A changed revision between pages requires explicit reconciliation."
+          : "{groupId,revision,invitations,joinRequests,serverTime}; complete retained entries, including after policy reductions.", errors }),
       inputSchema: { ...session, ...(suffix ? { groupId } : {}), ...(suffix === "members" ? page : {}) }, annotations: READ_ONLY,
     }, async ({ userId, sessionToken, ...rest }) => {
       const client = createApiClientFromEnv(); if (!client) return noApiKeyResponse();
