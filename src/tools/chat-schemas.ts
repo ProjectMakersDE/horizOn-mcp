@@ -11,7 +11,7 @@ export function chatText(characters: number, bytes: number, nonblank = true) {
       scalars.every(c => { const cp = c.codePointAt(0)!; return !(cp >= 0xd800 && cp <= 0xdfff) && !(cp <= 0x1f && cp !== 9 && cp !== 10) && !(cp >= 0x7f && cp <= 0x9f); });
   }, `Valid plain Unicode, at most ${characters} scalars/${bytes} UTF-8 bytes, no controls except LF/TAB`).describe(`Original plain Unicode text, at most ${characters} scalars and ${bytes} UTF-8 bytes`);
 }
-export const chatIds = z.array(chatId).max(100).refine(ids => new Set(ids).size === ids.length, "Unique known message IDs").describe("Complete cached message IDs for the exact original channel epoch");
+export const chatIds = z.array(chatId).max(20).refine(ids => new Set(ids).size === ids.length, "Unique known message IDs").describe("Known cached message IDs for the exact original epoch; fixed current wire bound20 matches the largest channel window");
 export const chatPage = { limit: z.number().int().min(1).max(50).optional().describe("One explicit bounded page, never automatic traversal") };
 export const chatCursor = z.string().min(1).max(256).refine(value => Buffer.from(value, "base64url").toString("base64url") === value,
   "Original canonical base64url cursor").optional().describe("Opaque original cursor; empty result pages may still have continuation");

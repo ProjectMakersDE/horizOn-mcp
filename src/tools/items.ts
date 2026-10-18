@@ -27,7 +27,7 @@ export function registerItemsTools(server: McpServer): void {
   const actions = [
     ["adjust_item", "adjust", "Adjust Item Properties", "Applies all configured deltas atomically. Archived templates and properties without a rule cannot be adjusted."],
     ["equip_item", "equip", "Set Item Equipped State", "Sets this instance's equipped boolean; it does not enforce game-specific slot rules."],
-    ["discard_item", "discard", "Discard Item", "Permanently removes this instance. Original grant receipts remain and replay cannot recreate a discarded item."],
+    ["discard_item", "discard", "Discard Item", "Permanently removes this instance. The original source guards consumption; replay cannot recreate a discarded item and no recipient receipt is added."],
   ] as const;
   for (const [name, action, title, effects] of actions) {
     server.registerTool("horizon_" + name, {

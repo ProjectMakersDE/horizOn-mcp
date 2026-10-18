@@ -46,7 +46,7 @@ describe("matches through real MCP protocol transport",()=>{
   for(const expectedRevision of [undefined,null,-1,1.5,"1",9007199254740992])expect((await call("join_match",{...session,matchId,expectedRevision})).isError).toBe(true);
   for(const change of [{name:" "},{name:"😀".repeat(31)},{name:"\ud800"},{capacity:9},{capacity:"2"},{strength:9007199254740992},
    {turnSeconds:59},{turnSeconds:604801},{ranked:"false"},{inviteeIds:[userId]},{inviteeIds:[peer,peer]},{dataBase64:"AB=="},{dataBase64:"AP8=\n"},
-   {dataBase64:Buffer.alloc(8193).toString("base64")},{extra:true}])expect((await call("create_match",{...session,expectedRevision:0,settings:{...settings,...change}})).isError).toBe(true);
+   {dataBase64:Buffer.alloc(14999553).toString("base64")},{extra:true}])expect((await call("create_match",{...session,expectedRevision:0,settings:{...settings,...change}})).isError).toBe(true);
   for(const turnOrder of [[userId],[userId,userId]])expect((await call("start_match",{...session,matchId,expectedRevision:1,turnOrder})).isError).toBe(true);
   expect((await call("submit_match_turn",{...session,matchId,expectedRevision:1,dataBase64:"",finish:"false"})).isError).toBe(true);
   for(const winnerIds of [[peer,userId],[userId,userId]])expect((await call("report_match_result",{...session,matchId,finalStateRevision:1,resultBase64:"",winnerIds})).isError).toBe(true);

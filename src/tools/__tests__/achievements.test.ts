@@ -125,7 +125,7 @@ describe("achievements over actual MCP transport", () => {
     const { tools } = await client.listTools();
     expect(tools.filter(tool => tool.name.includes("achievement"))).toHaveLength(7);
     for (const name of ["horizon_unlock_achievement", "horizon_deliver_achievement_rewards"]) {
-      expect(tools.find(tool => tool.name === name)?.annotations).toMatchObject({ readOnlyHint: false, destructiveHint: false, idempotentHint: true });
+      expect(tools.find(tool => tool.name === name)?.annotations).toMatchObject({ readOnlyHint: name === "horizon_deliver_achievement_rewards", destructiveHint: false, idempotentHint: true });
     }
     expect((await client.readResource({ uri: "horizon://docs/achievements" })).contents[0]).toMatchObject({ text: expect.stringContaining("pendingReward") });
     for (const engine of ["unity", "godot", "unreal"]) {

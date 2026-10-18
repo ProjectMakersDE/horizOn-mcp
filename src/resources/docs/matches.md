@@ -24,7 +24,8 @@ Open search returns at most50 summaries from256 metadata candidates with current
 and owner status. An empty page can have nextCursor. Explicit next pages are immediate, refresh
 honors pollAfterSeconds. No tool polls or follows cursors automatically.
 
-Joining reserves active/history capacity. A creator explicitly starts with every accepted player
+Create/join reserve active and separate settlement capacity early; completed detail history is
+independent. A creator explicitly starts with every accepted player
 in turnOrder. Start removes outstanding invitations. Normal moves replace bytes once under the
 original match If-Match. Timeout advances one overdue turn; leave during play forfeits. Creator
 lobby leave/cancel closes the lobby. Other lobby leave removes seat/history/access. Departing lobby
@@ -39,7 +40,10 @@ disagreement disputes, missing reports become unconfirmed. Agreement is not proo
 Optional ranked matches snapshot an existing configured board. Only complete consensus unlocks
 one bound validated run per participant. `horizon_start_match_ranked_run` with the original
 finalStateRevision recovers the exact original runId/seed/expiry after uncertainty. It never
-extends or replaces expired/consumed tickets. Submit through existing validated-actions tools.
+extends or replaces expired/consumed tickets. `get_matches.pendingResults` independently retains
+only matchId,finalStateRevision,ownRankedRunId,expiresAt for authorized open result/run settlement.
+Retain the minimal original match/final-revision→run binding until the authentication context
+changes; never infer a fresh run from missing detail history. Submit through existing validated-actions tools.
 This is a short post-match rule validation, not retrospective simulation of a30-day match.
 There are no automatic match rewards. simpleServer supports ordinary REST and explicitly returns
 501 FEATURE_NOT_SUPPORTED for ranked creation/run start. Its realtime and matchesRanked capabilities
@@ -50,11 +54,19 @@ explicit reconciliation. Do not silently replace the original revision or repeat
 Turn notices are ordinary Inbox messages with durable per-turn identities. A full mailbox leaves
 the latest notice pending without undoing the committed move. A newer turn supersedes it and
 the original deadline ends delivery. Realtime topic matches:<UUID> carries participant-only
-metadata, no payload. Terminal records and paired bytes are retained7days. Lobbies last24h,
-active matches at most30days. Bounded maintenance advances20 due matches per account/project batch.
+metadata, no payload. Completed detail duration/count are current administrator policies; FREE
+defaults to zero completed details. Minimal source fields needed by an outstanding valuable result
+or original run remain independently protected. After completion/expiry a detail read may return
+MATCH_NOT_FOUND and never authorizes a new action/reward. Lobbies last24h and active matches at
+most30days. Explicit bounded maintenance follows separate due/source/history continuations.
 
-FREE/BASIC/PLUS/PRO/ENTERPRISE active caps are2/3/4/5/10, state caps1/2/3/4/8KiB, retained
-history20/30/40/50/100, pending invites20. Runtime limits remain authoritative after tier changes.
+Read all seven current policies: activeMatches,stateBytes,retainedMatches,pendingInvites,
+settlementMatches,historyRetentionSeconds,rankedSettlementSeconds. Tier defaults are not maxima;
+retainedMatches/historyRetentionSeconds may be zero. Retained reads stay complete after reductions.
+The technical state maximum is14999552 decoded bytes (14648KiB), whose canonical Base64 fits the
+20003500-byte create/turn HTTP frame. Result bytes remain a separate fixed256-byte contract.
+simpleServer's portable BLOB subset is65535 decoded bytes; higher ENV is rejected explicitly,
+while existing larger SQLite originals remain readable/shrinkable. Never treat these frames as quotas.
 
 The7 admin tools are `horizon_admin_match_config_get`, `horizon_admin_match_config_set`,
 `horizon_admin_match_limits`, `horizon_admin_matches_list`, `horizon_admin_match_get`,

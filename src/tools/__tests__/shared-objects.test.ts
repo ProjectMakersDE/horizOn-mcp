@@ -97,7 +97,7 @@ describe("shared objects through real MCP transport", () => {
     expect(request).toHaveBeenCalledTimes(10);
   });
   it("rejects immutable definition mistakes and oversized fields without coercion",async()=>{
-    for(const changes of [{readPolicy:"dashboard"},{maxObjectsPerOwner:0},{ttlSeconds:59},{ttlSeconds:"60"},{maxObjectBytes:65537},
+    for(const changes of [{readPolicy:"dashboard"},{maxObjectsPerOwner:0},{ttlSeconds:59},{ttlSeconds:"60"},{maxObjectBytes:1048577},
       {name:"é".repeat(61)},{searchFields:[definition.searchFields[0],definition.searchFields[0]]},{used:true},{active:"true"}])
       expect((await call("admin_shared_collection_set",{...project,collection,expectedRevision:0,definition:{...definition,...changes}})).isError).toBe(true);
     expect((await call("admin_shared_object_create",{...project,collection,expectedRevision:0,...data})).isError).toBe(true);

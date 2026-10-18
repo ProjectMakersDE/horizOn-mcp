@@ -35,13 +35,13 @@ export function registerAdminMatchesTools(server: McpServer): void {
     try { return jsonResponse(await client.get(base + "/" + id, { apiKeyId: projectApiKeyId })); } catch (error) { return errorResponse(error); }
   });
   server.registerTool("horizon_admin_match_cancel", { title: "Cancel Owned Match", description: doc("Closes an exact-revision lobby as cancelled or active/reporting match as unconfirmed.",
-    "Destructive CAS, one HTTP attempt. Releases active slots, preserves reports and retains terminal state seven days. No chosen winner or reward.", "{match,pollAfterSeconds,serverTime}"),
+    "Destructive CAS, one HTTP attempt. Releases active slots and applies configured completed-detail retention (FREE defaults to zero). Required settlement/source references remain independently protected. No chosen winner or reward.", "{match,pollAfterSeconds,serverTime}"),
     inputSchema: { ...project, matchId, expectedRevision: matchRevision }, annotations: DESTRUCTIVE_WRITE }, async ({ projectApiKeyId, matchId: id, expectedRevision }) => {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();
     try { return jsonResponse(await client.post(path("/" + id + "/cancel", projectApiKeyId), undefined, { "If-Match": String(expectedRevision) })); } catch (error) { return errorResponse(error); }
   });
   server.registerTool("horizon_admin_matches_cleanup", { title: "Process One Due Match Batch", description: doc("Processes up to twenty indexed due matches in the owned project.",
-    "One explicit batch advances deadlines, attempts retained notices, and purges seven-day terminal records. Durable continuation advances past failures. Repeating processes another batch.",
+    "One explicit bounded maintenance call advances deadlines, attempts current source notices, settles protected sources and applies configured completed-detail retention. Durable continuations advance past failures. No automatic loop or replacement run.",
     "{examined,advanced,notified,removed,deferred,serverTime}"), inputSchema: project, annotations: { ...DESTRUCTIVE_WRITE, idempotentHint: false } }, async ({ projectApiKeyId }) => {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();
     try { return jsonResponse(await client.post(path("/cleanup", projectApiKeyId))); } catch (error) { return errorResponse(error); }

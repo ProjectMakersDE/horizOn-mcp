@@ -21,6 +21,8 @@ Friends include `userId`, `since`, public `display` and `lastActiveAt`. The latt
 retained login timestamp, not recent HTTP traffic or live presence. `null` means unknown.
 Requests include `userId`, `requestId`, `createdAt` and public display. Block entries expose only
 `userId` and `blockedAt` to their owning player or authorized account support.
+since/createdAt/blockedAt may be omitted or null when original chronology is unknown; never
+invent a timestamp. Known legacy chronology remains readable.
 
 ## Explicit identity and recovery
 
@@ -60,7 +62,8 @@ Read routes are `GET /api/v1/app/friends?userId=...` and
 ## Limits and integrations
 
 Default friends per player: FREE 20, BASIC 50, PLUS 75, PRO 100, ENTERPRISE 200. Each tier permits
-20 incoming and 20 outgoing requests and 100 blocks. Read the current snapshot's limits.
+20 incoming and20 outgoing requests and100 blocks by default. All four policies are configurable
+positive Int32 values; these defaults are not maxima. Read the current snapshot's limits.
 Downgrades retain existing data, while additions above the new cap fail. Removal remains available.
 Deleted or unavailable peers do not prevent clearing a local request or block.
 

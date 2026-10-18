@@ -24,7 +24,7 @@ export function registerAdminItemsTools(server: McpServer): void {
     try { return jsonResponse(await client.put(path + "/catalog/" + encodeURIComponent(key) + "?apiKeyId=" + encodeURIComponent(projectApiKeyId), definition, { "If-Match": String(expectedRevision) })); } catch (error) { return errorResponse(error); }
   });
   for (const [name, title, player, returns] of [
-    ["player_get", "Inspect Player Inventory", true, "{inventory,receipts} with original bounded grant references; no grant or correction action."],
+    ["player_get", "Inspect Player Inventory", true, "{inventory,receipts}; new source-owned grants keep no recipient receipt copy. Legacy receipts remain migration-owned. No grant or correction action."],
     ["limits", "Get Item Limits", false, "{catalog,inventory,receipts} for the current tier."],
   ] as const) {
     server.registerTool("horizon_admin_items_" + name, {

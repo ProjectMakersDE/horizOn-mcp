@@ -112,13 +112,12 @@ describe("groups through actual MCP transport", () => {
     expect((await call("get_groups", { userId })).isError).toBe(true);
     expect(request).not.toHaveBeenCalled();
   });
-  it("rejects byte-overflow null nonobject deep metadata and unbounded pages locally", async () => {
-    let deep: unknown = 1; for (let n = 0; n < 17; n++) deep = { x: deep };
-    for (const change of [{ name: "ü".repeat(61) }, { name: "  " }, { description: "ü".repeat(513) }, { joinMode: "public" },
-      { data: null }, { data: [] }, { data: "text" }, { data: { x: "ü".repeat(1024) } }, { data: deep }]) {
+  it("rejects non-JSON metadata and nonrepresentable pages locally without default policy clamps", async () => {
+    for (const change of [{ name: "  " }, { joinMode: "public" },
+      { data: null }, { data: [] }, { data: "text" }, { data: { x: Infinity } }, { data: { x: undefined } }]) {
       expect((await call("create_group", { ...session, ...metadata, expectedPlayerRevision: 7, ...change })).isError).toBe(true);
     }
-    for (const limit of [0, 51, 1.5, "50"]) {
+    for (const limit of [0, 2147483647, 1.5, "50"]) {
       expect((await call("get_group_members", { ...session, groupId, limit })).isError).toBe(true);
       expect((await call("admin_groups_list", { projectApiKeyId, limit })).isError).toBe(true);
     }

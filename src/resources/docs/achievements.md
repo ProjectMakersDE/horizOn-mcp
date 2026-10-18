@@ -1,96 +1,71 @@
 # Achievements
 
-Achievements unlock through a configured statistic threshold or an explicit manual game event.
-The server records each key once per player. Optional value rewards first move to Inbox, where
-the player claims them. An unlock is not an immediate balance credit.
+Achievements use permanent per-key completion bits. A manual unlock, or an affected statistic
+batch, commits its completion bits and configured Player Values rewards immediately in the same
+transaction. New unlocks create no personal Inbox reward or copied grant history. A repeated key
+never credits twice, including after archival or a later catalog edit.
 
-## Tools and authentication
+## Configure
 
-Player tools require `HORIZON_API_KEY`, the signed-in `userId` and its `sessionToken`:
-
-| Tool | Purpose |
-|---|---|
-| `horizon_get_achievements` | Read definitions, progress and original pending reward values |
-| `horizon_unlock_achievement` | Unlock the same manual key once, safely retrying that key |
-| `horizon_deliver_achievement_rewards` | Retry delivery for one to eight distinct pending keys |
-
-The session token travels only as the Bearer header. A foreign player is rejected. Admin tools
-require `HORIZON_ACCOUNT_API_KEY` with ACHIEVEMENTS and matching project scope, or full access:
+Hosted admin tools require ACHIEVEMENTS scope and the matching owned project:
 `horizon_admin_achievements_definitions_get`, `horizon_admin_achievements_definitions_set`,
-`horizon_admin_achievements_player_get` and `horizon_admin_achievements_limits`.
+`horizon_admin_achievements_limits`, `horizon_admin_achievements_player_get`.
+GET definitions returns apiKeyId/revision/definitions/archivedKeys/limits/serverTime. Replace the
+complete catalog using its original expectedRevision (If-Match); never refresh and overwrite after
+an uncertain result. Omitted keys are archived and remain permanently reserved.
 
-Read the complete catalog before replacing it. Pass its `revision` as `expectedRevision`.
-Omitted keys are archived and remain reserved. Restoring the same key preserves unlocks.
-An empty replacement archives all definitions. Conflicting revisions require a fresh read and
-deliberate reconciliation. The tools never overwrite a concurrent edit automatically.
-
-## Definitions and limits
-
-A definition contains `key`, `name`, `description`, optional HTTP(S) `imageUrl`, `hidden`,
-`active`, `mode`, optional `condition` and `rewards:{values:[{key,amount}]}`.
-Statistic mode requires `{statisticKey,threshold}` referencing an existing statistic. Manual mode
-has no condition. Amounts are positive safe integers for at most eight distinct configured values.
-Names and descriptions are limited to 120 and 512 UTF-8 bytes. The server also bounds the complete
-frozen Inbox message to 1024 bytes and the catalog to 1 MiB.
-
-Active limits are FREE 20, BASIC 50, PLUS 75, PRO 100 and ENTERPRISE 250. Up to 500 lifetime keys
-are retained per project, including archived keys. This permanent identity prevents accidental
-regrant after delete/recreate. Check the current account limits before editing.
+Definitions have key/name/description/optional HTTP(S) imageUrl/hidden/active/rewards and mode.
+Manual mode has no condition; statistic mode requires {statisticKey,threshold}. Rewards contain
+up to eight distinct configured values with positive safe-integer amounts. Keys use the shared
+1..24 value-key format; name/description use120/512 UTF-8 bytes and imageUrl at most2048 characters.
+Those format bounds remain separate from current maxDefinitions/maxLifetimeKeys in System Config.
+Defaults20/50/75/100/250 active and500 lifetime are not ceilings. The catalog has a technical1 MiB
+frame. Existing progress and reserved identities remain after reductions.
 
 ## Read and cache
 
-`GET /api/v1/app/achievements?userId=...&definitionVersion=...` returns
-`{userId,revision,definitionVersion,definitions,progress,limits,serverTime}`.
-`definitionVersion` is an opaque 64-character string, not the numeric admin revision. It includes
-player-visible progress changes, so unlocking a hidden achievement invalidates the cache too.
-Pass it only with the matching host/project/player/session cache. `definitions:null` means keep
-that cache. `definitions:[]` means replace it with an empty list. Signout and configuration changes
-invalidate the cache. Suppress late results from old sessions. The MCP tool itself keeps no cache.
+`horizon_get_achievements` calls GET /api/v1/app/achievements with userId and optional definitionVersion.
+Every player tool requires the matching sessionToken, sent only as Authorization Bearer.
+The snapshot is {userId,revision,definitionVersion,definitions,progress,limits,serverTime}.
+The version is opaque64-character text, scoped to host/project/player/session. definitions:null
+retains matching cached definitions; [] clears them. Suppress late results after authentication
+changes. Locked hidden metadata is absent; unlocked progress remains visible after archival.
 
-Locked hidden metadata is absent. Unlocked progress remains visible even when its definition is
-archived. `pendingReward:{issuedAt,values}` contains the original accepted promise, not today's
-catalog reward. Never replace it from a later definition edit.
+Compact progress has rewardState=complete, nullable unknown unlockedAt, and no pendingReward or
+inboxEntryId copy. Legacy pending originals remain visible until verified cold settlement; never
+replace their amounts from current definitions or invent a new claim.
 
-## Unlock, delivery and claim
+## Unlock and original retry
 
-`POST /api/v1/app/achievements/unlock` accepts `{userId,key}` and returns
-`{achievements,newlyUnlocked,replayed,deliveryResults}`. Retry the same key after an uncertain
-response. The server owns the permanent identity. No client timestamp or new random operation ID
-is needed. A replay has an empty `newlyUnlocked` list and creates no second reward.
+`horizon_unlock_achievement` calls POST /api/v1/app/achievements/unlock with {userId,key}.
+It returns {achievements,newlyUnlocked,replayed,deliveryResults:[]}. Persist the selected key as the
+original intent before sending. On an uncertain result, reconcile and retry that exact key; no
+client timestamp or new operation UUID is needed. A replay has empty newlyUnlocked and no new credit.
+After success explicitly refresh Player Values and replace the balance cache. Do not claim an Inbox
+entry or add a local reward delta.
 
-Statistic achievements are evaluated only for affected statistics during the same atomic report.
-`horizon_update_statistics` returns their keys in `newlyUnlocked`. Preserve that report's original
-operation ID and batch on retry. Refresh achievements to display the resulting progress.
+Statistic achievements are evaluated only for affected keys during the same atomic statistic
+report. Preserve the original timestamp:UUID and complete batch on retry. newlyUnlocked identifies
+the new completion bits; refresh achievements and balances afterward. Replayed statistics never
+repeat completion or reward credit.
 
-`POST /api/v1/app/achievements/rewards/deliver` accepts `{userId,keys:[...]}` and returns
-`{achievements,results}`. Each result has `key`, `state`, optional `inboxEntryId` and optional `code`.
-States are `none`, `pending` and `delivered`. Delivery is bounded and each key has its own outcome.
-`INBOX_FULL` leaves the accepted reward pending. Claim and remove eligible Inbox entries, then
-retry the same pending keys. Delivery failures do not undo an already committed statistic report.
-Pending rewards survive expiry and archival. A delivered reward may be overdue but remains claimable.
+`horizon_deliver_achievement_rewards` preserves the compatibility route
+POST /api/v1/app/achievements/rewards/deliver with one to eight distinct original keys. It is a
+read-only status operation: {achievements,results:[{key,state,inboxEntryId,code}]}. New compact
+keys are complete without an Inbox ID. Legacy pending status returns MIGRATION_REQUIRED for the
+explicit backup-verified cold operator. It performs no delivery/grant. Old valuable Inbox/source
+originals are protected and settled by that migration; an app must not create replacements.
 
-Use `horizon_get_inbox` and `horizon_claim_inbox` for the actual credit. Replace the local balance
-cache with the returned `playerValues`; never apply an unlock, delivery or replay delta locally.
+## Engines, self-hosting and errors
 
-## Engines and self-hosting
+Use the installed Unity/Godot/Unreal typed manager signatures. Cache completion state per current
+identity; suppress old-session replies and refresh after newlyUnlocked. No polling loop is needed.
+simpleServer supports REST within its documented SQL/ENV bounds and local operator CLI; hosted
+Account-Key admin routes and realtime are separate. Hosted achievements:<userId> is own-player
+metadata invalidation; reconnect still refreshes HTTP snapshots.
 
-The integration flow is the same in Unity, Godot and Unreal: load progress after sign-in, cache
-visible definitions by version, refresh after `newlyUnlocked`, render pending/delivered states,
-and claim through Inbox. Use the installed SDK's typed manager callbacks rather than fabricating
-callback signatures. Session changes must cancel or suppress old requests. No polling loop is needed.
-
-simpleServer supports the REST flow with its local operator CLI for definitions. Hosted Account
-Key admin routes and realtime are not simpleServer features. On hosted horizOn,
-`achievements:<userId>` is an own-player metadata topic. Reconnect still refreshes HTTP snapshots.
-
-## Recovery
-
-- `STATE_CONFLICT`: refresh and retry the same key or pending keys.
-- `ACHIEVEMENT_NOT_MANUAL`: report its configured statistic instead.
-- `REVISION_CONFLICT`: reread and reconcile the catalog.
-- `ACHIEVEMENT_LIMIT_REACHED`: reduce active definitions to the current tier.
-- `ACHIEVEMENT_LIFETIME_LIMIT_REACHED`: restore existing keys instead of creating replacements.
-- `UNKNOWN_STATISTIC` / `UNKNOWN_VALUE`: configure references and value maxima first.
-- Session `401` / `403`: sign in again with the correct player. `429`: honor Retry-After.
-
-No tool retries automatically or silently credits a pending reward.
+STATE_CONFLICT preserves the exact original key/batch. ACHIEVEMENT_NOT_MANUAL requires the configured
+statistic flow. REVISION_CONFLICT requires explicit catalog reconciliation. Definition/lifetime
+limits come from current configuration. UNKNOWN_STATISTIC/UNKNOWN_VALUE requires valid catalog
+references. MIGRATION_REQUIRED preserves legacy data for verified settlement. Session401/403 and429
+never trigger automatic tool retries or replacement identities.

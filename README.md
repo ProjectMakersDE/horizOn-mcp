@@ -50,7 +50,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/items` | Unique inventory, bounded item properties and atomic server-owned purchases |
 | `horizon://docs/groups` | Guilds, roles, bounded member pages and revision-safe membership actions |
 | `horizon://docs/friends` | Atomic social relationships, explicit revisions and exact public friend-code lookup |
-| `horizon://docs/achievements` | Visible versioned definitions, permanent unlock guards and durable Inbox reward delivery |
+| `horizon://docs/achievements` | Versioned definitions, permanent completion bits and immediate atomic value rewards |
 | `horizon://docs/statistics` | Atomic session counters, safe integer batches, explicit original IDs and cache/UTC recovery. SDK and admin examples |
 | `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, start context, evidence upload, admin evidence review with sus packages and package export, rejection codes. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
@@ -181,7 +181,7 @@ Admin tools carry the same annotations as the player tools: list, get and statis
 
 | Prefix | Description |
 |--------|-------------|
-| `horizon_admin_player_values_*` | Read/replace catalogue with If-Match, read bounded history and perform audited idempotent corrections |
+| `horizon_admin_player_values_*` | Read/replace catalogue with If-Match, inspect minimal guards and correct balances with an original note/hash |
 | `horizon_admin_projects_*` | Project API key management (create/update/regenerate/revoke/delete) |
 | `horizon_admin_remoteconfig_*` | Remote config CRUD |
 | `horizon_admin_news_*` | Multilingual news (titles/messages as `{lang: content}`) |
@@ -211,7 +211,7 @@ Core features:
 - News and Announcements
 - Gift Codes
 - Player Profile (avatar, frame, badges)
-- Player Values (atomic configured purchases, safe adjustments, support history)
+- Player Values (atomic configured purchases, safe adjustments, minimal public replay guards)
 - Validated Actions (server-checked runs, validated only leaderboards, server-owned currency)
 - User Feedback
 - User Logs
@@ -261,10 +261,12 @@ Four player tools read, mark read, claim and remove inbox entries with the activ
 ### Achievements
 
 `horizon_get_achievements`, `horizon_unlock_achievement` and `horizon_deliver_achievement_rewards`
-expose player progress and pending Inbox handoff. Four `horizon_admin_achievements_*` tools manage
+expose permanent completion and immediate atomic Player Values rewards. The compatibility delivery
+tool only reads legacy status. Four `horizon_admin_achievements_*` tools manage
 the versioned catalog and inspect owned players with ACHIEVEMENTS scope. Read
-`horizon://docs/achievements` for hidden-definition caching, permanent key identity, full-Inbox
-recovery and the separate claim that credits balances. Engine prompts accept `feature=achievements`.
+`horizon://docs/achievements` for hidden-definition caching, original-key replay and verified cold
+settlement of legacy originals. New unlocks create no personal Inbox reward/history copy.
+Engine prompts accept `feature=achievements`.
 
 ### Friends
 
@@ -294,6 +296,23 @@ Ten `horizon_admin_shared_*` tools manage owned collections and explicit cleanup
 `horizon_admin_inbox_send_ordinary` tool uses INBOX scope for a trusted backend's durable notice
 intent. Read `horizon://docs/shared-objects`; both engine prompts accept `feature=shared-objects`.
 Native SDK/PHP/deployment readiness must be checked against the installed version.
+
+### Configured policies and technical frames
+
+The new feature tools forward higher/lower current System Config policies rather than treating
+tier defaults as maxima. Groups expose eleven policies; explicit pages may exceed50 and the
+default page1 remains usable after lowering. PV supports256 lifetime identities, configured
+offer counts above1000 and up to256 correction keys. Achievement catalogs can exceed the former
+500-key default within current active/lifetime policies and their1 MiB frame. Retained responses
+are passed through completely after reductions; MCP never truncates a result to a current quota.
+
+Technical bounds stay separate: Shared has a1 MiB decoded object/query envelope and1402200-byte
+write frame; Matches accepts up to14999552 decoded state bytes (14648KiB) within its20003500-byte
+create/turn frame. Groups use the complete16 MiB BSON envelope and100663296-byte create/update
+HTTP frame, with configured name/description/data/depth policies. Fixed item property/template/
+delta/grant formats, three Shared search fields and current Chat text/window bounds remain.
+Validation adds no limits fetch, pagination, retry or database request. These are representation
+bounds, not a throughput, memory-use or cluster-admission guarantee.
 
 ## Asynchronous Matches
 

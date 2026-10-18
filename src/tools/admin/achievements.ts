@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { getAdminClient, noAdminClientResponse, jsonResponse, errorResponse, describeTool, ADMIN_AUTH, READ_ONLY, DESTRUCTIVE_WRITE } from "./_utils.js";
 import { achievementKey } from "../achievements.js";
+import { INT32_MAX } from "../feature-bounds.js";
 
 const safeInteger = z.number().int().min(0).max(Number.MAX_SAFE_INTEGER);
 const utf8 = (max: number) => z.string().max(max).refine(value => Buffer.byteLength(value, "utf8") <= max, `At most ${max} UTF-8 bytes`);
@@ -29,7 +30,7 @@ const errors = "403 ACHIEVEMENT_LIMIT_REACHED: reduce active definitions to the 
 export function registerAdminAchievementsTools(server: McpServer): void {
   for (const [name, title, suffix, returns] of [
     ["horizon_admin_achievements_definitions_get", "Get Achievement Catalog", "/definitions", "{apiKeyId,revision,definitions,archivedKeys,limits,serverTime}, including hidden definitions."],
-    ["horizon_admin_achievements_limits", "Get Achievement Limits", "/limits", "{maxDefinitions,maxLifetimeKeys}. Active tier limits are 20/50/75/100/250; all tiers retain up to 500 lifetime keys."],
+    ["horizon_admin_achievements_limits", "Get Achievement Limits", "/limits", "{maxDefinitions,maxLifetimeKeys}: current System Config policies, which may exceed tier/lifetime defaults. Existing progress remains readable after reductions."],
   ] as const) {
     server.registerTool(name, {
       title, description: describeTool({ summary: suffix === "/definitions" ? "Reads the owned project's complete achievement catalog." : "Reads active and retained lifetime achievement limits.",
@@ -44,11 +45,11 @@ export function registerAdminAchievementsTools(server: McpServer): void {
     title: "Replace Achievement Catalog",
     description: describeTool({ summary: "Replaces the owned project's achievement definitions using the reviewed revision.",
       use: "after reading horizon_admin_achievements_definitions_get and preserving every definition that should remain.", avoid: "resetting player unlocks or changing already accepted rewards.", requires,
-      effects: "Omitted keys are archived and remain permanently reserved. Restoring the same key preserves unlocks. Already accepted pending rewards retain their original values. No player fanout or automatic retries.",
+      effects: "Omitted keys are archived and remain permanently reserved. Restoring the same key preserves unlock bits. New unlock rewards are immediate and atomic; legacy pending originals require verified cold settlement. No player fanout or automatic retries.",
       returns: "The updated catalog, archived keys, incremented revision, limits and serverTime.", errors }, ADMIN_AUTH),
     inputSchema: { ...project, expectedRevision: safeInteger.describe("Revision from the reviewed catalog, sent unchanged as If-Match"),
-      definitions: z.array(definition).max(500).refine(rows => new Set(rows.map(row => row.key)).size === rows.length, "Duplicate achievement key")
-        .describe("Complete replacement catalog, including inactive definitions to retain; active counts must fit the tier") }, annotations: DESTRUCTIVE_WRITE,
+      definitions: z.array(definition).max(INT32_MAX).refine(rows => new Set(rows.map(row => row.key)).size === rows.length, "Duplicate achievement key")
+        .describe("Complete replacement catalog, including inactive definitions to retain; current System Config active/lifetime policies and1 MiB catalog frame apply") }, annotations: DESTRUCTIVE_WRITE,
   }, async ({ projectApiKeyId, expectedRevision, definitions }) => {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();
     try { return jsonResponse(await client.put(path + "/definitions?apiKeyId=" + encodeURIComponent(projectApiKeyId), { definitions }, { "If-Match": String(expectedRevision) })); }
@@ -56,9 +57,9 @@ export function registerAdminAchievementsTools(server: McpServer): void {
   });
   server.registerTool("horizon_admin_achievements_player_get", {
     title: "Inspect Player Achievements",
-    description: describeTool({ summary: "Reads one owned player's achievement progress for support.", use: "diagnosing unlocks, pending rewards or Inbox handoff.",
+    description: describeTool({ summary: "Reads one owned player's achievement progress for support.", use: "diagnosing unlock bits or legacy unsettled rewards.",
       avoid: "editing the catalog; read horizon_admin_achievements_definitions_get first. This tool cannot unlock or claim for another session.", requires, effects: "None (read only).",
-      returns: "The current achievement snapshot and original pending reward values.", errors }, ADMIN_AUTH),
+      returns: "Current completion snapshot with nullable unknown chronology. Compact progress has no pending reward/Inbox copy; legacy pending originals stay visible until verified settlement.", errors }, ADMIN_AUTH),
     inputSchema: { ...project, userId: z.string().uuid().describe("Player UUID belonging to this project") }, annotations: READ_ONLY,
   }, async ({ projectApiKeyId, userId }) => {
     const client = getAdminClient(); if (!client) return noAdminClientResponse();

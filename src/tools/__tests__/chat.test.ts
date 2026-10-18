@@ -45,13 +45,13 @@ describe("chat through real MCP protocol transport",()=>{
   for(const operationId of [operationIdUpper(),"9-0-0-0-1",null])expect((await call("send_chat_message",{...original,operationId})).isError).toBe(true);
   for(const settings of [{kind:"direct"},{kind:"direct",peerId:userId},{kind:"direct",peerId,groupId:channelId},{kind:"project",peerId},{kind:"group"},{kind:"group",groupId:channelId,peerId}])
    expect((await call("open_chat_channel",{...session,...settings})).isError).toBe(true);
-  for(const changes of [{epoch:undefined},{knownMessageIds:[messageId,messageId]},{knownMessageIds:Array(101).fill(messageId)}])
+  for(const changes of [{epoch:undefined},{knownMessageIds:[messageId,messageId]},{knownMessageIds:Array.from({length:21},(_,i)=>`00000000-0000-0000-0000-${i.toString(16).padStart(12,"0")}`)}])
    expect((await call("sync_chat_channel",{...session,channelId,epoch:null,knownMessageIds:[],...changes})).isError).toBe(true);
   expect((await call("report_chat_message",{...session,channelId,messageId,reason:"a".repeat(241)})).isError).toBe(true);
   expect(request).not.toHaveBeenCalled();
  });
  it("preserves full incremental cache IDs and the maximum valid Unicode text without automatic polling",async()=>{
-  const ids=Array.from({length:100},(_,i)=>`00000000-0000-0000-0000-${i.toString(16).padStart(12,"0")}`);
+  const ids=Array.from({length:20},(_,i)=>`00000000-0000-0000-0000-${i.toString(16).padStart(12,"0")}`);
   const incremental={...snapshot,visibleMessageIds:ids,messages:[]};request.mockImplementationOnce(async()=>new Response(JSON.stringify(incremental)));
   expect(body(await call("sync_chat_channel",{...session,channelId,epoch:operationId,knownMessageIds:ids}))).toEqual(incremental);
   expect(JSON.parse(calls()[0][1].body as string)).toEqual({userId,epoch:operationId,knownMessageIds:ids});

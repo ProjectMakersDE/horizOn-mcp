@@ -1,4 +1,5 @@
 import { z } from "zod/v4";
+import { INT32_MAX, SHARED_OBJECT_BYTES } from "./feature-bounds.js";
 
 export const sharedKey = z.string().min(1).max(64).regex(/^[a-z][a-z0-9_]*$(?![\s\S])/).describe("Permanent collection or configured field key, lowercase ASCII");
 export const sharedInteger = z.number().int().min(-Number.MAX_SAFE_INTEGER).max(Number.MAX_SAFE_INTEGER);
@@ -6,14 +7,14 @@ export const sharedRevision = sharedInteger.min(0).describe("Original reviewed r
 export const sharedText = (bytes: number) => z.string().max(bytes).refine(value => !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/.test(value)
   && Buffer.byteLength(value, "utf8") <= bytes, `Valid Unicode, at most ${bytes} UTF-8 bytes`);
 export const sharedData = {
-  dataBase64: z.string().max(87384).refine(value => { const bytes = Buffer.from(value, "base64"); return bytes.length <= 65536 && bytes.toString("base64") === value; }, "Canonical padded Base64, at most 64 KiB; current collection/tier cap also applies").describe("Opaque canonical padded Base64 bytes; never interpret or replace them implicitly"),
+  dataBase64: z.string().max(Math.ceil(SHARED_OBJECT_BYTES / 3) * 4).refine(value => { const bytes = Buffer.from(value, "base64"); return bytes.length <= SHARED_OBJECT_BYTES && bytes.toString("base64") === value; }, "Canonical padded Base64, at most1 MiB technical query envelope; current collection/System Config cap also applies").describe("Opaque canonical padded Base64 bytes; never interpret or replace them implicitly"),
   search: z.record(sharedKey, z.union([sharedInteger, sharedText(96)])).refine(value => Object.keys(value).length <= 3, "At most three configured typed fields").describe("Complete configured search fields; safe integers or bounded UTF-8 strings"),
   position: z.object({ x: sharedInteger, y: sharedInteger }).strict().nullable().optional().describe("Complete safe-integer grid position when enabled, otherwise null or omitted"),
 };
 export const sharedDefinition = z.object({
   name: sharedText(120).refine(value => value.trim().length > 0, "Nonblank name"), active: z.boolean(),
   readPolicy: z.enum(["owner", "friends", "group", "all", "dashboard"]), writePolicy: z.enum(["owner", "group", "dashboard"]),
-  maxObjectBytes: z.number().int().min(1).max(65536), maxObjectsPerOwner: z.number().int().min(1).max(100),
+  maxObjectBytes: z.number().int().min(1).max(SHARED_OBJECT_BYTES).describe("Configured collection bytes, within the current advertised objectBytes and1 MiB technical envelope"), maxObjectsPerOwner: z.number().int().min(1).max(INT32_MAX).describe("Positive Int32 collection policy, independent of the default100"),
   ttlSeconds: z.number().int().min(60).max(2592000).nullable(),
   searchFields: z.array(z.object({ key: sharedKey, type: z.enum(["integer", "string"]) }).strict()).max(3), positionEnabled: z.boolean(),
 }).strict().refine(value => new Set(value.searchFields.map(field => field.key)).size === value.searchFields.length &&
