@@ -1,3 +1,11 @@
+## [1.9.1](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.9.0...v1.9.1) (2026-10-23)
+
+
+### Bug Fixes
+
+* **docs:** include singular match administration prefix ([f6edd88](https://github.com/ProjectMakersDE/horizOn-mcp/commit/f6edd88dba7b91041887934728fe472a2b70b8c2))
+* **docs:** list the complete MCP feature and tool surface ([a549987](https://github.com/ProjectMakersDE/horizOn-mcp/commit/a54998717c669ede923a425a30f9d698d5e60679))
+
 # [1.9.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.8.1...v1.9.0) (2026-10-23)
 
 
