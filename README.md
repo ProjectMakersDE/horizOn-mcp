@@ -274,7 +274,7 @@ Admin tools carry the same annotations as the player tools: list, get and statis
 | `horizon_admin_statistics_*`, `horizon_admin_achievements_*` | Configure definitions and inspect owned player progression |
 | `horizon_admin_friends_*`, `horizon_admin_groups_*` | Inspect scoped relationships, groups and configured limits |
 | `horizon_admin_items_*`, `horizon_admin_shared_*` | Manage item catalogs, owned collections and explicit cleanup |
-| `horizon_admin_matches_*`, `horizon_admin_chat_*` | Inspect asynchronous matches and manage hosted chat/moderation |
+| `horizon_admin_match_*`, `horizon_admin_matches_*`, `horizon_admin_chat_*` | Inspect asynchronous matches and manage hosted chat/moderation |
 | `horizon_admin_marketplace_*`, `horizon_admin_inbox_*` | Manage marketplace rules, scoped operations and durable inbox notices |
 | `horizon_admin_localization_*` | Manage scoped localization entries |
 | `horizon_admin_player_values_*` | Read/replace catalogue with If-Match, inspect minimal guards and correct balances with an original note/hash |
