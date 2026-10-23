@@ -1,3 +1,31 @@
+# [1.9.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.8.1...v1.9.0) (2026-10-23)
+
+
+### Bug Fixes
+
+* align trusted inbox text with compact delivery contract ([b98bb57](https://github.com/ProjectMakersDE/horizOn-mcp/commit/b98bb57b479c620070b3e4c30d168b0f0b4b88d8))
+* **mcp:** distinguish group transport and stored JSON sizes ([6f37b80](https://github.com/ProjectMakersDE/horizOn-mcp/commit/6f37b8089f26e04fb28c73416be6c287e52f3df1))
+* **mcp:** honor configured feature policies and compact contracts ([54ee589](https://github.com/ProjectMakersDE/horizOn-mcp/commit/54ee5890d776d2a83f2dd26ce4faec7fbd35f0fa))
+* **statistics:** expose typed MCP batches and catalog tools (TASK-1005) ([ec8730e](https://github.com/ProjectMakersDE/horizOn-mcp/commit/ec8730e132436f3f24af860eb9909616ceeb0786))
+* **statistics:** honor operator limits in MCP catalogs and batches ([#21](https://github.com/ProjectMakersDE/horizOn-mcp/issues/21)) ([540fe73](https://github.com/ProjectMakersDE/horizOn-mcp/commit/540fe73c99c9cf1b65f561d890a8b3ad2fad1a09))
+* **validated-actions:** document that StartRun never reads the cloud save ([381198f](https://github.com/ProjectMakersDE/horizOn-mcp/commit/381198f59761fbabb1afa6f833322657bd785547))
+
+
+### Features
+
+* add hosted chat tools and scoped moderation ([58ccd06](https://github.com/ProjectMakersDE/horizOn-mcp/commit/58ccd0651117255f6fff1e68a892ade52ba557e4))
+* expose achievement progress and durable reward delivery (TASK-1008) ([a5f05f3](https://github.com/ProjectMakersDE/horizOn-mcp/commit/a5f05f3800baf08389ade2a578649945ebab2c67))
+* expose marketplace operations and protected item returns ([07acc87](https://github.com/ProjectMakersDE/horizOn-mcp/commit/07acc878ac3bcf2a13379e8906720059ba5be21e))
+* expose player value tools and integration guides (TASK-1004) ([a8d335e](https://github.com/ProjectMakersDE/horizOn-mcp/commit/a8d335e1f3675586e72e674fcbc990aacdbafb85))
+* expose protected inbox workflows through MCP (TASK-1006) ([34f3f6b](https://github.com/ProjectMakersDE/horizOn-mcp/commit/34f3f6bf1c75763b45fdedf61467224ef28b3977))
+* **friends:** add player tools and scoped admin inspection ([0a6b835](https://github.com/ProjectMakersDE/horizOn-mcp/commit/0a6b835addc66116a82a07c4a3a8cdc87ba9993f))
+* **gift-codes:** expose compact V2 original intents and exact counters ([b6d72f7](https://github.com/ProjectMakersDE/horizOn-mcp/commit/b6d72f706e35986594bef77daa3dd4edc3a5930c))
+* **giftcode:** expose atomic value rewards and stable redemption ids ([56bedc3](https://github.com/ProjectMakersDE/horizOn-mcp/commit/56bedc36f1de4b3a67a4c3340c16f70741a760f3))
+* **groups:** expose session-safe group tools and scoped admin inspection ([31cd5c1](https://github.com/ProjectMakersDE/horizOn-mcp/commit/31cd5c121c919129b73507926ad3cd52d352de00))
+* **items:** expose bounded inventory and catalog tools ([8693213](https://github.com/ProjectMakersDE/horizOn-mcp/commit/86932134b1d99a163b94365a7ffea93ff41fbcd8))
+* **matches:** expose player and scoped admin MCP tools ([224333b](https://github.com/ProjectMakersDE/horizOn-mcp/commit/224333bfc332f1c5dea50fcbfa94113d68232e1d))
+* **shared-objects:** expose scoped objects and trusted notice tools ([81c0219](https://github.com/ProjectMakersDE/horizOn-mcp/commit/81c021948baff3b568dbc3a6ef5e7ed8084b2502))
+
 ## [1.8.1](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.8.0...v1.8.1) (2026-10-10)
 
 
