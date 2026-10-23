@@ -30,12 +30,25 @@ Add to your MCP client configuration (Claude Desktop, Cursor, etc.):
 
 ## Features
 
+The server exposes **29 documentation resources, 120 player tools and 4 workflow prompts**. An Account Key enables additional scoped admin tools. These counts come from the registered MCP resources, tools and prompts.
+
 ### Resources
 
 Documentation resources are served directly from the MCP server. No API key required.
 
 | URI | Description |
 |-----|-------------|
+| `horizon://docs/marketplace` | Atomic original-item escrow, exact prices, protected Inbox returns and scoped recovery. |
+| `horizon://docs/chat` | Direct/group/project text, metadata-only realtime, incremental snapshots, original receipts and scoped moderation. |
+| `horizon://docs/matches` | Opaque turn state, exact revisions, immutable reports, bounded deadlines and original ranked-run recovery. |
+| `horizon://docs/shared-objects` | Opaque bounded world data, current permissions, exact revisions and trusted ordinary game notices. |
+| `horizon://docs/items` | Unique inventory, bounded item properties and atomic server-owned purchases |
+| `horizon://docs/groups` | Guilds, roles, bounded member pages and revision-safe membership actions |
+| `horizon://docs/friends` | Atomic social relationships, explicit revisions and exact public friend-code lookup |
+| `horizon://docs/achievements` | Versioned definitions, permanent completion bits and immediate atomic value rewards |
+| `horizon://docs/inbox` | Session inbox, protected rewards, immutable broadcasts, server clock and safe publication retries |
+| `horizon://docs/statistics` | Atomic session counters, safe integer batches, explicit original IDs and cache/UTC recovery. SDK and admin examples |
+| `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://overview` | What is horizOn, core concepts (Account vs User), features, tier system, API structure, and SDKs |
 | `horizon://docs/auth` | Authentication methods (Anonymous, Email, Google), endpoints, SDK code examples, and common errors |
 | `horizon://docs/leaderboard` | Leaderboard score submission, top entries, user rank, entries around user, player profile per entry, validated only boards, with SDK examples |
@@ -44,22 +57,15 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/localization` | Server-side localized strings across 15 languages: per-key translations, single/all fetch, available languages. SDK examples |
 | `horizon://docs/news` | In-game news and announcements with language filtering. SDK examples |
 | `horizon://docs/gift-codes` | Gift code validation and redemption, cosmetic grants, server-owned value rewards, compact V2 original intents and exact counter strings. SDK examples |
-| `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
-| `horizon://docs/inbox` | Session inbox, protected rewards, immutable broadcasts, server clock and safe publication retries |
-| `horizon://docs/items` | Unique inventory, bounded item properties and atomic server-owned purchases |
-| `horizon://docs/groups` | Guilds, roles, bounded member pages and revision-safe membership actions |
-| `horizon://docs/friends` | Atomic social relationships, explicit revisions and exact public friend-code lookup |
-| `horizon://docs/achievements` | Versioned definitions, permanent completion bits and immediate atomic value rewards |
-| `horizon://docs/statistics` | Atomic session counters, safe integer batches, explicit original IDs and cache/UTC recovery. SDK and admin examples |
 | `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, start context, evidence upload, admin evidence review with sus packages and package export, rejection codes. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
 | `horizon://docs/user-logs` | Server-side event and error tracking. Requires BASIC tier or higher. SDK examples |
 | `horizon://docs/crash-reporting` | Crash report submission, session tracking, fingerprinting, breadcrumbs, and auto-regression detection. SDK examples |
-| `horizon://docs/email-sending` | Transactional and event-based email delivery to registered users. Templates, scheduling, status tracking, and SMTP integration. SDK examples |
 | `horizon://api/reference` | Complete API reference for all horizOn App API endpoints with request/response schemas |
 | `horizon://quickstart/godot` | Step-by-step guide to integrate horizOn in Godot with GDScript examples |
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
+| `horizon://docs/email-sending` | Transactional and event-based email delivery to registered users. Templates, scheduling, status tracking, and SMTP integration. SDK examples |
 | `horizon://quickstart/unreal` | Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples |
 
 ### Player tools
@@ -70,7 +76,7 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 
 The four player-value tools also require the same player session. Never generate another operation ID automatically after an uncertain result.
 
-Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), so clients can tell reads from writes. Destructive tools are `horizon_save_cloud_data` (replaces the save), `horizon_set_profile` (replaces the whole profile), `horizon_submit_validated` (consumes the ticket, can spend balances) and `horizon_cancel_email`, plus `horizon_purchase_player_value_offer` and `horizon_adjust_player_value` (debit or credit exactly once per persisted operation ID). Many read tools that return an object also declare an `outputSchema` and return `structuredContent` next to the JSON text. Each description names when to use the tool, which sibling to use instead, what it returns and how to recover from its errors.
+Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), so clients can tell reads from writes. Examples of destructive tools include `horizon_save_cloud_data` (replaces the save), `horizon_set_profile` (replaces the whole profile), `horizon_submit_validated` (consumes the ticket, can spend balances) and `horizon_cancel_email`, plus `horizon_purchase_player_value_offer` and `horizon_adjust_player_value` (debit or credit exactly once per persisted operation ID). Many read tools that return an object also declare an `outputSchema` and return `structuredContent` next to the JSON text. Each description names when to use the tool, which sibling to use instead, what it returns and how to recover from its errors.
 
 | Tool | Description |
 |------|-------------|
@@ -96,16 +102,97 @@ Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempot
 | `horizon_validate_gift_code` | Validate a gift code without redeeming it |
 | `horizon_prepare_gift_code` | Read-only V2 preparation; persist all seven original intent fields before consume |
 | `horizon_redeem_gift_code` | Explicit consume/retry of that saved `intent`; current state on replay, no automatic replacement or V1 translation |
+| `horizon_get_profile` | Get a player's profile (avatar, frame, badges), unlocks and the cosmetics catalog |
+| `horizon_set_profile` | Replace a player's whole profile (avatar, frame, up to 3 badges) |
 | `horizon_get_player_values` | Read balances and operation window with the active player session |
 | `horizon_get_player_value_offers` | Read configured offers for the player |
 | `horizon_purchase_player_value_offer` | Purchase atomically with a caller-persisted operation ID |
 | `horizon_adjust_player_value` | Adjust within explicitly enabled limits with a stable ID and reason |
-| `horizon_get_profile` | Get a player's profile (avatar, frame, badges), unlocks and the cosmetics catalog |
-| `horizon_set_profile` | Replace a player's whole profile (avatar, frame, up to 3 badges) |
 | `horizon_start_run` | Start a server-checked run: single-use ticket with a server seed, optionally bound to a board and with a start context (game, content, simulation and replay format versions, content digest, initial state as base64) |
 | `horizon_submit_validated` | Submit a run result with the ticket and the SHA-256 input log hash (given, or computed locally from base64 bytes or text), optionally with `earned` server-owned values; returns `sus` (accepted but over a soft threshold); rejections name their `code` |
 | `horizon_get_state` | Read the player's server-owned values (balance, earned today, daily cap per value key); read only |
 | `horizon_upload_evidence` | Upload the input log (text or base64, encoded locally) of a run whose submit result asked for evidence; rejections name their `code` |
+| `horizon_get_statistics` | Reads a player's statistics snapshot and server operation window. |
+| `horizon_get_statistics_definitions` | Reads the project's statistics catalog conditionally by version. |
+| `horizon_update_statistics` | Applies one explicit atomic session batch with a caller-persisted operation ID. |
+| `horizon_get_achievements` | Reads visible achievement definitions and permanent completion bits. |
+| `horizon_unlock_achievement` | Unlocks one configured manual achievement once for the authenticated player. |
+| `horizon_deliver_achievement_rewards` | Reads compatibility reward status for up to eight original achievement keys. |
+| `horizon_get_friends` | Reads friends, incoming/outgoing requests, blocks and current limits. |
+| `horizon_find_player` | Finds one public player by exact UUID or canonical H- friend code in this project. |
+| `horizon_send_friend_request` | Sends Friend Request using the reviewed player revision. |
+| `horizon_accept_friend_request` | Accepts Friend Request using the reviewed player revision. |
+| `horizon_decline_friend_request` | Declines Friend Request using the reviewed player revision. |
+| `horizon_cancel_friend_request` | Cancels Friend Request using the reviewed player revision. |
+| `horizon_remove_friend` | Removes Friend using the reviewed player revision. |
+| `horizon_block_player` | Blocks Player using the reviewed player revision. |
+| `horizon_unblock_player` | Unblocks Player using the reviewed player revision. |
+| `horizon_get_groups` | Reads my groups using a matching player session. |
+| `horizon_get_group` | Reads group using a matching player session. |
+| `horizon_get_group_members` | Reads group members using a matching player session. |
+| `horizon_get_group_pending` | Reads group pending requests using a matching player session. |
+| `horizon_create_group` | Creates a fresh server-identified group and its leader atomically. |
+| `horizon_update_group` | Replaces the complete group metadata and private JSON object. |
+| `horizon_join_group` | Applies the explicit join group action using the reviewed group revision. |
+| `horizon_request_group_join` | Applies the explicit request group join action using the reviewed group revision. |
+| `horizon_invite_group_player` | Applies the explicit invite group player action using the reviewed group revision. |
+| `horizon_accept_group_invite` | Applies the explicit accept group invite action using the reviewed group revision. |
+| `horizon_decline_group_invite` | Applies the explicit decline group invite action using the reviewed group revision. |
+| `horizon_cancel_group_invite` | Applies the explicit cancel group invite action using the reviewed group revision. |
+| `horizon_accept_group_request` | Applies the explicit accept group request action using the reviewed group revision. |
+| `horizon_decline_group_request` | Applies the explicit decline group request action using the reviewed group revision. |
+| `horizon_cancel_group_request` | Applies the explicit cancel group request action using the reviewed group revision. |
+| `horizon_leave_group` | Applies the explicit leave group action using the reviewed group revision. |
+| `horizon_remove_group_member` | Applies the explicit remove group member action using the reviewed group revision. |
+| `horizon_set_group_member_role` | Applies the explicit set group member role action using the reviewed group revision. |
+| `horizon_transfer_group_leadership` | Applies the explicit transfer group leadership action using the reviewed group revision. |
+| `horizon_delete_group` | Applies the explicit delete group action using the reviewed group revision. |
+| `horizon_get_items` | Reads the player's bounded unique item inventory. |
+| `horizon_get_item_catalog` | Reads one bounded item template page, including archived templates. |
+| `horizon_adjust_item` | Adjusts Item Properties using the reviewed inventory revision. |
+| `horizon_equip_item` | Sets Item Equipped State using the reviewed inventory revision. |
+| `horizon_discard_item` | Discards Item using the reviewed inventory revision. |
+| `horizon_get_shared_collections` | Reads one permanent collection catalog page. |
+| `horizon_get_shared_usage` | Reads the current player's count and creation precondition for one collection. |
+| `horizon_get_shared_object` | Reads one object under current permissions. |
+| `horizon_query_shared_objects` | Reads one bounded metadata-selected object page. |
+| `horizon_create_shared_object` | Creates one server-ID object using the original owner-usage revision. |
+| `horizon_update_shared_object` | Replaces one object's opaque bytes and configured search data under its exact revision. |
+| `horizon_delete_shared_object` | Deletes one exact-revision object and refunds its stored charge. |
+| `horizon_get_matches` | Reads the player's bounded active, invited and recent match summaries. |
+| `horizon_get_match_limits` | Reads the player's five-tier limits and project capabilities. |
+| `horizon_find_open_matches` | Reads one strength-filtered open-lobby page under current blocks and active-owner checks. |
+| `horizon_get_match` | Reads one currently authorized match snapshot. |
+| `horizon_create_match` | Creates one server-ID lobby under the original player-ledger revision. |
+| `horizon_join_match` | Executes join match under the exact original revision. |
+| `horizon_decline_match_invite` | Executes decline match invitation under the exact original revision. |
+| `horizon_start_match` | Executes start match under the exact original revision. |
+| `horizon_submit_match_turn` | Executes submit match turn under the exact original revision. |
+| `horizon_advance_match_timeout` | Executes advance match timeout under the exact original revision. |
+| `horizon_leave_match` | Executes leave match under the exact original revision. |
+| `horizon_cancel_match` | Executes cancel match lobby under the exact original revision. |
+| `horizon_report_match_result` | Records this participant's immutable report for the frozen final state. |
+| `horizon_start_match_ranked_run` | Creates or recovers one original match-bound validated run after complete consensus. |
+| `horizon_get_chat_limits` | Reads five-tier bounds, current moderation and hosted capabilities. |
+| `horizon_open_chat_channel` | Opens deterministic direct, group or project chat under current permissions. |
+| `horizon_sync_chat_channel` | Reads an authorized incremental snapshot after subscription resync/event or explicit user action. |
+| `horizon_send_chat_message` | Sends plain text once or explicitly replays the exact original operation. |
+| `horizon_get_chat_operation` | Reads the current player's retained original send receipt. |
+| `horizon_report_chat_message` | Reports one currently visible message with the original reason. |
+| `horizon_get_marketplace_limits` | Reads current own marketplace state or configured limits. |
+| `horizon_get_marketplace` | Reads current own marketplace state or configured limits. |
+| `horizon_get_marketplace_rules` | Reads one revision-consistent bounded rule page. |
+| `horizon_query_marketplace_listings` | Reads one bounded active-listing page by item and price. |
+| `horizon_get_marketplace_listing` | Reads one authorized listing or original own operation receipt. |
+| `horizon_get_marketplace_operation` | Reads one authorized listing or original own operation receipt. |
+| `horizon_create_marketplace_listing` | Lists one original unequipped item at the explicitly approved price and fee configuration. |
+| `horizon_buy_marketplace_listing` | Purchases the exact listing under its original revision, currency and price. |
+| `horizon_cancel_marketplace_listing` | Cancels the original listing revision into a protected pending item return. |
+| `horizon_retry_marketplace_return` | Attempts one explicitly requested pending return delivery for the current return owner. |
+| `horizon_get_inbox` | Reads targeted messages and eligible project broadcasts, counters and server polling interval. |
+| `horizon_mark_inbox_read` | Marks an inbox entry read for the authenticated player. |
+| `horizon_claim_inbox` | Claims an inbox reward once for the authenticated player. |
+| `horizon_remove_inbox` | Removes an eligible inbox entry for the authenticated player. |
 | `horizon_submit_feedback` | Submit user feedback (bug reports, feature requests) |
 | `horizon_create_log` | Create a server-side log entry (INFO, WARN, ERROR) |
 | `horizon_create_crash_report` | Submit a crash report (grouped by fingerprint, with regression detection) |
@@ -131,8 +218,11 @@ Workflow prompts that guide AI assistants through common horizOn tasks.
 |----------|----------|-------------|
 | `HORIZON_API_KEY` | Yes (for tools) | Your horizOn API key. Get one at [horizon.pm](https://horizon.pm) |
 | `HORIZON_BASE_URL` | No | API base URL. Defaults to `https://horizon.pm` |
+| `HORIZON_ACCOUNT_API_KEY` | No | Account Key for additional scoped dashboard admin tools |
 
-Resources (documentation) work without an API key. Only the live API tools require authentication.
+Resources (documentation) work without an API key. Only the live API tools require authentication. Session-bound tools also require the matching player session and declare `userId` and `sessionToken` in their input schemas.
+
+Feature availability follows the selected backend and project configuration. Realtime, chat, Validated Actions and ranked match validation require hosted horizOn. The self-hosted simpleServer supports a subset of the REST APIs. MCP tools make explicit HTTP calls and do not create a background WebSocket connection, polling loop or automatic trading/retry process.
 
 ## Admin Tools (v1.2+)
 
@@ -181,6 +271,12 @@ Admin tools carry the same annotations as the player tools: list, get and statis
 
 | Prefix | Description |
 |--------|-------------|
+| `horizon_admin_statistics_*`, `horizon_admin_achievements_*` | Configure definitions and inspect owned player progression |
+| `horizon_admin_friends_*`, `horizon_admin_groups_*` | Inspect scoped relationships, groups and configured limits |
+| `horizon_admin_items_*`, `horizon_admin_shared_*` | Manage item catalogs, owned collections and explicit cleanup |
+| `horizon_admin_matches_*`, `horizon_admin_chat_*` | Inspect asynchronous matches and manage hosted chat/moderation |
+| `horizon_admin_marketplace_*`, `horizon_admin_inbox_*` | Manage marketplace rules, scoped operations and durable inbox notices |
+| `horizon_admin_localization_*` | Manage scoped localization entries |
 | `horizon_admin_player_values_*` | Read/replace catalogue with If-Match, inspect minimal guards and correct balances with an original note/hash |
 | `horizon_admin_projects_*` | Project API key management (create/update/regenerate/revoke/delete) |
 | `horizon_admin_remoteconfig_*` | Remote config CRUD |
@@ -212,6 +308,11 @@ Core features:
 - Gift Codes
 - Player Profile (avatar, frame, badges)
 - Player Values (atomic configured purchases, safe adjustments, minimal public replay guards)
+- Statistics, inbox rewards and achievements
+- Friends, blocklists and groups
+- Item catalogs, unique inventory and marketplace escrow/trades
+- Shared objects with scoped permissions and asynchronous matches
+- Hosted chat, with realtime managers provided by the native SDKs
 - Validated Actions (server-checked runs, validated only leaderboards, server-owned currency)
 - User Feedback
 - User Logs
