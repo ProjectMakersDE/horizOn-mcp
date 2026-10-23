@@ -436,61 +436,25 @@ Get news entries.
 
 ---
 
-## Gift Codes
+## Gift Codes: V2
 
-### POST /api/v1/app/gift-codes/validate
+`POST /api/v1/app/gift-codes/validate` with `{code,userId}` is sessionless, read-only and valid-only.
+Add `includeIntent:true` with the player's Bearer session to read `{valid,protocolVersion:2,campaignId,expectedCount,configRevision}` without reservation. Persist the entire original identity before consuming.
 
-Validate a gift code without redeeming it.
+`POST /api/v1/app/gift-codes/redeem` needs the Project API key, the original player's Bearer session and `{protocolVersion:2,code,userId,campaignId,expectedCount,configRevision}`. Count/revision are canonical nonnegative Int64 strings, never JSON numbers; range 0..9223372036854775807. The immutable campaign UUID owns the action even if the visible code is later reused. Do not send idempotencyId with V2.
 
-**Request:**
-```json
-{
-  "code": "string",
-  "userId": "string"
-}
-```
+Success includes `{success,campaignId,count,configRevision,alreadyApplied,replayed,giftData,grantedValues,grantedUnlocks,playerValues}`. Fresh count is original expectedCount+1 and revision matches the original. Replay has a higher current count/current revision, both flags true, null giftData and empty grants; replace balances from current playerValues. Consumption and grants commit atomically. Never apply server value deltas locally.
 
-**Response (200):**
-```json
-{
-  "valid": "boolean"
-}
-```
+V1 is closed with 409 UPGRADE_REQUIRED. An unmigrated campaign returns409 MIGRATION_REQUIRED. COUNT_AHEAD, CAMPAIGN_CHANGED, COUNTER_EXHAUSTED and STATE_CONFLICT never authorize an automatic new intent. Mixed/malformed fields reject 400 INVALID_REQUEST. Other auth/capacity/balance/cosmetic failures retain their domain codes and roll back fresh consumption. Preserve the original tuple after all uncertain errors; explicitly retry it, never advance expectedCount from a response.
 
----
-
-### POST /api/v1/app/gift-codes/redeem
-
-Redeem a gift code. Needs `Authorization: Bearer <accessToken>`; `userId` must be the session user.
-A request without a session is rejected with `401` (no transition window).
-
-**Request:**
-```json
-{
-  "code": "string",
-  "userId": "string"
-}
-```
-
-**Response (200):**
-```json
-{
-  "success": "boolean",
-  "message": "string",
-  "giftData": "string (JSON) | null",
-  "grantedUnlocks": ["string"]
-}
-```
-
-`grantedUnlocks`: cosmetic IDs from `giftData.grants` the player owns after the redemption, `[]` without grants.
-
-**Status Codes:** `200` success, `400` expired, revoked or redemption limit reached, `401` missing, invalid or expired session, `403` code or user of another API key or session of another user, `404` unknown code, `409` `UNLOCK_LIMIT_REACHED` (more than 25 unlocks, code not used up).
+MCP: horizon_prepare_gift_code returns a local seven-field intent including projectScope. Persist it, then call horizon_redeem_gift_code({intent,sessionToken}); no hidden retries or store. See horizon://docs/gift-codes for recovery, SDK examples and exact admin strings.
 
 ---
 
 ## Player Profile
 
 Both endpoints need `Authorization: Bearer <accessToken>` of `userId`. Errors carry a `code`: `INVALID_BADGES`, `INVALID_COSMETIC_ID`, `COSMETIC_NOT_FOUND`, `COSMETIC_TYPE_MISMATCH` (400), `SESSION_REQUIRED` (401), `COSMETIC_LOCKED`, `SESSION_FORBIDDEN` (403), `PLAYER_NOT_FOUND` (404).
+
 
 ### GET /api/v1/app/player-profile?userId={userId}
 
@@ -709,3 +673,76 @@ Create a user log entry. **Requires BASIC tier or higher.**
 | 409 | Conflict (duplicate) |
 | 429 | Too Many Requests (rate limited) |
 | 500 | Internal Server Error |
+
+## Statistics
+
+Matching player Bearer session required. GET `/api/v1/app/statistics?userId=<uuid>&definitionVersion=<optional>` loads a snapshot; GET `/api/v1/app/statistics/definitions?definitionVersion=<optional>` loads definitions. POST `/api/v1/app/statistics` accepts `{userId,operationId,updates:[{key,value}]}` as one atomic batch of distinct configured safe-integer keys, including more than100 when configured. Persist and reuse the original timestamp:UUID+payload after uncertainty. Retained replay precedes current catalog checks; mismatched payload409, expired/evicted unknown ID410, never rebook. See `horizon://docs/statistics` for current policies and technical frames.
+## Player Values
+
+All four routes require the Project API key and `Authorization: Bearer <player accessToken>` for the same `userId`.
+
+| Method | Path | Parameters |
+|---|---|---|
+| GET | `/api/v1/app/player-values` | Query `userId` |
+| GET | `/api/v1/app/player-values/offers` | Query `userId` |
+| POST | `/api/v1/app/player-values/purchase` | JSON `{userId, offerKey, operationId}` |
+| POST | `/api/v1/app/player-values/adjust` | JSON `{userId, key, amount, reason, operationId}` |
+
+Balances and signed deltas are safe integers, never floating-point currency. Mutations are atomic and replay the original stable ID/payload. The response includes current state and operation:{operationId,replayed,alreadyApplied,applied,items}. Replay has empty applied/items and never grants or debits again. `operationWindow` reports server time/oldest accepted time. Internal source-owned grants keep no recipient invoice/history copy. Expired/uncertain operations require reconciliation, never a fresh automatic purchase.
+
+Full definitions, limits, response fields, error recovery, SDK examples, operator tools and the simpleServer boundary: `horizon://docs/player-values`.
+
+## Achievements
+
+All routes require the project key and matching player Bearer session.
+
+| Method | Path | Input |
+|---|---|---|
+| GET | `/api/v1/app/achievements` | Query `userId`, optional opaque `definitionVersion` |
+| POST | `/api/v1/app/achievements/unlock` | `{userId,key}` |
+| POST | `/api/v1/app/achievements/rewards/deliver` | `{userId,keys}` with one to eight distinct keys |
+
+Snapshots contain `userId`, `revision`, `definitionVersion`, `definitions`, `progress`, `limits`
+and `serverTime`. Null definitions preserve the matching cache; an empty array clears it.
+Unlock results add `newlyUnlocked`, `replayed` and `deliveryResults` beside `achievements`.
+New unlocks commit completion bits and configured rewards immediately in the same transaction;
+deliveryResults is empty and there is no new Inbox reward copy. Compact progress is complete with
+unknown chronology nullable. The compatibility rewards/deliver route only reads per-key status;
+legacy pending originals require verified cold settlement and never authorize a replacement claim.
+See `horizon://docs/achievements` for the complete contract and admin revision rules.
+
+## Friends
+
+Every route requires the project key and matching Bearer player session. GET `/api/v1/app/friends`
+uses `userId`; GET `/api/v1/app/friends/find` also uses an exact UUID or canonical public H-code
+`query`. Both are read-only. POST `/api/v1/app/friends/{action}` accepts request, accept, decline,
+cancel, remove, block or unblock with `{userId,targetUserId,expectedRevision}`. Accept, decline and
+cancel also require the reviewed pending `requestId`. Responses replace the complete actor snapshot.
+Never replace a stale revision and blindly repeat after uncertainty; read and reconcile first.
+See `horizon://docs/friends` for atomic Inbox notices, block semantics, activity timestamps and limits.
+
+## Groups
+
+`/api/v1/app/groups` requires the project key and matching player Bearer session on every route.
+GET own/detail/member/pending snapshots, POST creation with `expectedPlayerRevision`, PUT full
+metadata with `expectedRevision`, and fourteen POST actions use the explicit group revision and
+original pending `requestId`. The server allocates group IDs. Read `horizon://docs/groups` for all
+paths, fields, limits, roles, atomic Inbox refusal and recovery after uncertain responses.
+
+## Asynchronous matches
+
+Read `horizon://docs/matches` for permissions, opaque bytes, exact revision/recovery and limits.
+App base `/api/v1/app/matches`: GET base/limits/open/{id}, POST base and
+`{id}/{join,decline,start,turn,timeout,leave,cancel,result,ranked-run}`.
+Create and the seven gameplay actions use original `If-Match`. Result and ranked-run use
+`finalStateRevision` in the strict body. Player Bearer session is always required.
+Admin base `/api/v1/admin/matches`: GET config/limits/base/{id}, PUT config,
+POST `{id}/cancel` and cleanup. All require `apiKeyId` and MATCHES scope.
+Configuration/cancel use original `If-Match`; cleanup processes one bounded batch.
+
+## Marketplace
+
+The ten player and fourteen scoped operator tools preserve original-item escrow, atomic
+currency settlement, exact original intent and lossless Inbox returns. Read
+`horizon://docs/marketplace` for routes, original revisions, five-tier limits and recovery.
+Engine prompts accept `feature=marketplace`. No automatic trading, price polling or retries.

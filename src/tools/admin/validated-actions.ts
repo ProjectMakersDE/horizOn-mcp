@@ -156,7 +156,7 @@ export function registerAdminValidatedActionsTools(server: McpServer): void {
             "{items, page, size, totalElements}; each item has runId, apiKeyId, leaderboardId, leaderboardKey, userId, username, score, " +
             "flag (FlagReason name or null), status (REQUESTED or UPLOADED), bytes (null while requested), requestedAt, uploadBefore (only while requested), uploadedAt, " +
             "and sus (true when the run also has a sus package). With sus true the items are sus packages: kind \"SUS\", sus true, status REQUESTED, UPLOADED or EXPIRED (state of the input log), " +
-            "retainedUntil (deleted after that), packageBytes, missing (parts that were not captured, for example cloudSave:OMITTED_SIZE_LIMIT, startContext:SKIPPED_CAPACITY, inputLog:EXPIRED); " +
+            "retainedUntil (deleted after that), packageBytes, missing (parts that were not captured, for example initialState:OMITTED_SIZE_LIMIT, startContext:SKIPPED_CAPACITY, inputLog:EXPIRED); " +
             "leaderboardId and leaderboardKey are null for a run without board. An empty items array means no evidence matches the filters.",
           errors:
             "400 API_KEY_REQUIRED when leaderboardKey comes without projectApiKeyId (checked before any request): add the key. " +
@@ -267,7 +267,7 @@ export function registerAdminValidatedActionsTools(server: McpServer): void {
             "The list item fields (runId, leaderboardKey, userId, username, score, flag, status, bytes, requestedAt, uploadBefore, uploadedAt, sus) plus seed (the ticket's server seed), logHash (SHA-256 hex committed at submit), " +
             "kind (TOP_N or SUS) and susPackage (null without package): {evidenceStatus, uploadBefore, uploadedAt, createdAt, retainedUntil, bytes, flags, stage, durationMs, serverStartedAt, submittedAt, earned, " +
             "startContext, startContextSha256, rules {sha256, source, status}, client {gameVersion, contentVersion, simulationVersion, replayFormatVersion, contentDigest}, " +
-            "parts [{name, status, bytes, sha256, revision}] for cloudSave, initialState, rules and inputLog}. Rule contents are only in the exported package.",
+            "parts [{name, status, bytes, sha256, revision}] for initialState, rules and inputLog, plus cloudSave on older packages that still hold a cloud save copy}. Rule contents are only in the exported package.",
           errors:
             "404 EVIDENCE_NOT_FOUND for an unknown or deleted runId, or a record outside projectApiKeyId: look it up with horizon_admin_validated_evidence_list. " +
             "404 API_KEY_NOT_FOUND for a projectApiKeyId outside the account. " +

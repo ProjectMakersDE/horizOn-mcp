@@ -30,7 +30,7 @@ Add to your MCP client configuration (Claude Desktop, Cursor, etc.):
 
 ## Features
 
-### Resources (18 docs)
+### Resources
 
 Documentation resources are served directly from the MCP server. No API key required.
 
@@ -43,8 +43,15 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/remote-config` | Server-side key-value configuration: feature flags, game balance, A/B testing. SDK examples |
 | `horizon://docs/localization` | Server-side localized strings across 15 languages: per-key translations, single/all fetch, available languages. SDK examples |
 | `horizon://docs/news` | In-game news and announcements with language filtering. SDK examples |
-| `horizon://docs/gift-codes` | Gift code validation and redemption for promotional rewards, including cosmetic unlocks via grants. SDK examples |
+| `horizon://docs/gift-codes` | Gift code validation and redemption, cosmetic grants, server-owned value rewards, compact V2 original intents and exact counter strings. SDK examples |
+| `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
+| `horizon://docs/inbox` | Session inbox, protected rewards, immutable broadcasts, server clock and safe publication retries |
+| `horizon://docs/items` | Unique inventory, bounded item properties and atomic server-owned purchases |
+| `horizon://docs/groups` | Guilds, roles, bounded member pages and revision-safe membership actions |
+| `horizon://docs/friends` | Atomic social relationships, explicit revisions and exact public friend-code lookup |
+| `horizon://docs/achievements` | Versioned definitions, permanent completion bits and immediate atomic value rewards |
+| `horizon://docs/statistics` | Atomic session counters, safe integer batches, explicit original IDs and cache/UTC recovery. SDK and admin examples |
 | `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, start context, evidence upload, admin evidence review with sus packages and package export, rejection codes. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
 | `horizon://docs/user-logs` | Server-side event and error tracking. Requires BASIC tier or higher. SDK examples |
@@ -55,13 +62,15 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
 | `horizon://quickstart/unreal` | Step-by-step guide to integrate horizOn in Unreal Engine 5.5+ with the official horizOn SDK plugin. C++ and Blueprint examples |
 
-### Tools (34 tools)
+### Player tools
 
 Live API tools that call the horizOn backend. Requires a valid API key.
 
-`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated`, `horizon_get_state` and `horizon_upload_evidence` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
+`horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_prepare_gift_code`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated`, `horizon_get_state` and `horizon_upload_evidence` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
 
-Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), so clients can tell reads from writes. Destructive tools are `horizon_save_cloud_data` (replaces the save), `horizon_set_profile` (replaces the whole profile), `horizon_submit_validated` (consumes the ticket, can spend balances) and `horizon_cancel_email`. The read tools that return an object also declare an `outputSchema` and return `structuredContent` next to the JSON text. Each description names when to use the tool, which sibling to use instead, what it returns and how to recover from its errors.
+The four player-value tools also require the same player session. Never generate another operation ID automatically after an uncertain result.
+
+Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), so clients can tell reads from writes. Destructive tools are `horizon_save_cloud_data` (replaces the save), `horizon_set_profile` (replaces the whole profile), `horizon_submit_validated` (consumes the ticket, can spend balances) and `horizon_cancel_email`, plus `horizon_purchase_player_value_offer` and `horizon_adjust_player_value` (debit or credit exactly once per persisted operation ID). Many read tools that return an object also declare an `outputSchema` and return `structuredContent` next to the JSON text. Each description names when to use the tool, which sibling to use instead, what it returns and how to recover from its errors.
 
 | Tool | Description |
 |------|-------------|
@@ -85,7 +94,12 @@ Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempot
 | `horizon_get_localization_languages` | List the languages that have localizations for the app |
 | `horizon_get_news` | Get news articles with optional language filtering |
 | `horizon_validate_gift_code` | Validate a gift code without redeeming it |
-| `horizon_redeem_gift_code` | Redeem a gift code for a user (returns `grantedUnlocks` for codes with cosmetic grants) |
+| `horizon_prepare_gift_code` | Read-only V2 preparation; persist all seven original intent fields before consume |
+| `horizon_redeem_gift_code` | Explicit consume/retry of that saved `intent`; current state on replay, no automatic replacement or V1 translation |
+| `horizon_get_player_values` | Read balances and operation window with the active player session |
+| `horizon_get_player_value_offers` | Read configured offers for the player |
+| `horizon_purchase_player_value_offer` | Purchase atomically with a caller-persisted operation ID |
+| `horizon_adjust_player_value` | Adjust within explicitly enabled limits with a stable ID and reason |
 | `horizon_get_profile` | Get a player's profile (avatar, frame, badges), unlocks and the cosmetics catalog |
 | `horizon_set_profile` | Replace a player's whole profile (avatar, frame, up to 3 badges) |
 | `horizon_start_run` | Start a server-checked run: single-use ticket with a server seed, optionally bound to a board and with a start context (game, content, simulation and replay format versions, content digest, initial state as base64) |
@@ -157,7 +171,7 @@ Both can be set together or individually. Admin tools only register when the acc
 
 ### Scope
 
-Account Keys inherit your account's tier (FREE/BASIC/PRO/ENTERPRISE) -- they grant no extra privileges. A key can be full-account, limited to a single Project API Key, limited to selected feature groups, or both. Platform-admin-only endpoints (Blog, Banner, System-Config) are automatically unreachable. A handful of ultra-sensitive endpoints (account deletion, credentials change, key management itself, subscription cancel) require a dashboard session and cannot be called via an Account Key.
+Account Keys inherit your account's tier (FREE/BASIC/PLUS/PRO/ENTERPRISE) -- they grant no extra privileges. A key can be full-account, limited to a single Project API Key, limited to selected feature groups, or both. Platform-admin-only endpoints (Blog, Banner, System-Config) are automatically unreachable. A handful of ultra-sensitive endpoints (account deletion, credentials change, key management itself, subscription cancel) require a dashboard session and cannot be called via an Account Key.
 
 When a key is project-scoped, the backend enforces that scope on direct HTTP calls too. Account-wide endpoints or ID-only endpoints that cannot prove project context are rejected for project-scoped keys.
 
@@ -167,6 +181,7 @@ Admin tools carry the same annotations as the player tools: list, get and statis
 
 | Prefix | Description |
 |--------|-------------|
+| `horizon_admin_player_values_*` | Read/replace catalogue with If-Match, inspect minimal guards and correct balances with an original note/hash |
 | `horizon_admin_projects_*` | Project API key management (create/update/regenerate/revoke/delete) |
 | `horizon_admin_remoteconfig_*` | Remote config CRUD |
 | `horizon_admin_news_*` | Multilingual news (titles/messages as `{lang: content}`) |
@@ -196,6 +211,7 @@ Core features:
 - News and Announcements
 - Gift Codes
 - Player Profile (avatar, frame, badges)
+- Player Values (atomic configured purchases, safe adjustments, minimal public replay guards)
 - Validated Actions (server-checked runs, validated only leaderboards, server-owned currency)
 - User Feedback
 - User Logs
@@ -233,3 +249,91 @@ npm test
 ## License
 
 MIT
+
+## Statistics tools
+
+`horizon_get_statistics`, `horizon_get_statistics_definitions` and `horizon_update_statistics` expose explicit session counters. Persist the original timestamp:UUID and immutable batch before posting; after a timeout reuse that intent, never generate a replacement ID automatically. Read `horizon://docs/statistics` or use `integrate-feature` with `feature=statistics` for engine guidance. Four Account Key tools inspect/replace definitions with If-Match, inspect one owned player and read tier limits (`horizon_admin_statistics_*`). Statistics are separate from player values.
+
+## Inbox tools
+
+Four player tools read, mark read, claim and remove inbox entries with the active session. Four `horizon_admin_inbox_*` tools manage immutable broadcasts or inspect an owned player with an INBOX-scoped Account Key. Read `horizon://docs/inbox` before publishing: persist the exact intent, use serverTime for new timestamps, and retain the original ID after an uncertain response. Protected rewards never silently expire or disappear.
+
+### Achievements
+
+`horizon_get_achievements`, `horizon_unlock_achievement` and `horizon_deliver_achievement_rewards`
+expose permanent completion and immediate atomic Player Values rewards. The compatibility delivery
+tool only reads legacy status. Four `horizon_admin_achievements_*` tools manage
+the versioned catalog and inspect owned players with ACHIEVEMENTS scope. Read
+`horizon://docs/achievements` for hidden-definition caching, original-key replay and verified cold
+settlement of legacy originals. New unlocks create no personal Inbox reward/history copy.
+Engine prompts accept `feature=achievements`.
+
+### Friends
+
+`horizon_get_friends`, `horizon_find_player` and seven explicit social-action tools preserve reviewed
+revisions and pending request IDs. Two read-only `horizon_admin_friends_*` tools inspect owned state
+and current limits. Read `horizon://docs/friends`; both engine prompts accept `feature=friends`.
+After an uncertain response, read and reconcile the snapshot before any new player-confirmed action.
+
+### Groups
+
+Twenty player tools cover group snapshots, bounded member pages, pending entries, creation, metadata
+and fourteen explicit membership/role actions. Six read-only `horizon_admin_groups_*` tools inspect
+owned projects. All writes preserve reviewed revisions and pending IDs. Read `horizon://docs/groups`;
+both engine prompts accept `feature=groups`. Uncertain writes are never retried automatically.
+
+## Items
+
+Five player tools read inventory/catalog and explicitly adjust, equip or discard an instance. Four
+`horizon_admin_items_*` tools inspect owned state, page the catalog, edit one template using If-Match
+and read tier limits. Player-value offers accept bounded `itemRewards` and grant them atomically with
+the debit. Read `horizon://docs/items`; both engine prompts accept `feature=items`.
+
+## Shared Objects
+
+Seven player tools expose bounded opaque shared objects, typed queries and exact-revision writes.
+Ten `horizon_admin_shared_*` tools manage owned collections and explicit cleanup. A separate
+`horizon_admin_inbox_send_ordinary` tool uses INBOX scope for a trusted backend's durable notice
+intent. Read `horizon://docs/shared-objects`; both engine prompts accept `feature=shared-objects`.
+Native SDK/PHP/deployment readiness must be checked against the installed version.
+
+### Configured policies and technical frames
+
+The new feature tools forward higher/lower current System Config policies rather than treating
+tier defaults as maxima. Groups expose eleven policies; explicit pages may exceed50 and the
+default page1 remains usable after lowering. PV supports256 lifetime identities, configured
+offer counts above1000 and up to256 correction keys. Achievement catalogs can exceed the former
+500-key default within current active/lifetime policies and their1 MiB frame. Retained responses
+are passed through completely after reductions; MCP never truncates a result to a current quota.
+
+Technical bounds stay separate: Shared has a1 MiB decoded object/query envelope and1402200-byte
+write frame; Matches accepts up to14999552 decoded state bytes (14648KiB) within its20003500-byte
+create/turn frame. Groups use the complete16 MiB BSON envelope and100663296-byte create/update
+HTTP frame, with configured name/description/data/depth policies. Fixed item property/template/
+delta/grant formats, three Shared search fields and current Chat text/window bounds remain.
+Validation adds no limits fetch, pagination, retry or database request. These are representation
+bounds, not a throughput, memory-use or cluster-admission guarantee.
+
+## Asynchronous Matches
+
+Fourteen player tools and seven scoped admin tools cover bounded lobbies, opaque turns, immutable
+result reports and original match-bound ranked-run recovery. Writes keep exact revisions and
+make one HTTP attempt. Consensus does not award automatic rewards. simpleServer supports ordinary
+REST and explicitly excludes ranked validation/realtime. Read `horizon://docs/matches`; engine
+prompts accept `feature=matches`.
+
+### Hosted Chat (TASK-1014)
+
+Six app tools cover capabilities, deterministic channel open, incremental sync, original send,
+receipt reconciliation and reporting. Twelve CHAT-scoped admin tools expose word filters,
+metadata/messages, report moderation, mute/ban and bounded cleanup. Read
+`horizon://docs/chat`; engine prompts accept `feature=chat`. simpleServer explicitly returns
+501 NOT_SUPPORTED for chat. These HTTP tools do not create a background WebSocket connection
+or polling loop. Use the existing native realtime managers for interactive feeds.
+
+## Marketplace
+
+The ten player and fourteen scoped operator tools preserve original-item escrow, atomic
+currency settlement, exact original intent and lossless Inbox returns. Read
+`horizon://docs/marketplace` for routes, original revisions, five-tier limits and recovery.
+Engine prompts accept `feature=marketplace`. No automatic trading, price polling or retries.

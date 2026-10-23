@@ -190,23 +190,16 @@ var germanNews = await NewsManager.Instance.LoadNews(limit: 10, languageCode: "d
 var entry = NewsManager.Instance.GetNewsById("news-001");
 ```
 
-### Gift Codes
+### Gift Codes V2
 
 ```csharp
-using PM.horizOn.Cloud.Manager;
-
-// Validate first (optional)
-bool? valid = await GiftCodeManager.Instance.Validate("PROMO2024");
-
-// Redeem
-var result = await GiftCodeManager.Instance.Redeem("PROMO2024");
-if (result != null && result.success)
-{
-    string giftData = result.giftData; // JSON string with rewards
-    Debug.Log($"Rewards: {giftData}");
-    // result.grantedUnlocks: cosmetics unlocked by the code (profile cache is cleared automatically)
-}
+var intent = await GiftCodeManager.Instance.PrepareRedemption("PROMO2024");
+// Save the complete intent durably first; never overwrite an unresolved one.
+var result = intent == null ? null : await GiftCodeManager.Instance.RedeemPrepared(intent);
+// A timeout/restart retries the saved original with RedeemPrepared, never PrepareRedemption.
 ```
+
+Counts/revisions are exact strings. Replay returns current state with empty gifts/grants. V1 is closed with UPGRADE_REQUIRED; MIGRATION_REQUIRED requires operator reconciliation. Do not automatically consume on startup or replace unresolved originals. See `horizon://docs/gift-codes`.
 
 ### Player Profile
 

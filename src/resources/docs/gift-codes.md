@@ -1,174 +1,77 @@
-# Gift Codes
+# Gift Codes: compact protocol V2
 
-## Overview
+Prepare once, persist the original identity, then consume or explicitly retry that same identity. A timeout, restart, changed configuration or returned current count must never trigger automatic preparation of a replacement. Two devices holding the same campaign/player/expectedCount address one logical sequence slot.
 
-Gift Codes allow you to create promotional codes that players can redeem for in-game rewards. Codes are created in the horizOn Dashboard with associated reward data. Each code can be single-use or multi-use, and can optionally have an expiration date.
+## MCP tools
 
-The typical flow is:
+- `horizon_validate_gift_code({code,userId})`: public read-only validity check, no Bearer and no reservation.
+- `horizon_prepare_gift_code({code,userId,sessionToken})`: authenticated read-only prepare. Returns `{valid,intent}`. A valid intent has exactly seven fields: `protocolVersion:2`, `projectScope`, `userId`, `code`, immutable `campaignId`, `expectedCount`, `configRevision`. Persist every field before the first consume. The MCP host/project fingerprint contains no raw key; it is local recovery data, not authorization. Keep intents separate by host/project/player, and never store the session token with them.
+- `horizon_redeem_gift_code({intent,sessionToken})`: explicit consume or retry of that saved object. It sends the six original wire fields and the current Bearer header, never `projectScope` or the token in JSON. It does not prepare, increment or retry behind the caller's back. A different local host/project rejects before HTTP.
 
-1. **Validate** (optional) — Check if a code is valid before redeeming
-2. **Redeem** — Redeem the code to receive the reward data
+Keep one unresolved intent per UI action. Disable overlapping prepare/persist/consume calls. On restart, display the saved action and offer explicit retry; do not consume automatically. Preserve old V1/corrupt/foreign records for reconciliation instead of overwriting them. Clear only the exact confirmed record; retain it after errors or malformed replies. Re-authentication may replace the Bearer token for the same original user.
 
-## Endpoints
+A fresh response includes `success:true,campaignId,count,configRevision,alreadyApplied:false,replayed:false,giftData,grantedValues,grantedUnlocks,playerValues`. The count must equal original expectedCount+1 and revision must equal the original revision. A replay returns current count/revision/state, both flags true, `giftData:null,grantedValues:[],grantedUnlocks:[]`. It confirms that the sequence slot is consumed, without reconstructing any historical reward. Replace balances from `playerValues`; never add `grantedValues` locally. Treat opaque giftData as game-defined data, not authoritative server balances or item ownership. Invalidate/reload cosmetic state after a replay.
 
-### Validate Gift Code
+## Wire API
 
-**`POST /api/v1/app/gift-codes/validate`**
+All calls require the Project API key. `POST /api/v1/app/gift-codes/validate` accepts `{code,userId}` for public valid-only checks. With `includeIntent:true`, it additionally requires `Authorization: Bearer <accessToken>` and returns `{valid:true,protocolVersion:2,campaignId:"UUID",expectedCount:"0",configRevision:"1"}` when valid. It stores/reserves nothing.
 
-Checks if a gift code is valid and can be redeemed by the user, without consuming it.
-
-**Request Body:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `code` | string | Yes | The gift code to validate |
-| `userId` | string | Yes | The user's ID |
-
-**Response (200):**
+`POST /api/v1/app/gift-codes/redeem` requires Bearer and this complete body:
 
 ```json
 {
-  "valid": true
+  "protocolVersion": 2,
+  "userId": "550e8400-e29b-41d4-a716-446655440000",
+  "code": "PROMO2024",
+  "campaignId": "750e8400-e29b-41d4-a716-446655440002",
+  "expectedCount": "0",
+  "configRevision": "1"
 }
 ```
 
-`valid` is `false` if the code does not exist, is expired, or has already been redeemed by this user.
+Count/revision are canonical nonnegative Int64 decimal strings, `0..9223372036854775807`, without signs, whitespace, fractions, leading zeroes or numeric JSON coercion. Keep them as strings; JavaScript Number is not lossless. BigInt arithmetic must serialize back to decimal strings. The campaign UUID is authoritative even when its visible code is deleted and recreated. Fresh consumption checks current validity/limits/revision and atomically commits the counter, value and cosmetic grants. Replay precedes current validity/revision checks after authorization. No counter expires or rewinds after cleanup, revocation or deletion.
 
----
+## Errors and uncertain outcomes
 
-### Redeem Gift Code
+| Error | Caller action |
+| --- | --- |
+| `UPGRADE_REQUIRED` (409) | V1 fresh writes and replay are closed. Old arbitrary idempotencyId is never translated into a counter. Resolve old uncertainty before explicitly starting V2. |
+| `MIGRATION_REQUIRED` (409) | Existing campaign/source needs verified operator migration; preserve the original intent. |
+| `COUNT_AHEAD` (409) | Expected count is ahead of current state; reconcile, never fill gaps automatically. |
+| `CAMPAIGN_CHANGED` (409) | Fresh original revision is stale; do not silently accept current rewards. |
+| `COUNTER_EXHAUSTED` (409) | Int64 increment/revision cannot proceed; no wrap or replacement count. |
+| `STATE_CONFLICT`, connection loss or malformed reply | Outcome may be uncertain; explicitly retry the same saved identity. |
+| `MAX_BALANCE_REACHED`, `UNLOCK_LIMIT_REACHED` | Reward transaction is not consumed; keep the original identity and resolve the domain condition. |
+| `INVALID_REQUEST` (400) | Missing/malformed V2 identity or mixed V1/V2 fields; preserve the original for inspection. |
+| `PROJECT_SCOPE_CHANGED` (local MCP) | Restore the original host/project context; do not retarget the saved identity. |
+| 401 / 403 | Sign in as the original user; a new user's session cannot claim the old user's intent. |
 
-**`POST /api/v1/app/gift-codes/redeem`**
+No error or returned count authorizes an automatic new slot. The MCP keeps no hidden pending store; the calling application owns durable persistence.
 
-Redeems a gift code and returns the associated reward data.
+## Native SDK consumers
 
-**Headers:** `X-API-Key` and `Authorization: Bearer <accessToken>` of the signed-in player. The server only redeems for the player who owns the session (`401` for an invalid or expired session, `403` for a session of another user). The SDKs send the session automatically.
-
-**Request Body:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `code` | string | Yes | The gift code to redeem |
-| `userId` | string | Yes | The user's ID (must be the session user) |
-
-**Response (200):**
-
-```json
-{
-  "success": true,
-  "message": "Gift code redeemed successfully",
-  "giftData": "{\"coins\": 500, \"gems\": 10, \"grants\": [\"badge.supporter\"]}",
-  "grantedUnlocks": ["badge.supporter"]
-}
-```
-
-`giftData` is a JSON string set by the developer in the Dashboard. Your app must parse and apply the rewards.
-
-`grantedUnlocks` lists the cosmetic IDs from `giftData.grants` the player owns after this redemption (always present, `[]` when the code has no grants). Reload the player profile when it is not empty.
-
-### Cosmetic unlocks (`grants`)
-
-When `giftData` is a JSON object with a `grants` array, the server unlocks those player profile cosmetics (see `horizon://docs/player-profile`) for the redeeming player, in the same transaction as the redemption:
-
-- `grants` holds 1 to 10 distinct cosmetic IDs from the catalog of the code's API key. The Dashboard and the admin API reject other values with 400 (`Invalid Grants` or `COSMETIC_NOT_FOUND`).
-- Grants go to the player who owns the session. Like every redemption, a request without `Authorization` is rejected with 401 and the code is not used up.
-- IDs removed from the catalog after the code was created are skipped.
-- A redemption that would give the player more than 25 unlocks fails as a whole with 409 `UNLOCK_LIMIT_REACHED`; the code is not used up.
-- Other keys (currency, items) stay in the same object and are applied by your game as before.
-
-**Failed redemption:**
-
-```json
-{
-  "success": false,
-  "message": "Gift code already redeemed by this user",
-  "giftData": null,
-  "grantedUnlocks": []
-}
-```
-
-## Code Examples
-
-### Godot (GDScript)
-
-```gdscript
-# Validate a code first (optional)
-var is_valid = await Horizon.giftCodes.validate("ABCD-1234")
-if is_valid:
-    print("Code is valid!")
-
-# Redeem a code
-var result = await Horizon.giftCodes.redeem("ABCD-1234")
-if result.get("success", false):
-    var gift_data = result.get("giftData", "")
-    print("Rewards: %s" % gift_data)
-
-# Redeem and auto-parse rewards as Dictionary
-var parsed = await Horizon.giftCodes.redeemParsed("ABCD-1234")
-if parsed.get("success", false):
-    var rewards: Dictionary = parsed.get("rewards", {})
-    var coins = rewards.get("coins", 0)
-    var gems = rewards.get("gems", 0)
-
-# Listen for events
-Horizon.giftCodes.code_validated.connect(func(code, valid): print("%s: %s" % [code, "valid" if valid else "invalid"]))
-Horizon.giftCodes.code_redeemed.connect(func(code, data): print("Redeemed %s: %s" % [code, data]))
-Horizon.giftCodes.code_redeem_failed.connect(func(code, error): print("Failed: %s" % error))
-```
-
-### Unity (C#)
+Unity uses `PrepareRedemption(code)` and `RedeemPrepared(intent)`. Godot uses `prepareRedemption(code)`, `redeemPrepared(intent)` or `redeemPreparedParsed(intent)`. Unreal uses `PrepareRedemption`/`RedeemPrepared` (`FHorizonGiftCodeIntent`, `FHorizonGiftCodeRedeemResult`) and matching Blueprint nodes. All three example packages include scoped durable pending storage and explicit retry. Their local fingerprints belong to their SDK; keep an intent in its originating client context.
 
 ```csharp
-using PM.horizOn.Cloud.Manager;
-
-// Validate (optional)
-bool? valid = await GiftCodeManager.Instance.Validate("PROMO2024");
-if (valid == true)
-{
-    Debug.Log("Code is valid!");
-}
-
-// Redeem
-var result = await GiftCodeManager.Instance.Redeem("PROMO2024");
-if (result != null && result.success)
-{
-    // Parse giftData JSON for rewards
-    string giftData = result.giftData;
-    Debug.Log($"Rewards: {giftData}");
-}
+var intent = await GiftCodeManager.Instance.PrepareRedemption("PROMO2024");
+// Persist the whole intent durably before RedeemPrepared. Refuse to overwrite an unresolved record.
+var result = intent == null ? null : await GiftCodeManager.Instance.RedeemPrepared(intent);
+// On uncertainty retain intent; after restart load it and explicitly call RedeemPrepared again.
 ```
 
-### REST (cURL)
-
-```bash
-# Validate
-curl -X POST https://horizon.pm/api/v1/app/gift-codes/validate \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"code": "ABCD-1234", "userId": "user123"}'
-
-# Redeem
-curl -X POST https://horizon.pm/api/v1/app/gift-codes/redeem \
-  -H "X-API-Key: YOUR_API_KEY" \
-  -H "Authorization: Bearer ACCESS_TOKEN_FROM_SIGNIN" \
-  -H "Content-Type: application/json" \
-  -d '{"code": "ABCD-1234", "userId": "user123"}'
+```gdscript
+var intent = await Horizon.giftCodes.prepareRedemption("PROMO2024")
+# Persist all fields durably before redeemPrepared; retain unresolved records.
+if not intent.is_empty():
+    var result = await Horizon.giftCodes.redeemPrepared(intent)
 ```
 
-## Best Practices
+For Unreal C++/Blueprint and the actual SaveGame/pending store, use the GiftCodes feature sample. V1 `Redeem` overloads return `UPGRADE_REQUIRED` without silently preparing anything. No startup callback consumes a pending action.
 
-- **Validate before redeeming** — Show the user whether their code is valid before consuming it.
-- **Parse giftData in your app** — The reward structure is defined by you in the Dashboard. Parse the JSON string and apply rewards accordingly.
-- **Handle already-redeemed codes** — Check the `success` field and display the `message` to the user.
-- **Unlock cosmetics with `grants`** — Put profile cosmetics into `giftData.grants` and reload the player profile after a redemption with a non-empty `grantedUnlocks`.
+## Admin rewards and exact counters
 
-## Common Errors
+Admin create/update supports `values:[{key,amount}]` separately from giftData: at most eight distinct configured positive safe-integer amounts within definition maxima. Omission on update preserves; `[]` clears. Cosmetic grants remain server-owned and commit atomically with values and the source count. Existing plan/SystemConfig limits continue to apply.
 
-| Status | Cause | Solution |
-|--------|-------|----------|
-| 401 | Invalid API key | Check `X-API-Key` header |
-| 401 | Missing, invalid or expired session | Sign in again and send `Authorization: Bearer <accessToken>` |
-| 403 | Session belongs to another user | Redeem with the session of `userId` |
-| 404 | Code does not exist | Verify the code spelling |
-| 409 | `UNLOCK_LIMIT_REACHED`: the player would hold more than 25 unlocks | Revoke unlocks in the Dashboard; the code stays unused |
-| 429 | Rate limit exceeded | Avoid rapid repeated redemption attempts |
+Use `exactCurrentTotalRedemptions` and `exactRemainingRedemptions` on admin records. Both are decimal strings; only remaining may be null, meaning unlimited. Finite exhausted/lowered capacity is `"0"`; `-1` is never an unlimited sentinel. Per-campaign strings are nonnegative Int64. Account statistics provide `exactTotalRedemptions`, an arbitrary-size decimal sum which may exceed Int64. Existing numeric fields are compatibility views, never lossless counters. Configured redemption limits retain their nullable positive Int32 API contract.
+
+New campaigns begin V2. Existing unresolved histories remain protected until an explicit verified backup/restore and source-guard migration completes; migration never pays historical rewards again. There is no permanent V1 response/history fallback. Do not claim server migration or live acceptance from SDK/fixture tests.

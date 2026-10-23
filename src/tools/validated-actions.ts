@@ -267,7 +267,7 @@ export function registerValidatedActionsTools(server: McpServer): void {
       avoid: "normal boards where the client may write its own score (use horizon_submit_score) and reading balances (use horizon_get_state).",
       requires:
         SESSION_REQUIRED + " Pass leaderboardKey to bind the ticket to a board (it must exist; 'default' is created on first use). " +
-        "Optionally declare the start context (gameVersion, contentVersion, simulationVersion, replayFormatVersion, contentDigest, initialStateBase64); the server binds it with its own start values (rule version, cloud save, balances, seed) into the run, and a sus run keeps it in its review package.",
+        "Optionally declare the start context (gameVersion, contentVersion, simulationVersion, replayFormatVersion, contentDigest, initialStateBase64); the server binds it with its own start values (rule version, balances, seed) into the run, and a sus run keeps it in its review package. The server never reads the cloud save; send the start state a replay needs as initialStateBase64.",
       effects: "issues a new ticket per call and counts against the run limits per player and per account; unused tickets simply expire.",
       returns:
         "{runId, ticket, seed, leaderboardKey, issuedAt, expiresAt, expiresInSeconds}. Seed the game's deterministic randomness with seed, record the input log, " +

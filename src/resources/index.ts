@@ -28,6 +28,41 @@ function loadDoc(relativePath: string): string {
  * Registers all horizOn documentation resources on the given server.
  */
 export function registerAllResources(server: McpServer): void {
+  server.registerResource("docs-marketplace", "horizon://docs/marketplace", {
+    title: "Player Marketplace", description: "Atomic original-item escrow, exact prices, protected Inbox returns and scoped recovery.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/marketplace", mimeType: "text/markdown", text: loadDoc("docs/marketplace.md") }] }));
+  server.registerResource("docs-chat", "horizon://docs/chat", {
+    title: "Hosted Chat", description: "Direct/group/project text, metadata-only realtime, incremental snapshots, original receipts and scoped moderation.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/chat", mimeType: "text/markdown", text: loadDoc("docs/chat.md") }] }));
+  server.registerResource("docs-matches", "horizon://docs/matches", {
+    title: "Asynchronous Matches", description: "Opaque turn state, exact revisions, immutable reports, bounded deadlines and original ranked-run recovery.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/matches", mimeType: "text/markdown", text: loadDoc("docs/matches.md") }] }));
+  server.registerResource("docs-shared-objects", "horizon://docs/shared-objects", {
+    title: "Shared Objects", description: "Opaque bounded world data, current permissions, exact revisions and trusted ordinary game notices.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/shared-objects", mimeType: "text/markdown", text: loadDoc("docs/shared-objects.md") }] }));
+  server.registerResource("docs-items", "horizon://docs/items", {
+    title: "Player Items", description: "Unique inventories, bounded property rules, revision-safe edits and atomic server-owned purchases.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/items", mimeType: "text/markdown", text: loadDoc("docs/items.md") }] }));
+  server.registerResource("docs-groups", "horizon://docs/groups", {
+    title: "Groups", description: "Bounded guilds, roles, invitations, exact revisions and safe leadership transfer.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/groups", mimeType: "text/markdown", text: loadDoc("docs/groups.md") }] }));
+  server.registerResource("docs-friends", "horizon://docs/friends", {
+    title: "Friends", description: "Atomic requests, friendships, blocks, exact public lookup and revision recovery.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/friends", mimeType: "text/markdown", text: loadDoc("docs/friends.md") }] }));
+  server.registerResource("docs-achievements", "horizon://docs/achievements", {
+    title: "Player Achievements", description: "Versioned visible definitions, statistic/manual unlocks and durable Inbox rewards.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/achievements", mimeType: "text/markdown", text: loadDoc("docs/achievements.md") }] }));
+  server.registerResource("docs-inbox", "horizon://docs/inbox", {
+    title: "Player Inbox", description: "Bounded snapshots, broadcasts, protected overdue rewards and atomic claim recovery.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/inbox", mimeType: "text/markdown", text: loadDoc("docs/inbox.md") }] }));
+  server.registerResource("docs-statistics", "horizon://docs/statistics", {
+    title: "Player Statistics", description: "Atomic session counters, safe integers, explicit operation IDs, retries and SDK examples.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/statistics", mimeType: "text/markdown", text: loadDoc("docs/statistics.md") }] }));
+  server.registerResource("docs-player-values", "horizon://docs/player-values", {
+    title: "Player Values",
+    description: "Server-owned balances, atomic offer purchases, bounded idempotency, support corrections and safe client adjustments.",
+    mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/player-values", mimeType: "text/markdown", text: loadDoc("docs/player-values.md") }] }));
   // Overview
   server.registerResource(
     "overview",

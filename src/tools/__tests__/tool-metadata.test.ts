@@ -2,6 +2,7 @@ import { describe, it, expect, vi, afterEach } from "vitest";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { z } from "zod/v4";
 import { registerAllTools } from "../index.js";
 import { createServer } from "../../server.js";
 import { errorResponse, noApiKeyResponse, structuredResponse, describeTool, API_ERRORS } from "../tool-helpers.js";
@@ -19,13 +20,70 @@ type Describable = { description?: string };
 type ToolConfig = {
   title?: string;
   description?: string;
-  inputSchema?: Record<string, Describable>;
+  inputSchema?: Record<string, Describable> | z.ZodObject;
   outputSchema?: unknown;
   annotations?: Annotations;
 };
 
 /** Tool names are part of the public contract: renaming one is a breaking change. */
 const PLAYER_TOOLS = [
+  "horizon_get_marketplace_limits", "horizon_get_marketplace_rules", "horizon_get_marketplace",
+  "horizon_query_marketplace_listings", "horizon_get_marketplace_listing", "horizon_create_marketplace_listing",
+  "horizon_buy_marketplace_listing", "horizon_cancel_marketplace_listing", "horizon_get_marketplace_operation", "horizon_retry_marketplace_return",
+  "horizon_get_chat_limits", "horizon_open_chat_channel", "horizon_sync_chat_channel",
+  "horizon_send_chat_message", "horizon_get_chat_operation", "horizon_report_chat_message",
+  "horizon_get_matches",
+  "horizon_get_match_limits",
+  "horizon_find_open_matches",
+  "horizon_get_match",
+  "horizon_create_match",
+  "horizon_join_match",
+  "horizon_decline_match_invite",
+  "horizon_start_match",
+  "horizon_submit_match_turn",
+  "horizon_advance_match_timeout",
+  "horizon_leave_match",
+  "horizon_cancel_match",
+  "horizon_report_match_result",
+  "horizon_start_match_ranked_run",
+  "horizon_get_shared_collections", "horizon_get_shared_usage", "horizon_get_shared_object", "horizon_query_shared_objects",
+  "horizon_create_shared_object", "horizon_update_shared_object", "horizon_delete_shared_object",
+  "horizon_get_items",
+  "horizon_get_item_catalog",
+  "horizon_adjust_item",
+  "horizon_equip_item",
+  "horizon_discard_item",
+  "horizon_get_groups",
+  "horizon_get_group",
+  "horizon_get_group_members",
+  "horizon_get_group_pending",
+  "horizon_create_group",
+  "horizon_update_group",
+  "horizon_join_group",
+  "horizon_request_group_join",
+  "horizon_invite_group_player",
+  "horizon_accept_group_invite",
+  "horizon_decline_group_invite",
+  "horizon_cancel_group_invite",
+  "horizon_accept_group_request",
+  "horizon_decline_group_request",
+  "horizon_cancel_group_request",
+  "horizon_leave_group",
+  "horizon_remove_group_member",
+  "horizon_set_group_member_role",
+  "horizon_transfer_group_leadership",
+  "horizon_delete_group",
+
+  "horizon_get_friends",
+  "horizon_find_player",
+  "horizon_send_friend_request",
+  "horizon_accept_friend_request",
+  "horizon_decline_friend_request",
+  "horizon_cancel_friend_request",
+  "horizon_remove_friend",
+  "horizon_block_player",
+  "horizon_unblock_player",
+
   "horizon_test_connection",
   "horizon_signup_anonymous",
   "horizon_signup_email",
@@ -45,13 +103,28 @@ const PLAYER_TOOLS = [
   "horizon_get_all_localizations",
   "horizon_get_localization_languages",
   "horizon_get_news",
+  "horizon_get_inbox",
+  "horizon_get_achievements",
+  "horizon_unlock_achievement",
+  "horizon_deliver_achievement_rewards",
+  "horizon_mark_inbox_read",
+  "horizon_claim_inbox",
+  "horizon_remove_inbox",
   "horizon_validate_gift_code",
+  "horizon_prepare_gift_code",
   "horizon_redeem_gift_code",
   "horizon_get_profile",
   "horizon_set_profile",
+  "horizon_get_player_values",
+  "horizon_get_player_value_offers",
+  "horizon_purchase_player_value_offer",
+  "horizon_adjust_player_value",
   "horizon_start_run",
   "horizon_submit_validated",
   "horizon_get_state",
+  "horizon_get_statistics",
+  "horizon_get_statistics_definitions",
+  "horizon_update_statistics",
   "horizon_upload_evidence",
   "horizon_submit_feedback",
   "horizon_create_log",
@@ -62,7 +135,7 @@ const PLAYER_TOOLS = [
   "horizon_get_email_status",
 ].sort();
 
-/** Read-only player tools that return an object and declare an outputSchema. */
+/** Structured player tools; statistics updates are an explicitly destructive idempotent write. */
 const STRUCTURED_TOOLS = [
   "horizon_test_connection",
   "horizon_check_auth",
@@ -77,8 +150,12 @@ const STRUCTURED_TOOLS = [
   "horizon_get_all_localizations",
   "horizon_get_localization_languages",
   "horizon_validate_gift_code",
+  "horizon_prepare_gift_code",
   "horizon_get_profile",
   "horizon_get_state",
+  "horizon_get_statistics",
+  "horizon_get_statistics_definitions",
+  "horizon_update_statistics",
   "horizon_get_email_status",
 ].sort();
 
@@ -146,8 +223,9 @@ function expectAnnotations(name: string, annotations: Annotations | undefined): 
   }
 }
 
-function expectParameterDescriptions(name: string, inputSchema: Record<string, Describable> | undefined): void {
-  for (const [param, schema] of Object.entries(inputSchema ?? {})) {
+function expectParameterDescriptions(name: string, inputSchema: ToolConfig["inputSchema"]): void {
+  const parameters = inputSchema instanceof z.ZodObject ? inputSchema.shape : inputSchema;
+  for (const [param, schema] of Object.entries(parameters ?? {})) {
     expect(schema.description, `${name}.${param} has no description`).toBeDefined();
     expect((schema.description as string).length, `${name}.${param} description too short`).toBeGreaterThanOrEqual(15);
     expect(schema.description as string, `${name}.${param}: contains a dash`).not.toMatch(/[–—]/);
@@ -185,7 +263,7 @@ describe("player tool metadata", () => {
     const withOutput = [...tools].filter(([, config]) => config.outputSchema !== undefined).map(([name]) => name);
     expect(withOutput.sort()).toEqual(STRUCTURED_TOOLS);
     for (const name of STRUCTURED_TOOLS) {
-      expect(tools.get(name)?.annotations?.destructiveHint, name).toBe(false);
+      expect(tools.get(name)?.annotations?.destructiveHint, name).toBe(name === "horizon_update_statistics");
     }
   });
 
@@ -196,7 +274,7 @@ describe("player tool metadata", () => {
       .map(([name]) => name)
       .sort();
     expect(destructive).toEqual(
-      ["horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated"].sort(),
+      ["horizon_create_marketplace_listing", "horizon_buy_marketplace_listing", "horizon_cancel_marketplace_listing", "horizon_send_chat_message", "horizon_decline_match_invite", "horizon_start_match", "horizon_submit_match_turn", "horizon_advance_match_timeout", "horizon_leave_match", "horizon_cancel_match", "horizon_update_shared_object", "horizon_delete_shared_object", "horizon_adjust_item", "horizon_equip_item", "horizon_discard_item", "horizon_update_group", "horizon_accept_group_invite", "horizon_decline_group_invite", "horizon_cancel_group_invite", "horizon_accept_group_request", "horizon_decline_group_request", "horizon_cancel_group_request", "horizon_leave_group", "horizon_remove_group_member", "horizon_set_group_member_role", "horizon_transfer_group_leadership", "horizon_delete_group", "horizon_accept_friend_request", "horizon_decline_friend_request", "horizon_cancel_friend_request", "horizon_remove_friend", "horizon_block_player", "horizon_unblock_player", "horizon_mark_inbox_read", "horizon_claim_inbox", "horizon_remove_inbox", "horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_update_statistics", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
     );
   });
 
@@ -217,7 +295,7 @@ describe("admin tool metadata", () => {
     const player = registerTools(false);
     const all = registerTools(true);
     const admin = [...all.keys()].filter((name) => !player.has(name));
-    expect(admin.length).toBe(87);
+    expect(admin.length).toBe(159);
     expect(admin.every((name) => name.startsWith("horizon_admin_"))).toBe(true);
   });
 
