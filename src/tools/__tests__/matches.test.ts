@@ -63,7 +63,10 @@ describe("matches through real MCP protocol transport",()=>{
   }
   request.mockImplementationOnce(async()=>new Response(JSON.stringify({code:"FEATURE_NOT_SUPPORTED"}),{status:501}));
   expect((await call("start_match_ranked_run",{...session,matchId,finalStateRevision:7})).isError).toBe(true);
-  expect(request).toHaveBeenCalledTimes(6);for(const[,o]of calls().slice(1,5))expect(o.headers).toHaveProperty("If-Match","7");
+  request.mockImplementationOnce(async()=>new Response(JSON.stringify({code:"ACCOUNT_MATCH_LIMIT_REACHED"}),{status:422}));
+  const capped=await call("create_match",{...session,expectedRevision:0,settings});
+  expect(capped.isError).toBe(true);expect((capped.content as {text:string}[])[0].text).toContain("ACCOUNT_MATCH_LIMIT_REACHED");
+  expect(request).toHaveBeenCalledTimes(7);for(const[,o]of calls().slice(1,5))expect(o.headers).toHaveProperty("If-Match","7");
  });
  it("preserves empty consumed pages null byte visibility and original ranked recovery without speculative calls",async()=>{
   const cursor=Buffer.from("original opaque cursor").toString("base64"),empty={matches:[],nextCursor:cursor,pollAfterSeconds:240};
@@ -105,6 +108,7 @@ describe("matches through real MCP protocol transport",()=>{
   const{tools}=await client.listTools();const matches=tools.filter(t=>/^horizon_(admin_)?(.*_)?match(?:es)?(_|$)/.test(t.name));
   expect(matches).toHaveLength(21);expect(tools.find(t=>t.name==="horizon_find_open_matches")?.annotations).toMatchObject({readOnlyHint:true});
   expect(tools.find(t=>t.name==="horizon_submit_match_turn")?.annotations).toMatchObject({readOnlyHint:false,destructiveHint:true,idempotentHint:true});
+  expect(tools.find(t=>t.name==="horizon_create_match")?.description).toContain("ACCOUNT_MATCH_LIMIT_REACHED");
   expect(tools.find(t=>t.name==="horizon_admin_matches_cleanup")?.annotations).toMatchObject({readOnlyHint:false,idempotentHint:false});
   expect((await client.readResource({uri:"horizon://docs/matches"})).contents[0]).toMatchObject({text:expect.stringContaining("original player-ledger revision")});
   for(const engine of ["unity","godot","unreal"])for(const name of ["integrate-feature","explain-feature"])

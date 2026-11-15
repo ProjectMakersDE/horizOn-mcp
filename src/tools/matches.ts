@@ -7,7 +7,7 @@ import { MATCH_STATE_BYTES } from "./feature-bounds.js";
 
 const session = { userId: z.string().uuid().describe("Active player matching the session and project"), sessionToken: z.string().min(1).max(256).describe("Player accessToken sent only as Bearer") };
 const base = "/api/v1/app/matches";
-export const matchErrors = "404 hides private/missing/expired matches. 409 REVISION_CONFLICT or STATE_CONFLICT: explicitly reread and reconcile the original intent, never replace the revision or automatically resubmit. RESULT_CONFLICT preserves the original report. RUN_EXPIRED/RUN_ALREADY_USED never allow replacement ranked runs. 501 FEATURE_NOT_SUPPORTED is explicit for simpleServer ranked mode. " + SESSION_ERRORS;
+export const matchErrors = "404 hides private/missing/expired matches. 409 REVISION_CONFLICT or STATE_CONFLICT: explicitly reread and reconcile the original intent, never replace the revision or automatically resubmit. RESULT_CONFLICT preserves the original report. RUN_EXPIRED/RUN_ALREADY_USED never allow replacement ranked runs. 422 ACCOUNT_MATCH_LIMIT_REACHED refuses create only, when the account's open matches (lobby, running, reporting) across all its projects are at the plan limit; join, turns, leave, report and cancel are not blocked, so wait for matches to finish instead of retrying. 501 FEATURE_NOT_SUPPORTED is explicit for simpleServer ranked mode. " + SESSION_ERRORS;
 const doc = (summary: string, effects: string, returns: string) => describeTool({ summary, effects, returns,
   use: "explicit asynchronous multiplayer actions after reading horizon://docs/matches.",
   avoid: "automatic polling, page traversal, timeout progression, invented winners or automatic rewards. Reconcile with horizon_get_matches and horizon_get_match. Consent and game consensus do not validate honest gameplay.",
@@ -35,7 +35,7 @@ export function registerMatchesTools(server: McpServer): void {
     try { return jsonResponse(await client.get(base + "/" + id, { userId }, sessionHeaders(sessionToken))); } catch (error) { return errorResponse(error); }
   });
   server.registerTool("horizon_create_match", { title: "Create Match", description: doc("Creates one server-ID lobby under the original player-ledger revision.",
-    "One HTTP attempt. Reserves active and settlement capacity plus bounded invite slots atomically. Completed detail history is separate; FREE defaults to zero. Lost response: reconcile horizon_get_matches with the original intent.", "{match,playerRevision,pollAfterSeconds,serverTime}"),
+    "One HTTP attempt. Reserves active and settlement capacity plus bounded invite slots atomically and counts against the account-wide open match cap. Completed detail history is separate; FREE defaults to zero. Lost response: reconcile horizon_get_matches with the original intent.", "{match,playerRevision,pollAfterSeconds,serverTime}"),
     inputSchema: { ...session, expectedRevision: matchRevision, settings: matchCreate }, annotations: IDEMPOTENT_WRITE }, async ({ userId, sessionToken, expectedRevision, settings }) => {
     if (settings.inviteeIds.includes(userId)) return errorResponse(new Error("INVALID_REQUEST: Creator cannot invite themself"));
     const client = createApiClientFromEnv(); if (!client) return noApiKeyResponse();
