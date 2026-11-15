@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.9.1...v1.9.2) (2026-11-15)
+
+
+### Bug Fixes
+
+* **matches:** handle the account open match limit ([919c468](https://github.com/ProjectMakersDE/horizOn-mcp/commit/919c46802f07ea1bd7236ab4cca7a9b251913e42))
+
 ## [1.9.1](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.9.0...v1.9.1) (2026-10-23)
 
 
