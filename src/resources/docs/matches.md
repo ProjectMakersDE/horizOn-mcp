@@ -61,7 +61,10 @@ MATCH_NOT_FOUND and never authorizes a new action/reward. Lobbies last24h and ac
 most30days. Explicit bounded maintenance follows separate due/source/history continuations.
 
 Read all seven current policies: activeMatches,stateBytes,retainedMatches,pendingInvites,
-settlementMatches,historyRetentionSeconds,rankedSettlementSeconds. Tier defaults are not maxima;
+settlementMatches,historyRetentionSeconds,rankedSettlementSeconds. Separately, each plan caps the
+open matches (lobby, running, reporting) across all projects of the account. Only create is refused
+at the cap (422 ACCOUNT_MATCH_LIMIT_REACHED); join, turns, leave, report and cancel are not blocked.
+Wait for matches to finish instead of retrying. Tier defaults are not maxima;
 retainedMatches/historyRetentionSeconds may be zero. Retained reads stay complete after reductions.
 The technical state maximum is14999552 decoded bytes (14648KiB), whose canonical Base64 fits the
 20003500-byte create/turn HTTP frame. Result bytes remain a separate fixed256-byte contract.
