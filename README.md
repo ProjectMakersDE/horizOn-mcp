@@ -30,7 +30,7 @@ Add to your MCP client configuration (Claude Desktop, Cursor, etc.):
 
 ## Features
 
-The server exposes **29 documentation resources, 120 player tools and 4 workflow prompts**. An Account Key enables additional scoped admin tools. These counts come from the registered MCP resources, tools and prompts.
+The server exposes **30 documentation resources, 126 player tools and 4 workflow prompts**. An Account Key enables additional scoped admin tools. These counts come from the registered MCP resources, tools and prompts.
 
 ### Resources
 
@@ -39,6 +39,7 @@ Documentation resources are served directly from the MCP server. No API key requ
 | URI | Description |
 |-----|-------------|
 | `horizon://docs/marketplace` | Atomic original-item escrow, exact prices, protected Inbox returns and scoped recovery. |
+| `horizon://docs/item-gifts` | Private one-item gifts through the Inbox, fixed sender fee, seven-day offers and protected returns. |
 | `horizon://docs/chat` | Direct/group/project text, metadata-only realtime, incremental snapshots, original receipts and scoped moderation. |
 | `horizon://docs/matches` | Opaque turn state, exact revisions, immutable reports, bounded deadlines and original ranked-run recovery. |
 | `horizon://docs/shared-objects` | Opaque bounded world data, current permissions, exact revisions and trusted ordinary game notices. |
@@ -189,6 +190,12 @@ Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempot
 | `horizon_buy_marketplace_listing` | Purchases the exact listing under its original revision, currency and price. |
 | `horizon_cancel_marketplace_listing` | Cancels the original listing revision into a protected pending item return. |
 | `horizon_retry_marketplace_return` | Attempts one explicitly requested pending return delivery for the current return owner. |
+| `horizon_get_item_gift_config` | Reads whether gifting is enabled, the fixed sender fee with its currency and the configured limits. |
+| `horizon_get_item_gifts` | Reads the own bounded lists of sent gifts, received open offers and recent history. |
+| `horizon_get_item_gift` | Reads one authorized gift or the original own send receipt. |
+| `horizon_get_item_gift_operation` | Reads one authorized gift or the original own send receipt. |
+| `horizon_send_item_gift` | Sends one original unequipped item privately to another player under the confirmed fee configuration. |
+| `horizon_decline_item_gift` | Declines one received offer under its original gift revision so the item returns to the sender. |
 | `horizon_get_inbox` | Reads targeted messages and eligible project broadcasts, counters and server polling interval. |
 | `horizon_mark_inbox_read` | Marks an inbox entry read for the authenticated player. |
 | `horizon_claim_inbox` | Claims an inbox reward once for the authenticated player. |
@@ -310,7 +317,7 @@ Core features:
 - Player Values (atomic configured purchases, safe adjustments, minimal public replay guards)
 - Statistics, inbox rewards and achievements
 - Friends, blocklists and groups
-- Item catalogs, unique inventory and marketplace escrow/trades
+- Item catalogs, unique inventory, marketplace escrow/trades and private item gifts
 - Shared objects with scoped permissions and asynchronous matches
 - Hosted chat, with realtime managers provided by the native SDKs
 - Validated Actions (server-checked runs, validated only leaderboards, server-owned currency)
@@ -438,3 +445,10 @@ The ten player and fourteen scoped operator tools preserve original-item escrow,
 currency settlement, exact original intent and lossless Inbox returns. Read
 `horizon://docs/marketplace` for routes, original revisions, five-tier limits and recovery.
 Engine prompts accept `feature=marketplace`. No automatic trading, price polling or retries.
+
+## Item gifts
+
+Six player tools send one original item privately through the Inbox, read config, own state,
+single gifts and original receipts, and decline offers. Claiming stays `horizon_claim_inbox`.
+Read `horizon://docs/item-gifts` for the seven-field send intent, fee proof, seven-day expiry
+and protected returns. Engine prompts accept `feature=item-gifts`. No automatic sends or retries.

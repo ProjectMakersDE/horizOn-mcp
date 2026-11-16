@@ -1,4 +1,5 @@
 import { registerMarketplaceTools } from "./marketplace.js";
+import { registerItemGiftTools } from "./item-gifts.js";
 import { registerChatTools } from "./chat.js";
 import { registerMatchesTools } from "./matches.js";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -50,6 +51,7 @@ export function registerAllTools(server: McpServer): void {
   registerMatchesTools(server);
   registerChatTools(server);
   registerMarketplaceTools(server);
+  registerItemGiftTools(server);
   registerInboxTools(server);
   registerFeedbackTools(server);
   registerUserLogTools(server);
