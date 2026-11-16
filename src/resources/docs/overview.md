@@ -94,3 +94,10 @@ The ten player and fourteen scoped operator tools preserve original-item escrow,
 currency settlement, exact original intent and lossless Inbox returns. Read
 `horizon://docs/marketplace` for routes, original revisions, five-tier limits and recovery.
 Engine prompts accept `feature=marketplace`. No automatic trading, price polling or retries.
+
+## Item gifts
+
+Six player tools send one original item privately through the Inbox, read config, own state,
+single gifts and original receipts, and decline offers. Claiming stays `horizon_claim_inbox`.
+Read `horizon://docs/item-gifts` for the seven-field send intent, fee proof, seven-day expiry
+and protected returns. Engine prompts accept `feature=item-gifts`. No automatic sends or retries.
