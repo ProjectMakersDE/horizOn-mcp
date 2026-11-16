@@ -74,6 +74,13 @@ response is a receipt, including on replay after resale/discard, never a request
 Refresh inventory explicitly. `INVENTORY_FULL` preserves the unclaimed return, even after expiry.
 Full Inbox preserves the listing as pending until an explicit return delivery or maintenance.
 
+Item gifts add `attachment.itemGift:{giftId,instanceId,itemKey,direction}` with `values:[]`.
+Type `item_gift` (direction `offer`) is the recipient's offer, claimable only before the
+gift's `expiresAt`. Type `item_gift_return` (direction `return`) brings a declined or expired
+gift back to the sender and stays until claimed. Both are claimed with `horizon_claim_inbox`,
+which moves the exact original instance and lists it in `items[]`. Decline an offer with
+`horizon_decline_item_gift`. See horizon://docs/item-gifts.
+
 
 ## Separate personal plain text
 

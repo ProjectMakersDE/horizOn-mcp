@@ -15,7 +15,7 @@ export function registerInboxTools(server: McpServer): void {
     title: "Get Player Inbox",
     description: describeTool({ summary: "Reads targeted messages and eligible project broadcasts, counters and server polling interval.",
       use: "displaying notifications or refreshing after realtime invalidation.", avoid: "choosing rewards or writing messages from the player client.", requires: SESSION_REQUIRED,
-      effects: "None (read only).", returns: "{userId,cursor,revision,broadcastRevision,serverTime,pollAfterSeconds,unchanged,entries,counts,limits}. unchanged=true has empty entries: keep the cached entries. A changed snapshot replaces them completely.", errors }),
+      effects: "None (read only).", returns: "{userId,cursor,revision,broadcastRevision,serverTime,pollAfterSeconds,unchanged,entries,counts,limits}. unchanged=true has empty entries: keep the cached entries. A changed snapshot replaces them completely. Entries of type item_gift and item_gift_return carry attachment.itemGift {giftId,instanceId,itemKey,direction}; decline an offer with horizon_decline_item_gift.", errors }),
     inputSchema: { ...session, since: z.string().max(128).regex(/^[A-Za-z0-9:_-]*$/).optional().describe("Opaque cursor from this same player/project; omit for a full snapshot") }, annotations: READ_ONLY,
   }, async ({ userId, sessionToken, since }) => {
     const client = createApiClientFromEnv(); if (!client) return noApiKeyResponse();
@@ -24,7 +24,7 @@ export function registerInboxTools(server: McpServer): void {
   });
   for (const [suffix, name, title, effects, returns] of [
     ["read", "horizon_mark_inbox_read", "Mark Inbox Entry Read", "Marks this entry read without claiming its reward.", "Updated complete inbox snapshot."],
-    ["claim", "horizon_claim_inbox", "Claim Inbox Reward", "Atomically marks the entry claimed and grants its configured values or restores its exact escrowed original item once. No automatic retries or new action IDs. Overdue unclaimed rewards remain claimable.", "{entryId,replayed,inbox,playerValues,items}. Replace the value cache with playerValues; item references are receipts, never instructions to mint an item. Explicitly refresh inventory after a claim. Never apply a reward delta again."],
+    ["claim", "horizon_claim_inbox", "Claim Inbox Reward", "Atomically marks the entry claimed and grants its configured values or restores its exact escrowed original item once. attachment.itemGift {giftId,instanceId,itemKey,direction} marks an item gift offer (direction offer) or return (direction return); claiming it moves that original instance. No automatic retries or new action IDs. Overdue unclaimed rewards remain claimable.", "{entryId,replayed,inbox,playerValues,items}. Replace the value cache with playerValues; item references are receipts, never instructions to mint an item. Explicitly refresh inventory after a claim. Never apply a reward delta again."],
     ["remove", "horizon_remove_inbox", "Remove Inbox Entry", "Removes ordinary or already-claimed entries. Unclaimed valuable attachments are protected. Removal does not create a new claim opportunity.", "Updated complete inbox snapshot."],
   ] as const) {
     server.registerTool(name, {
