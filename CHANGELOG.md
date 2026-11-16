@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.9.2...v1.10.0) (2026-11-16)
+
+
+### Features
+
+* **item-gifts:** add player item gift tools and docs resource (TASK-1140) ([319128c](https://github.com/ProjectMakersDE/horizOn-mcp/commit/319128c1eed234111600e171bb0f515755bfe758))
+
 ## [1.9.2](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.9.1...v1.9.2) (2026-11-15)
 
 
