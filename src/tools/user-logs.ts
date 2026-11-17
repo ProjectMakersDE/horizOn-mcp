@@ -10,10 +10,10 @@ export function registerUserLogTools(server: McpServer): void {
       summary: "Writes one server-side log entry (INFO, WARN or ERROR) for a player, visible in the horizOn dashboard's user logs.",
       use: "the game records a technical event or a handled error for later debugging, for example a failed purchase or a slow load.",
       avoid: "crashes and exceptions with a stack trace (use horizon_create_crash_report) or messages written by players (use horizon_submit_feedback).",
-      requires: "a userId from horizon_signup_* or horizon_signin_* and the BASIC tier or higher; no session token.",
+      requires: "a userId from horizon_signup_* or horizon_signin_* and a positive userLogs quota for the hosted tier (horizon://api/feature-limits); no session token.",
       effects: "creates one log entry per call; a repeat creates a duplicate.",
       returns: "{id, createdAt} of the new entry.",
-      errors: "403 on the FREE tier: logs need BASIC or higher, so upgrade or skip logging. 400 for an invalid userId: pass the ID from the sign-in result.",
+      errors: "403 when logging is disabled by quota or the player belongs to another project. 400 for an invalid userId: pass the ID from the sign-in result.",
     }),
     inputSchema: {
       userId: z.string().uuid().describe("Player user ID (UUID) from horizon_signup_* or horizon_signin_*"),

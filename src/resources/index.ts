@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { registerAppOpenApi } from "./app-openapi.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -35,11 +36,14 @@ export function registerAllResources(server: McpServer): void {
     title: "Item Gifts", description: "Private one-item gifts through the Inbox, fixed sender fee, seven-day offers and protected returns.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/item-gifts", mimeType: "text/markdown", text: loadDoc("docs/item-gifts.md") }] }));
   server.registerResource("docs-chat", "horizon://docs/chat", {
-    title: "Hosted Chat", description: "Direct/group/project text, metadata-only realtime, incremental snapshots, original receipts and scoped moderation.", mimeType: "text/markdown",
+    title: "Hosted Chat", description: "Direct/group/project text, pushed realtime content, incremental snapshots, original receipts and scoped moderation.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/chat", mimeType: "text/markdown", text: loadDoc("docs/chat.md") }] }));
   server.registerResource("docs-matches", "horizon://docs/matches", {
     title: "Asynchronous Matches", description: "Opaque turn state, exact revisions, immutable reports, bounded deadlines and original ranked-run recovery.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/matches", mimeType: "text/markdown", text: loadDoc("docs/matches.md") }] }));
+  server.registerResource("docs-realtime", "horizon://docs/realtime", {
+    title: "Realtime for Chat and Matches", description: "Hosted WebSocket auth, pushed content, snapshots, socket sends, reconnect and verified SDK APIs.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/realtime", mimeType: "text/markdown", text: loadDoc("docs/realtime.md") }] }));
   server.registerResource("docs-shared-objects", "horizon://docs/shared-objects", {
     title: "Shared Objects", description: "Opaque bounded world data, current permissions, exact revisions and trusted ordinary game notices.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/shared-objects", mimeType: "text/markdown", text: loadDoc("docs/shared-objects.md") }] }));
@@ -94,7 +98,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "Authentication",
       description:
-        "Authentication methods (Anonymous, Email, Google), endpoints, SDK code examples, and common errors.",
+        "Player login (guest, email, Google, Apple), persistent sessions, and SDK integration.",
       mimeType: "text/markdown",
     },
     () => ({
@@ -304,7 +308,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "User Logs",
       description:
-        "Server-side event and error tracking. Requires BASIC tier or higher. SDK examples.",
+        "Player event and error logs, current plan quotas and SDK examples.",
       mimeType: "text/markdown",
     },
     () => ({
@@ -346,7 +350,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "App API Reference",
       description:
-        "Complete API reference for all horizOn App API endpoints with request/response schemas.",
+        "OpenAPI-generated index of App API operations with links to scoped schemas and integration guides.",
       mimeType: "text/markdown",
     },
     () => ({
@@ -359,6 +363,32 @@ export function registerAllResources(server: McpServer): void {
       ],
     }),
   );
+
+  registerAppOpenApi(server, () => loadDoc("api/app-openapi.json"));
+
+  const limitsUri = "horizon://api/feature-limits";
+  server.registerResource("api-feature-limits", limitsUri, {
+    title: "Live hosted feature limits",
+    description: "The current quotas published by horizOn for FREE, BASIC, PLUS, PRO and ENTERPRISE.",
+    mimeType: "application/json",
+  }, async () => {
+    const response = await fetch("https://horizon.pm/api/v1/public/system/feature-limits", {
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) throw new Error(`Could not read hosted horizOn feature limits (HTTP ${response.status}).`);
+    return { contents: [{ uri: limitsUri, mimeType: "application/json", text: JSON.stringify(await response.json()) }] };
+  });
+
+  const guides = [
+    ["dashboard", "Dashboard and API credentials", "Project and Account Keys, scopes, SDK settings and Dashboard workflows."],
+    ["limits", "Plans, quotas and rate limits", "Five tiers, live limit lookup and handling rate limits in games."],
+    ["self-hosting", "Self-hosted simpleServer", "Cloud compatibility, setup, operation and project content migration."],
+  ] as const;
+  for (const [name, title, description] of guides) {
+    const uri = `horizon://docs/${name}`;
+    server.registerResource(`docs-${name}`, uri, { title, description, mimeType: "text/markdown" },
+      () => ({ contents: [{ uri, mimeType: "text/markdown", text: loadDoc(`docs/${name}.md`) }] }));
+  }
 
   // Quickstart: Godot
   server.registerResource(

@@ -20,7 +20,7 @@ The server never stores images. IDs are references into the game's own assets: t
 | Badges shown per player | 3 (distinct, order kept) |
 | Unlocks per player | 25 |
 | Grants per gift code | 10 |
-| Catalog entries per API key | FREE 50, BASIC 200, PRO 500, ENTERPRISE 1000 |
+| Catalog entries per API key | `playerProfileCosmetics` in <horizon://api/feature-limits> |
 
 A type prefix such as `avatar.` is a recommended convention; the explicit `type` field is the truth.
 

@@ -6,8 +6,10 @@ cannot replace a player session. Retain the returned cursor only for that player
 project and session. Serialize refreshes and discard responses from old sessions.
 
 `unchanged=true` contains no entries: keep the previous complete snapshot. Otherwise
-replace it, including removals and expiry. Respect the returned `pollAfterSeconds` (120 seconds by default). Hosted realtime invalidations request a new HTTP snapshot; they never
-carry inbox content or grant a reward. simpleServer supports REST, not realtime.
+replace it, including removals and expiry. Respect the returned `pollAfterSeconds` (120 seconds
+by default). Inbox uses HTTP on hosted horizOn and simpleServer. Refresh on open, explicit action
+or the returned cadence. The gateway rejects inbox:<userId>; it does not deliver inbox content
+or grant rewards. Only Chat and Matches use the socket. See horizon://docs/realtime.
 
 ## Player actions
 

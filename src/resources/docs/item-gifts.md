@@ -75,13 +75,126 @@ direction look the same), `ITEM_NOT_FOUND`, `GIFT_NOT_FOUND`, `OPERATION_NOT_FOU
 
 ## Limits and adapters
 
-Five tiers FREE/BASIC/PLUS/PRO/ENTERPRISE: open gifts per player 3/5/10/20/50, retained
-gifts per project 50/500/1000/2500/10000, sends per project minute 10/30/45/60/120. Read
-the current limits instead of hardcoding them. Lowering a limit never removes open gifts.
+Plans are FREE/BASIC/PLUS/PRO/ENTERPRISE. Read current open-gift, retained-gift,
+write-rate and page policies from the `limits` returned by the config/state reads.
+The public plan-comparison JSON does not include every Item Gifts policy. See
+`horizon://docs/limits`. Never hardcode a numeric tier table. Lowering a limit never
+removes open gifts.
 `received` lists at most `receivedPageSize` open offers, `sent` the open gifts and pending
 returns, `history` the last terminal gifts kept for seven days. The state has no cursor.
 
-Configuration and support (retry return, recover a deleted owner's return, cleanup) are
-Dashboard only and have no Account Key tools. This MCP adapter performs explicit HTTP calls,
-never retries, polls or opens a WebSocket. Confirm the matching SDK source before using
-native examples. See horizon://docs/inbox, horizon://docs/items and horizon://docs/friends.
+Configuration and support (retry return, recover a deleted owner's return, cleanup) use
+the Dashboard and have no MCP admin tools. This is a tool-coverage boundary, not a
+claim that all raw admin HTTP routes require a session. See `horizon://docs/dashboard`
+for Account Key scope restrictions. This MCP adapter performs explicit HTTP calls,
+never retries, polls or opens a WebSocket. See `horizon://docs/inbox`,
+`horizon://docs/items` and `horizon://docs/friends`.
+
+## Released native SDK integration
+
+The following release tags contain the Item Gifts manager, Inbox attachment support,
+Quickstart and durable example flow. Tag contents and remote tag identities were
+checked on 2026-11-17. Use those examples with the installed package. A release tag
+is separate from Unity Asset Store, Godot Asset Library or Fab availability.
+
+| Engine / release | Native manager | Released example and Quickstart |
+| --- | --- | --- |
+| Unity v1.13.0 | `ItemGiftsManager.Instance` | [ItemGiftsExample.cs](https://github.com/ProjectMakersDE/horizOn-SDK-Unity/blob/v1.13.0/Samples~/Examples/Features/ItemGiftsExample.cs), [ItemGiftsQuickstart.cs](https://github.com/ProjectMakersDE/horizOn-SDK-Unity/blob/v1.13.0/Samples~/Examples/Features/ItemGiftsQuickstart.cs) |
+| Godot v1.12.0 | `Horizon.itemGifts` | [item_gifts_example.gd](https://github.com/ProjectMakersDE/horizOn-SDK-Godot/blob/v1.12.0/addons/horizon_sdk/examples/features/item_gifts_example.gd), [item_gifts_quickstart.gd](https://github.com/ProjectMakersDE/horizOn-SDK-Godot/blob/v1.12.0/addons/horizon_sdk/examples/features/item_gifts_quickstart.gd) |
+| Unreal v1.11.0 | `UHorizonSubsystem::ItemGifts` | [UHorizonItemGiftsExample](https://github.com/ProjectMakersDE/horizOn-SDK-Unreal/blob/v1.11.0/Plugins/HorizonSDK/Source/HorizonSDK/Public/Examples/HorizonItemGiftsExample.h), [UHorizonItemGiftsQuickstart](https://github.com/ProjectMakersDE/horizOn-SDK-Unreal/blob/v1.11.0/Plugins/HorizonSDK/Source/HorizonSDK/Public/Examples/HorizonItemGiftsQuickstart.h) |
+
+All three example flows keep one original pending send per stable project UUID and
+player. Use the project UUID for durable scope, not the selected region/host. They
+fence stale responses when player/session/request context changes. After confirmed
+send recovery they refresh Inventory, Player Values and Item Gifts before removing
+the pending record. Import the feature samples and their journal helpers together.
+Unity's supplied file journal is for native builds. WebGL needs a game-owned durable
+browser journal before enabling writes.
+
+### Unity
+
+Use `PM.horizOn.Cloud.Examples.Features.ItemGiftsExample` on an active GameObject.
+Configure its serialized `projectId` with the stable project UUID and retain its
+journal directory. The following are separate UI actions on an already authenticated
+`screen`, not a startup auto-send:
+
+```csharp
+// Read and review. Resolve/show the recipient profile first (FindRecipient can do this).
+if (!await ItemGiftsQuickstart.ReadRulesAndInventory(screen)) return;
+if (!screen.ReviewSend(recipientId, instanceId)) return;
+// Display the item, recipient, screen.ReviewedFee, screen.ReviewedCurrencyKey and expiry.
+```
+
+```csharp
+// Later, in the player's Send confirmation handler, using the same reviewed screen:
+bool sent = await screen.ConfirmReviewedSend();
+// On uncertainty keep the pending original. An explicit recovery handler uses:
+// await screen.RetryPending();  OR  await screen.RecoverOriginalOperation();
+```
+
+For a received offer call `ReadGift(giftId)` or `ReadGifts()` before the player's
+`DeclineGift(giftId)` confirmation. Both recipient offers and sender returns use
+`ClaimGiftEntry(originalEntryId)`, followed by current inventory refresh.
+
+### Godot
+
+Instantiate the released `item_gifts_example.gd` as a Node and set `project_id` to
+the stable project UUID. On that authenticated `screen`, read before showing terms:
+
+```gdscript
+var config: Dictionary = await screen.read_config()
+var inventory: Dictionary = await screen.read_inventory()
+if not config.success or not inventory.success:
+    return
+var review: Dictionary = screen.review_send(recipient_id, instance_id)
+if not review.success:
+    return
+# Show review.data (item, recipientId, currencyKey, fee) and seven-day expiry.
+```
+
+```gdscript
+# Later, in the player's Send confirmation handler:
+var result: Dictionary = await screen.confirm_reviewed_send()
+# Explicit recovery handlers use screen.retry_pending() or
+# screen.recover_original_operation(), preserving the original send.
+```
+
+Read an offer with `read_gift(gift_id)`, then `review_decline(gift_id)` before the
+player's `confirm_reviewed_decline()`. Claim offers and returns through
+`claim_gift_entry(original_entry_id)`, then refresh inventory.
+
+### Unreal C++ and Blueprint
+
+Keep a `UHorizonItemGiftsExample` UObject referenced by the owning screen (for
+example a `UPROPERTY`) and bind it to the authenticated subsystem and stable project
+UUID. `ReadConfig` and `ReadInventory` are asynchronous. Wait for Item Gifts
+`OnResult` and Items `OnInventoryResult` to succeed before review. Resolve and
+display the recipient profile.
+
+```cpp
+// Screen is the retained UHorizonItemGiftsExample, Horizon the authenticated subsystem.
+if (!Screen->Bind(Horizon, ProjectId)) return;
+Screen->ReadConfig();
+Screen->ReadInventory();
+```
+
+```cpp
+// In a later UI handler after BOTH reads completed successfully:
+if (!Screen->ReviewSend(RecipientId, InstanceId)) return;
+// Display the original item/recipient, Screen->ReviewedFee and ReviewedCurrencyKey.
+```
+
+```cpp
+// Later, in the player's confirmation handler:
+Screen->ConfirmReviewedSend();
+```
+
+`OnAction` reports completion and `LastErrorCode` carries a refusal. Explicit recovery
+uses `RetryPending()` or `RecoverOriginalOperation()`. `ReadGift` precedes
+`DeclineGift`; `ClaimGiftEntry(originalEntryId)` accepts offers or returns through
+Inbox. Blueprint can use the same example actions and the released Quickstart's
+`ReadOneGift`, `SendReviewedGift` and `ClaimGift` nodes. Do not put Send in BeginPlay.
+
+These are source-verified integration pointers. Engine/store/platform validation and
+a hosted two-player acceptance run are separate evidence and are not established
+by this documentation check.

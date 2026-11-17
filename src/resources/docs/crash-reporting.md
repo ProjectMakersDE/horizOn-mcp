@@ -207,16 +207,9 @@ curl -X POST https://horizon.pm/api/v1/app/crash-reports/create \
 
 ## Tier Requirements
 
-All tiers can use crash reporting, but with different limits:
-
-| Tier | Report Limit | Retention |
-|------|-------------|-----------|
-| FREE | Configured per tier | Configured per tier |
-| BASIC | Higher limit | Longer retention |
-| PRO | Higher limit | Longer retention |
-| ENTERPRISE | Highest limit | Longest retention |
-
-Exact limits are configured via system configuration and may change.
+All hosted tiers can use crash reporting. Read `crashReports` and
+`crashRetentionDays` in <horizon://api/feature-limits> for the current report
+quota and retention by tier.
 
 ## Common Errors
 

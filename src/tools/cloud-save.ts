@@ -63,7 +63,7 @@ export function registerCloudSaveTools(server: McpServer): void {
       returns: "{success: true, dataSizeBytes, revision}. revision is the new revision: pass it as expectedRevision to the next save.",
       errors:
         "409 (only with expectedRevision) when another device saved first: nothing was written, load the current save and revision, decide, then save again. " +
-        "403 when the data exceeds the tier limit (defaults FREE 1 KB, BASIC 5 KB, PRO 20 KB, ENTERPRISE 250 KB): shrink the save or upgrade. " +
+        "403 when the data exceeds the tier limit: read cloudSaveBytes in horizon://api/feature-limits for the hosted account's tier. " +
         SESSION_ERRORS,
     }),
     inputSchema: {

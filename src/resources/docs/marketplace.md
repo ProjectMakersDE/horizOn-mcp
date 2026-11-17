@@ -75,10 +75,10 @@ minute10/30/45/60/120, minimum player write interval1000ms. Read current limits 
 of hardcoding them. Currency changes are refused while escrow exists. Disabled trading
 or player bans do not erase returns or replay proofs.
 
-Hosted realtime invalidates only the current player's `marketplace:userId` and Inbox
-metadata. It does not stream global prices or item/value payloads. An explicit invalidation
-may trigger one authorized REST reconciliation, never periodic price polling. This MCP
-adapter performs explicit HTTP calls and does not create background WebSockets. simpleServer
-implements the same REST transactions with realtime:false. Native engine signatures and
-actual deployment completion are separate acceptance gates; confirm the matching SDK source
-before using examples. See horizon://docs/inbox and horizon://docs/items.
+Marketplace and Inbox use HTTP on hosted horizOn and simpleServer. The gateway rejects
+marketplace:<userId> and inbox:<userId>; it does not stream prices, inventory or balance changes.
+Refresh owned state on open or explicit action and honor the returned polling cadence when the
+game chooses polling. This MCP adapter performs explicit HTTP calls without background polling
+or WebSockets. simpleServer implements the same REST transactions with realtime:false.
+Confirm installed native signatures before using examples. See horizon://docs/realtime,
+horizon://docs/inbox and horizon://docs/items.

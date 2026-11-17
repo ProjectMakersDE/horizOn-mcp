@@ -34,6 +34,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Check bundled App API reference
+        run: npm run docs:check
+
       - name: Run tests
         run: npm test
 

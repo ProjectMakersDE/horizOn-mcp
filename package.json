@@ -10,12 +10,16 @@
   },
   "files": [
     "dist",
-    "src/resources/**/*.md"
+    "src/resources/**/*.md",
+    "src/resources/api/app-openapi.json"
   ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "npm run build",
+    "docs:update": "node scripts/app-reference.mjs update",
+    "docs:check": "node scripts/app-reference.mjs check",
+    "docs:check:live": "node scripts/app-reference.mjs check-live",
+    "prepublishOnly": "npm run docs:check && npm run build",
     "dev": "tsx src/index.ts",
     "test": "vitest run",
     "test:watch": "vitest"

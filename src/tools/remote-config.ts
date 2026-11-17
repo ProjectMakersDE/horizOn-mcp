@@ -2,7 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { createApiClientFromEnv } from "./api-client.js";
 import { noApiKeyResponse, errorResponse, structuredResponse, describeTool, READ_ONLY } from "./tool-helpers.js";
-import { REMOTE_CONFIG_OUTPUT, ALL_REMOTE_CONFIGS_OUTPUT } from "./output-schemas.js";
+import { REMOTE_CONFIG_OUTPUT, ALL_REMOTE_CONFIGS_OUTPUT, FILTERED_REMOTE_CONFIGS_OUTPUT } from "./output-schemas.js";
 
 export function registerRemoteConfigTools(server: McpServer): void {
   // --- Get single remote config ---
@@ -51,6 +51,33 @@ export function registerRemoteConfigTools(server: McpServer): void {
 
     try {
       const result = await client.get("/api/v1/app/remote-config/all");
+      return structuredResponse(result);
+    } catch (error) {
+      return errorResponse(error);
+    }
+  });
+
+  server.registerTool("horizon_filter_remote_configs", {
+    title: "Filter Remote Configs",
+    description: describeTool({
+      summary: "Reads only the project config keys matching a case-sensitive prefix or wildcard pattern.",
+      use: "loading one group of flags, balance values or localized settings that share a key pattern.",
+      avoid: "looking up one exact key or intentionally fetching the whole configuration.",
+      effects: "None (read only).",
+      returns: "{configs, total, pattern, matchType}. A pattern without * matches keys by prefix. The server accepts * as a wildcard.",
+      errors: "400 for invalid patterns. Use letters, digits, underscores, dots, hyphens and up to ten non-consecutive wildcards.",
+    }),
+    inputSchema: {
+      pattern: z.string().trim().min(1).max(102).describe("A key prefix or wildcard pattern such as 'balance.*' or '*_de'. Include at least one literal character."),
+    },
+    outputSchema: FILTERED_REMOTE_CONFIGS_OUTPUT,
+    annotations: READ_ONLY,
+  }, async ({ pattern }) => {
+    const client = createApiClientFromEnv();
+    if (!client) return noApiKeyResponse();
+
+    try {
+      const result = await client.get("/api/v1/app/remote-config/filter", { pattern });
       return structuredResponse(result);
     } catch (error) {
       return errorResponse(error);

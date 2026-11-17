@@ -41,9 +41,10 @@ callback signatures. Verify the installed version against the current REST contr
 Only replace a cache matching the same host/project/player and session generation. Never re-sign
 in as a new guest to recover authorization. Pagination is explicit under current memberPageSize, and revision
 changes across pages require reconciliation rather than an unbounded automatic restart.
-simpleServer supports REST within its documented ENV/SQL frames. Hosted groups:<groupId> realtime is metadata
-invalidation only, requires membership and is explicitly unsupported by simpleServer. Reconnect
-requires a REST refresh. Removed members cannot retain subscriptions.
+simpleServer supports REST within its documented ENV/SQL frames. Groups use HTTP on hosted
+horizOn too. Refresh on open or explicit action, or at the returned polling cadence. The gateway
+rejects groups:<groupId>; only chat:<channelId> and matches:<matchId> are subscribable.
+Group chat has its own authorized chat topic. See horizon://docs/realtime.
 
 ## REST contract
 
@@ -124,5 +125,5 @@ Admin GET `/api/v1/admin/groups?apiKeyId&afterGroupId&limit` is an owned-project
 GET `/api/v1/admin/groups/{groupId}?apiKeyId`, `/{groupId}/members?apiKeyId&afterUserId&limit`,
 `/{groupId}/pending?apiKeyId`, `/players/{userId}?apiKeyId`, `/limits?apiKeyId` are read-only and
 require GROUPS Account Key scope or dashboard session. No admin app impersonation or hidden writes.
-Public system config exposes `groups` (memberships/player) and `groupMembers` limits. Group realtime metadata is membership-authorized
-`groups:{groupId}`. Removed members lose authorization; events never contain data or member lists.
+Public system config exposes `groups` (memberships/player) and `groupMembers` limits. Group data
+and member lists are read through authorized HTTP requests; there is no groups WebSocket topic.
