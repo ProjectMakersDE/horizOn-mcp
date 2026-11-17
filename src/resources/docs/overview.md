@@ -1,103 +1,102 @@
 # horizOn Overview
 
-## What is horizOn?
+horizOn is a multi-tenant Backend-as-a-Service for games and apps. The managed service
+runs in EU, US and Asia. Base URL: `https://horizon.pm`.
 
-horizOn is a **multi-tenant Backend-as-a-Service (BaaS)** designed for game and app developers. It provides ready-to-use backend features so developers can focus on building their games instead of managing servers.
+## Account, project and player
 
-**Base URL:** `https://horizon.pm`
+- **Account:** the studio or developer, owning the subscription and projects.
+- **Project:** selected by a Project API Key. Project UUIDs used by admin tools are
+  identifiers, not the secret key value.
+- **User:** an app player inside that project, with a separate player session.
 
-## Key Concept: Account vs User
+Game SDKs and MCP player tools use a Project API Key (`X-API-Key`) for `/api/v1/app/**`.
+Player-session routes also need the matching player's Bearer token. Account Keys
+(`X-Account-API-Key`) are for trusted administration under `/api/v1/admin/**` and
+never belong in a game build. See `horizon://docs/dashboard` for key scopes and
+Dashboard-only operations.
 
-This distinction is critical when working with horizOn:
+## Feature map
 
-- **Account** — The developer or company using horizOn. An account owns one or more apps, manages API keys, and configures features via the horizOn Dashboard.
-- **User** — The end-user of the developer's app (a player). Users sign up, sign in, save data, submit scores, etc.
+Read the matching resource before implementing a feature. A configured quota is not
+a substitute for its authentication, permission or hosting requirements.
 
-The App API (used by SDKs and this MCP server) operates on behalf of **Users** within a developer's **Account**. The `X-API-Key` header identifies which Account/App the request belongs to.
+| Feature | Resource | Purpose |
+| --- | --- | --- |
+| Authentication | `horizon://docs/auth` | Anonymous, email, Google and Apple player identity |
+| Cloud Save | `horizon://docs/cloud-save` | Player saves |
+| Leaderboards | `horizon://docs/leaderboard` | Scores, ranks and public profile display |
+| Remote Config | `horizon://docs/remote-config` | Balancing and feature flags |
+| Localization | `horizon://docs/localization` | Localized UI strings |
+| News | `horizon://docs/news` | Published in-game announcements |
+| Gift Codes | `horizon://docs/gift-codes` | Promotional rewards with original prepared intents |
+| Player Profile | `horizon://docs/player-profile` | Avatar, frame, badges and cosmetic unlocks |
+| Feedback | `horizon://docs/feedback` | Bug reports and player suggestions |
+| User Logs | `horizon://docs/user-logs` | Player events and errors |
+| Crash Reporting | `horizon://docs/crash-reporting` | Sessions, breadcrumbs, reports and groups |
+| Email Sending | `horizon://docs/email-sending` | Template-based immediate and scheduled mail |
+| Validated Actions | `horizon://docs/validated-actions` | Server-checked runs, rules and state |
+| Player Values | `horizon://docs/player-values` | Server-owned balances and atomic offers |
+| Statistics | `horizon://docs/statistics` | Atomic counters and UTC reset periods |
+| Achievements | `horizon://docs/achievements` | Permanent unlocks and atomic rewards |
+| Inbox | `horizon://docs/inbox` | Notices and authoritative reward/return claims |
+| Friends | `horizon://docs/friends` | Friend requests, lookup and blocks |
+| Groups | `horizon://docs/groups` | Guilds, roles and membership |
+| Items | `horizon://docs/items` | Unique inventories and catalog templates |
+| Shared Objects | `horizon://docs/shared-objects` | Opaque bytes and scoped queries |
+| Matches | `horizon://docs/matches` | Asynchronous multiplayer state and settlement |
+| Chat | `horizon://docs/chat` | Hosted direct, group and project messages |
+| Marketplace | `horizon://docs/marketplace` | Original-item escrow and atomic settlement |
+| Item Gifts | `horizon://docs/item-gifts` | Private one-item offers and protected Inbox returns |
 
-## Core Features
+Realtime is a hosted notification transport. Feature contents are still fetched with
+the feature's HTTP reads. MCP tools make explicit HTTP calls and do not open a
+WebSocket or poll for the game. See the realtime guidance in the relevant feature resource.
 
-horizOn provides 13 core features:
+## Plans and current limits
 
-| # | Feature | Description |
-|---|---------|-------------|
-| 1 | **Authentication** | Anonymous, email/password, Google OAuth, and Apple sign-in/sign-up |
-| 2 | **Cloud Save** | Persist player data across devices (JSON or binary) |
-| 3 | **Leaderboards** | Global rankings with score submission and queries |
-| 4 | **Remote Config** | Server-side key-value configuration (feature flags, balancing) |
-| 5 | **Localization** | Server-side localized strings in 15 languages |
-| 6 | **News** | In-game news and announcements with language filtering |
-| 7 | **Gift Codes** | Promotional code validation and redemption |
-| 8 | **User Feedback** | Bug reports, feature requests, and general feedback |
-| 9 | **User Logs** | Server-side event and error tracking per user |
-| 10 | **Crash Reporting** | Crash reports grouped by fingerprint, sessions, breadcrumbs, and regression detection |
-| 11 | **Email Sending** | Transactional emails to registered users from templates, immediate or scheduled |
-| 12 | **Player Profile** | Avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift codes, shown in leaderboards |
-| 13 | **Validated Actions** | Server-checked runs: single-use run tickets, server-only rules, validated only leaderboards, server-owned player state such as currency with daily caps (cloud only) |
+The five plans are **FREE, BASIC, PLUS, PRO and ENTERPRISE**. Limits are configurable.
+Read `horizon://docs/limits` and the public
+[current feature limits](https://horizon.pm/api/v1/public/system/feature-limits)
+instead of copying a numeric table into game code. The response has `free`, `basic`,
+`plus`, `pro` and `enterprise` objects. Feature-specific limit/config reads provide
+additional policies and the current caller context.
 
-## Tier System
+Account-wide minute budgets have separate soft and hard thresholds. Feature write
+budgets, storage, player counts and per-player capacities have their own scopes.
+Handle HTTP 429 using `Retry-After` when present. An uncertain mutation must retain
+its original identity as described by that feature.
 
-horizOn offers four pricing tiers with different limits:
+## Administration and self-hosting
 
-| Feature | FREE | BASIC | PRO | ENTERPRISE |
-|---------|------|-------|-----|------------|
-| **Cloud Save Size** | 1 KB | 5 KB | 20 KB | 250 KB |
-| **User Logs** | Not available | Available | Available | Available |
-| **Rate Limit** | 20 req/min | 120 req/min | 600 req/min | 2,000 req/min |
-| **All other features** | Available | Available | Available | Available |
+`horizon://docs/dashboard` covers Project/Account Keys, SDK configuration, cosmetics
+and operations that require the Dashboard or have no MCP tool.
+`horizon://docs/self-hosting` covers simpleServer parity and migration. Changing the
+backend URL does not migrate players or saves. SDK config JSON and project content
+export JSON are different files.
 
-**Rate Limit:** The limit counts all requests of an account per minute (defaults above). Above it the API returns `429` with a `Retry-After` header. Plan API calls carefully and use caching.
+## SDK quickstarts
 
-## API Structure
+| Engine | Resource | Official source |
+| --- | --- | --- |
+| Unity | `horizon://quickstart/unity` | [Unity SDK](https://github.com/ProjectMakersDE/horizOn-SDK-Unity) |
+| Godot | `horizon://quickstart/godot` | [Godot SDK](https://github.com/ProjectMakersDE/horizOn-SDK-Godot) |
+| Unreal | `horizon://quickstart/unreal` | [Unreal SDK](https://github.com/ProjectMakersDE/horizOn-SDK-Unreal) |
 
-All App API endpoints follow the pattern:
+Use released packages and their included examples. A GitHub release, an engine Store
+listing and a running game's installed package can be at different versions.
 
-```
-{METHOD} /api/v1/app/{feature}/{action}
-```
-
-Every request requires the `X-API-Key` header:
-
-```
-X-API-Key: your-api-key-here
-Content-Type: application/json
-```
-
-## SDKs
-
-| Engine | SDK | Language |
-|--------|-----|----------|
-| **Godot** | [horizOn SDK for Godot](https://github.com/ProjectMakersDE/horizOn-SDK-Godot) | GDScript |
-| **Unity** | [horizOn Cloud SDK for Unity](https://github.com/ProjectMakersDE/horizOn-SDK-Unity) | C# |
-| **Unreal Engine** | [horizOn SDK for Unreal Engine](https://github.com/ProjectMakersDE/horizOn-SDK-Unreal) | C++ and Blueprints (Unreal Engine 5.5+) |
-
-## Common HTTP Status Codes
+## Common HTTP status codes
 
 | Code | Meaning | Action |
-|------|---------|--------|
-| 200 | Success | Request completed successfully |
-| 400 | Bad Request | Check request parameters |
-| 401 | Unauthorized | Invalid or missing API key |
-| 403 | Forbidden | Feature not available for tier, or user not verified |
-| 404 | Not Found | Resource does not exist |
-| 409 | Conflict | User already exists (signup) |
-| 429 | Too Many Requests | Rate limit exceeded, wait and retry |
-| 500 | Server Error | Internal server error, retry later |
+| --- | --- | --- |
+| 400 | Invalid request | Check the feature schema and exact values |
+| 401 | Authentication required | Check the key and required player session |
+| 403 | Forbidden | Check project, player, scopes and configured access |
+| 404 | Missing or hidden resource | Check identity and feature availability |
+| 409 | Conflict | Read the feature error and preserve pending intent |
+| 422 | Feature rule or capacity refusal | Handle the named error without inventing a new operation |
+| 429 | Rate limited | Respect `Retry-After` when present |
+| 500 | Server error | Preserve uncertain mutations for explicit recovery |
 
-Groups: bounded guilds/clans with leader, officer and member roles, open/request/invite joining,
-private JSON data and indexed member pages. `horizon://docs/groups` describes same-project session
-authentication, explicit revisions and pending identities, full-Inbox rollback and leadership transfer.
-
-## Marketplace
-
-The ten player and fourteen scoped operator tools preserve original-item escrow, atomic
-currency settlement, exact original intent and lossless Inbox returns. Read
-`horizon://docs/marketplace` for routes, original revisions, five-tier limits and recovery.
-Engine prompts accept `feature=marketplace`. No automatic trading, price polling or retries.
-
-## Item gifts
-
-Six player tools send one original item privately through the Inbox, read config, own state,
-single gifts and original receipts, and decline offers. Claiming stays `horizon_claim_inbox`.
-Read `horizon://docs/item-gifts` for the seven-field send intent, fee proof, seven-day expiry
-and protected returns. Engine prompts accept `feature=item-gifts`. No automatic sends or retries.
+REST request and response shapes are in `horizon://api/reference`.

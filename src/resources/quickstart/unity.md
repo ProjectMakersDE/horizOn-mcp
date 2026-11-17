@@ -2,8 +2,8 @@
 
 ## Requirements
 
-- **Unity 2023.3+** (Unity 6)
-- horizOn API key (get one at [horizon.pm](https://horizon.pm))
+- **Unity 6** (package minimum 6000.0)
+- horizOn **Project API Key** (create one in the [Dashboard](https://horizon.pm/dashboard)). Never put an Account Key in a game.
 - Namespace: `PM.horizOn.Cloud`
 
 ## Step 1: Import the SDK
@@ -16,9 +16,10 @@
 
 1. Go to the [horizOn Dashboard](https://horizon.pm) and navigate to SDK Settings
 2. Download your `horizOn_config.json` file
-3. In Unity, go to **Window > horizOn > Config Importer**
-4. Select your downloaded JSON file
-5. The config is saved as a ScriptableObject in the SDK's Resources folder
+3. Replace the downloaded `apiKey: "horizon_..."` placeholder with your Project API Key
+4. In Unity, go to **Window > horizOn > Config Importer**
+5. Select your downloaded JSON file
+6. The config is saved as a ScriptableObject in the SDK's Resources folder
 
 ## Step 3: Initialize and Connect
 
@@ -267,7 +268,7 @@ await FeedbackManager.Instance.SendGeneral(
 ```csharp
 using PM.horizOn.Cloud.Manager;
 
-// Requires BASIC tier or higher
+// Availability follows the current configured userLogs quota
 await UserLogManager.Instance.Info("Tutorial completed");
 await UserLogManager.Instance.Warn("Low memory detected");
 await UserLogManager.Instance.Error("Save failed", errorCode: "SAVE_001");
@@ -315,13 +316,21 @@ if (data == null)
 }
 ```
 
-## Tier Limits
+## Item Gifts
 
-| Feature | FREE | BASIC | PRO | ENTERPRISE |
-|---------|------|-------|-----|------------|
-| Cloud Save | 1 KB | 5 KB | 20 KB | 250 KB |
-| User Logs | No | Yes | Yes | Yes |
-| Rate Limit | 20/min | 120/min | 600/min | 2,000/min |
+For private one-item gifts, use the released native manager and durable sample flow
+in `horizon://docs/item-gifts`. It includes exact package links and read/review/send,
+original-intent recovery, Inbox claims and return handling. Read config and inventory,
+show the recipient, original item and sender fee, and send only from the player's
+confirmation. A scene startup must not send a gift automatically.
+
+## Plans and current limits
+
+Plans are FREE, BASIC, PLUS, PRO and ENTERPRISE. Read `horizon://docs/limits` and
+explicitly read `horizon://api/feature-limits` for current quotas. Check
+`cloudSaveBytes` against the serialized save size before uploading. Account request
+budgets have separate soft and hard thresholds. User Logs availability follows its configured quota.
+Do not hardcode numeric plan tables into the game.
 
 ## Efficient Startup Pattern
 
@@ -339,7 +348,7 @@ async void Start()
     await RemoteConfigManager.Instance.GetAllConfigs();
     await NewsManager.Instance.LoadNews();
 
-    // 7 requests remaining for gameplay actions
+    // Keep gameplay calls within current account and feature budgets
 }
 ```
 
@@ -363,3 +372,9 @@ Assets/Plugins/ProjectMakers/horizOn/
 | 401 | Unauthorized | Verify API key |
 | 403 | Forbidden | Check tier/permissions |
 | 429 | Rate Limited | Implement caching, wait and retry |
+
+## Dashboard and self-hosting
+
+Read `horizon://docs/dashboard` for key scopes, SDK configuration and cosmetics
+administration. `horizOn_config.json` is connection configuration, not a content or
+player-data export. Read `horizon://docs/self-hosting` before changing to simpleServer.

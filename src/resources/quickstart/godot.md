@@ -3,7 +3,7 @@
 ## Requirements
 
 - **Godot 4.5** or later
-- horizOn API key (get one at [horizon.pm](https://horizon.pm))
+- horizOn **Project API Key** (create one in the [Dashboard](https://horizon.pm/dashboard)). Never put an Account Key in a game.
 
 ## Step 1: Install the SDK
 
@@ -19,14 +19,15 @@
 2. Copy the `addons/horizon_sdk` folder to your project's `addons/` directory
 3. Enable the plugin: **Project > Project Settings > Plugins > horizOn SDK**
 
-The SDK is not listed in the Godot Asset Library at the moment. Install it with one of the options above.
+These installation paths select an explicit GitHub package or source revision. Engine Store listings can have a different version.
 
 ## Step 2: Import Configuration
 
 1. Go to the [horizOn Dashboard](https://horizon.pm) and navigate to SDK Settings
 2. Download your `horizOn_config.json` file
-3. In Godot, go to **Project > Tools > horizOn: Import Config...**
-4. Select your downloaded JSON file
+3. Replace the downloaded `apiKey: "horizon_..."` placeholder with your Project API Key
+4. In Godot, go to **Project > Tools > horizOn: Import Config...**
+5. Select your downloaded JSON file
 
 This creates a config resource at `res://addons/horizon_sdk/horizon_config.tres` with your API key and server hosts.
 
@@ -204,7 +205,7 @@ await Horizon.feedback.submitFeatureRequest("Dark Mode", "Add dark mode option")
 ### User Logs
 
 ```gdscript
-# Requires BASIC tier or higher
+# Availability follows the current configured userLogs quota
 await Horizon.userLogs.info("Player completed tutorial")
 await Horizon.userLogs.warn("Low memory detected")
 await Horizon.userLogs.error("Failed to load asset", "ERR_001")
@@ -243,9 +244,20 @@ Edit your config resource at `addons/horizon_sdk/horizon_config.tres`:
 | `retry_delay_seconds` | 1.0 | Delay between retries |
 | `log_level` | INFO | DEBUG, INFO, WARNING, ERROR, NONE |
 
+## Item Gifts
+
+For private one-item gifts, use the released native manager and durable sample flow
+in `horizon://docs/item-gifts`. It includes exact package links and read/review/send,
+original-intent recovery, Inbox claims and return handling. Read config and inventory,
+show the recipient, original item and sender fee, and send only from the player's
+confirmation. A scene startup must not send a gift automatically.
+
 ## Rate Limit Best Practices
 
-The rate limit counts all requests of an account per minute: **FREE 20, BASIC 120, PRO 600, ENTERPRISE 2,000** (defaults). Plan your API calls:
+Read `horizon://docs/limits` and explicitly read `horizon://api/feature-limits` for
+current FREE/BASIC/PLUS/PRO/ENTERPRISE policies. Requests share the account's minute
+budget, with separate soft and hard thresholds and feature-specific budgets. On
+429 respect `Retry-After` when present. Plan your API calls:
 
 ```gdscript
 func _ready():
@@ -271,3 +283,9 @@ The SDK includes a test scene demonstrating all features:
 ```
 res://addons/horizon_sdk/examples/horizon_test_scene.tscn
 ```
+
+## Dashboard and self-hosting
+
+Read `horizon://docs/dashboard` for key scopes, SDK configuration and cosmetics
+administration. `horizOn_config.json` is connection configuration, not a content or
+player-data export. Read `horizon://docs/self-hosting` before changing to simpleServer.
