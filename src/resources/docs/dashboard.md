@@ -33,6 +33,14 @@ allowed a group can reach the writes the server permits in that group.
 MCP exposes named player and admin tools. A Dashboard page does not imply that the
 MCP server has a tool for all of its actions. Check the tool list and its schema.
 
+For an admin action on a named project, call `horizon_admin_projects_list` with
+`entityName`, for example `{"entityName":"Seagull Storm"}`. Use the returned
+`id` as `projectApiKeyId` or `keyId` in the requested tool. Search uses the
+exact name, including case, and returns an error if no project or several projects
+match. It requires full-account access or `PROJECTS`. On servers supporting scoped
+project listing, a project-scoped Account Key sees only its assigned project.
+Admins can also find and copy the UUID in **API Keys → Details**.
+
 - **Session-only account actions:** Account Key creation/management, account deletion,
   credential changes and subscription cancellation require a Dashboard session.
 - **Platform administration:** banners, blog, system configuration and other internal

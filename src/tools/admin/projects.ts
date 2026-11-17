@@ -8,8 +8,7 @@
  * the MCP surface.
  *
  * The server maps the prefix to the account-key feature group PROJECTS.
- * Project-scoped Account Keys may only read their own Project API key and
- * can never mutate keys.
+ * Project-scoped Account Keys may only read their own Project API key.
  *
  * All tools require HORIZON_ACCOUNT_API_KEY: the backend routes these
  * requests through AccountApiKeyAuthenticationFilter, which sets the
@@ -40,6 +39,39 @@ const KEY_FIELDS =
 const NOT_FOUND =
   "404 for an unknown keyId: list the ids with horizon_admin_projects_list. 403 when the id belongs to another account or is not a PROJECT key.";
 
+const PROJECT_KEYS_PATH = "/api/v1/admin/api-keys";
+const projectReference = z.object({ id: z.string().uuid(), entityName: z.string() });
+const projectPage = z.object({
+  apiKeys: z.array(projectReference),
+  totalPages: z.number().int().nonnegative(),
+});
+
+async function findProjectByName(client: NonNullable<ReturnType<typeof getAdminClient>>, entityName: string) {
+  const matches = new Map<string, z.infer<typeof projectReference>>();
+  let page = 0;
+  let totalPages: number;
+  do {
+    const result = projectPage.parse(await client.get(PROJECT_KEYS_PATH, {
+      page: String(page),
+      size: "100",
+      keyType: "PROJECT",
+    }));
+    for (const project of result.apiKeys) {
+      if (project.entityName === entityName) matches.set(project.id, project);
+    }
+    totalPages = result.totalPages;
+    page++;
+  } while (page < totalPages);
+
+  if (matches.size === 0) {
+    return errorResponse(new Error("PROJECT_NOT_FOUND: No accessible project has that exact Entity Name."));
+  }
+  if (matches.size > 1) {
+    return errorResponse(new Error("PROJECT_NAME_AMBIGUOUS: Multiple projects share that Entity Name. Ask which project ID to use."));
+  }
+  return jsonResponse(matches.values().next().value);
+}
+
 function keyIdSchema(purpose: string) {
   return z
     .string()
@@ -56,18 +88,22 @@ export function registerAdminProjectsTools(server: McpServer): void {
         {
           summary:
             "Lists the account's Project API keys (one per game or app, key values masked), paged; revoked keys are included, deleted keys are not.",
-          use: "finding the keyId or projectApiKeyId that the other admin tools need, or checking which keys are revoked or expiring.",
+          use: "When the user names a project for an admin action, pass its Entity Name here first and use the returned id as projectApiKeyId (or keyId). Ask for an ID only if the lookup cannot identify one project.",
           avoid: "one known key (use horizon_admin_projects_get).",
           requires:
-            "an Account Key with full-account access or the PROJECTS feature group; project-scoped Account Keys are denied (403) here, they can only read their own key with horizon_admin_projects_get.",
+            "an Account Key with full-account access or the PROJECTS feature group. Project-scoped Account Keys can list only their own project on servers that support scoped project listing.",
           effects: "None (read only).",
           returns:
-            `{apiKeys, total, page, size, totalPages}; each key has ${KEY_FIELDS}. ` +
+            `With entityName: the unique {id, entityName} across all accessible pages. Otherwise {apiKeys, total, page, size, totalPages}; each key has ${KEY_FIELDS}. ` +
             "The full key value is never returned. An empty apiKeys array means the account has no Project API keys (create one with horizon_admin_projects_create).",
+          errors: "PROJECT_NOT_FOUND for no exact name match. PROJECT_NAME_AMBIGUOUS when multiple keys share the exact Entity Name.",
         },
         ADMIN_AUTH,
       ),
       inputSchema: {
+        entityName: z.string().min(1).optional().describe(
+          "Exact, case-sensitive project Entity Name. Searches all accessible pages. Omit to list one page.",
+        ),
         page: z.number().int().min(0).default(0).describe("0-based page index (default 0)"),
         size: z
           .number()
@@ -79,11 +115,12 @@ export function registerAdminProjectsTools(server: McpServer): void {
       },
       annotations: READ_ONLY,
     },
-    async ({ page, size }) => {
+    async ({ entityName, page, size }) => {
       const client = getAdminClient();
       if (!client) return noAdminClientResponse();
       try {
-        const result = await client.get("/api/v1/admin/api-keys", {
+        if (entityName !== undefined) return await findProjectByName(client, entityName);
+        const result = await client.get(PROJECT_KEYS_PATH, {
           page: String(page),
           size: String(size),
           keyType: "PROJECT",
