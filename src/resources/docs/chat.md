@@ -9,11 +9,19 @@ nonblank, no controls except LF/TAB. These are fixed format bounds.
 
 ## Open and sync
 
-Open returns a deterministic channel ID and a fresh epoch after allocation/reopen. Subscribe to
-chat:<channelId> using the existing realtime manager before initial sync. Resync/events trigger
-one incremental HTTP sync. Keep host/project/player/channel/epoch/session fences, one in-flight
-sync and a dirty bit. No periodic network timer. Disconnect/permission changes hide cached text
-until fresh authorized subscription+sync.
+Open returns a deterministic channel ID and a fresh epoch after allocation/reopen. Hosted Chat
+supports both HTTP sync/polling and chat:<channelId> subscriptions. With a socket, wait for the
+authorized subscribed snapshot before displaying a feed. It is the incremental sync response,
+so a valid snapshot needs no second HTTP request. Later message events normally carry
+{channel,message}, including text. Apply usable payloads directly; missing/unusable payloads
+or explicit resync_required need one authorized sync. Keep host/project/player/channel/epoch/session
+fences and expire local text. Disconnect/permission changes hide cached text until reauthorized.
+
+Use horizon://docs/realtime for the exact socket handshake and verified SDK versions. Published
+Unity 1.13.0, Godot 1.12.0 and Unreal 1.11.0 apply subscription snapshots, but their built-in Chat
+watchers still sync over HTTP after later events. Unity's public RealtimeFrame does not expose
+payload. Avoid adding a duplicate event handler to a built-in watcher. The realtime managers do
+not emit chat polling callbacks; an HTTP-only feed supplies its own chosen polling cadence.
 
 Sync takes the exact epoch or null and up to20 unique known message IDs, the fixed wire bound
 matching the largest current channel window. It returns the entire ordered visibleMessageIds and
@@ -27,9 +35,10 @@ on each player. Channel identity can outlive its text window.
 ## Original send and report
 
 Before send, durably store project/player/operationId/canonical millisecond issuedAt/channelId/full
-text. Host is a request fence, not a separate persistent-intent namespace. Each call makes exactly
-one HTTP attempt. The live original message supplies the metadata-only operation receipt. Identical
-retry can replay while that source remains; no personal historical receipt array is retained.
+text. Host is a request fence, not a separate persistent-intent namespace. Each MCP tool makes
+one HTTP attempt. Native SDK SendMessage/sendMessage methods can use the ready socket and resolve
+an unknown socket outcome through HTTP with that same original intent. The live original message
+supplies the metadata-only operation receipt. Identical retry can replay while that source remains; no personal historical receipt array is retained.
 A monotone player issuedAt fence and30-second unknown-operation window prevent rebooking after the
 source expires or is removed. Missing OPERATION_NOT_FOUND never proves nonexecution and never
 authorizes a replacement UUID/time/text. After uncertainty explicitly inspect the original receipt

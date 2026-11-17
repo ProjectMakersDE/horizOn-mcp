@@ -24,7 +24,7 @@ export function registerChatTools(server: McpServer): void {
     const client = createApiClientFromEnv(); if (!client) return noApiKeyResponse();
     try { return jsonResponse(await client.post(base + "/channels/open", body, sessionHeaders(sessionToken))); } catch (error) { return errorResponse(error); }
   });
-  server.registerTool("horizon_sync_chat_channel", { title: "Sync Chat Channel", description: doc("Reads an authorized incremental snapshot after subscription resync/event or explicit user action.",
+  server.registerTool("horizon_sync_chat_channel", { title: "Sync Chat Channel", description: doc("Reads an authorized incremental snapshot for missing/unusable realtime content, resync, HTTP polling or explicit user action.",
     "Read-only POST, one HTTP attempt. Complete visible ID order plus unknown immutable text. Known IDs are valid only for the exact cached epoch and complete authorized cache. No periodic polling.",
     "{channel,visibleMessageIds,messages,moderation,serverTime}; hide cache on disconnect/permission change and apply only a complete matching snapshot."),
     inputSchema: { ...session, channelId: chatId, epoch: chatId.nullable().describe("Exact cached channel epoch, or null for an initial complete sync"), knownMessageIds: chatIds }, annotations: READ_ONLY }, async ({ sessionToken, channelId, ...body }) => {

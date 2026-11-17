@@ -17,7 +17,7 @@ export function registerAchievementsTools(server: McpServer): void {
     title: "Get Player Achievements",
     description: describeTool({
       summary: "Reads visible achievement definitions and permanent completion bits.",
-      use: "loading progress or refreshing after newlyUnlocked statistics or realtime invalidation.",
+      use: "loading progress or refreshing after newlyUnlocked statistics or explicit user action; achievements have no WebSocket topic.",
       avoid: "changing balances or revealing locked hidden achievements.", requires: SESSION_REQUIRED,
       effects: "None (read only). Does not grant anything.",
       returns: "{userId,revision,definitionVersion,definitions,progress,limits,serverTime}. definitions=null retains matching cached definitions; [] clears them. Scope caches to host/project/player/session. Compact progress has rewardState=complete, nullable unknown unlockedAt and no pendingReward/inboxEntryId copy. Legacy unsettled originals remain visible until verified cold settlement.", errors,

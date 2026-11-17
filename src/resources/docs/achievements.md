@@ -61,8 +61,9 @@ originals are protected and settled by that migration; an app must not create re
 Use the installed Unity/Godot/Unreal typed manager signatures. Cache completion state per current
 identity; suppress old-session replies and refresh after newlyUnlocked. No polling loop is needed.
 simpleServer supports REST within its documented SQL/ENV bounds and local operator CLI; hosted
-Account-Key admin routes and realtime are separate. Hosted achievements:<userId> is own-player
-metadata invalidation; reconnect still refreshes HTTP snapshots.
+Account-Key admin routes are separate. Achievements use HTTP on hosted horizOn too;
+achievements:<userId> is not a subscribable topic. Refresh after unlock/statistic results or
+explicit user action. Only Chat and Matches use the socket. See horizon://docs/realtime.
 
 STATE_CONFLICT preserves the exact original key/batch. ACHIEVEMENT_NOT_MANUAL requires the configured
 statistic flow. REVISION_CONFLICT requires explicit catalog reconciliation. Definition/lifetime

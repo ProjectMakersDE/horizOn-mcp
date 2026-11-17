@@ -35,11 +35,14 @@ export function registerAllResources(server: McpServer): void {
     title: "Item Gifts", description: "Private one-item gifts through the Inbox, fixed sender fee, seven-day offers and protected returns.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/item-gifts", mimeType: "text/markdown", text: loadDoc("docs/item-gifts.md") }] }));
   server.registerResource("docs-chat", "horizon://docs/chat", {
-    title: "Hosted Chat", description: "Direct/group/project text, metadata-only realtime, incremental snapshots, original receipts and scoped moderation.", mimeType: "text/markdown",
+    title: "Hosted Chat", description: "Direct/group/project text, pushed realtime content, incremental snapshots, original receipts and scoped moderation.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/chat", mimeType: "text/markdown", text: loadDoc("docs/chat.md") }] }));
   server.registerResource("docs-matches", "horizon://docs/matches", {
     title: "Asynchronous Matches", description: "Opaque turn state, exact revisions, immutable reports, bounded deadlines and original ranked-run recovery.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/matches", mimeType: "text/markdown", text: loadDoc("docs/matches.md") }] }));
+  server.registerResource("docs-realtime", "horizon://docs/realtime", {
+    title: "Realtime for Chat and Matches", description: "Hosted WebSocket auth, pushed content, snapshots, socket sends, reconnect and verified SDK APIs.", mimeType: "text/markdown",
+  }, () => ({ contents: [{ uri: "horizon://docs/realtime", mimeType: "text/markdown", text: loadDoc("docs/realtime.md") }] }));
   server.registerResource("docs-shared-objects", "horizon://docs/shared-objects", {
     title: "Shared Objects", description: "Opaque bounded world data, current permissions, exact revisions and trusted ordinary game notices.", mimeType: "text/markdown",
   }, () => ({ contents: [{ uri: "horizon://docs/shared-objects", mimeType: "text/markdown", text: loadDoc("docs/shared-objects.md") }] }));
