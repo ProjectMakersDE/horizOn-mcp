@@ -2,15 +2,15 @@
 
 ## Overview
 
-horizOn has an **official Unreal Engine SDK**: the horizOn SDK plugin ([ProjectMakersDE/horizOn-SDK-Unreal](https://github.com/ProjectMakersDE/horizOn-SDK-Unreal)). It covers authentication, leaderboards, cloud save, remote config, localization, news, gift codes, feedback, user logs, crash reporting and email sending.
+horizOn has an **official Unreal Engine SDK**: the horizOn SDK plugin ([ProjectMakersDE/horizOn-SDK-Unreal](https://github.com/ProjectMakersDE/horizOn-SDK-Unreal)). It covers the player services in `horizon://overview`, including Item Gifts in v1.11.0.
 
-- **C++:** all features are reached through `UHorizonSubsystem`, a Game Instance Subsystem that owns one manager per feature (`Auth`, `Leaderboard`, `CloudSave`, `RemoteConfig`, `Localization`, `News`, `GiftCodes`, `Feedback`, `UserLogs`, `Crashes`, `EmailSending`).
-- **Blueprints:** every call is also available as an async node with **On Success** and **On Failure** pins.
+- **C++:** features are reached through `UHorizonSubsystem`, a Game Instance Subsystem that owns the feature managers.
+- **Blueprints:** use the installed feature's callable actions and result events. Item Gifts uses the manager's `OnResult` and the example's `OnAction`, as described in `horizon://docs/item-gifts`.
 
 ## Requirements
 
 - **Unreal Engine 5.5** or later
-- horizOn API key (get one at [horizon.pm](https://horizon.pm))
+- horizOn **Project API Key** (create one in the [Dashboard](https://horizon.pm/dashboard)). Never put an Account Key in a game.
 - Target platforms declared by the plugin: Win64, Mac, Linux, Android, iOS
 
 ## Step 1: Install the Plugin
@@ -36,7 +36,7 @@ Open **Project Settings > Plugins > horizOn SDK**:
 | Retry Delay | 1.0 | Delay between retries in seconds |
 | Log Level | Info | SDK log verbosity |
 
-Alternatively, use **Tools > horizOn > Import Config...** to import the JSON config file from the horizOn dashboard. The importer reads `apiKey` plus either `backendDomains` (list) or `backendUrl` (single host). `ConnectToServer()` fails with "No hosts configured" if Backend Hosts is empty.
+Alternatively, use **Tools > horizOn > Import Config...** to import `horizOn_config.json` from Dashboard SDK Settings. Replace its `apiKey: "horizon_..."` placeholder with your Project API Key first. The importer reads `apiKey` plus either `backendDomains` (list) or `backendUrl` (single host). `ConnectToServer()` fails with "No hosts configured" if Backend Hosts is empty.
 
 ## Step 3: Connect to Server
 
@@ -228,7 +228,7 @@ Horizon->Feedback->RequestFeature(TEXT("Dark mode"), TEXT("Please add a dark mod
 ### User Logs
 
 ```cpp
-// Requires BASIC tier or higher
+// Availability follows the current configured userLogs quota
 Horizon->UserLogs->Info(TEXT("Tutorial completed"), FOnUserLogComplete::CreateLambda([](bool bSuccess, const FString& LogId, const FString& CreatedAt) { }));
 ```
 
@@ -275,13 +275,26 @@ Get the subsystem with the **Get Horizon Subsystem** node or use the async nodes
 - **Start Run**, **Submit Validated**
 - **Record Exception**, **Report Crash**, **Send Email**
 
+## Item Gifts
+
+For private one-item gifts, use the released native manager and durable sample flow
+in `horizon://docs/item-gifts`. It includes exact package links and read/review/send,
+original-intent recovery, Inbox claims and return handling. Read config and inventory,
+show the recipient, original item and sender fee, and send only from the player's
+confirmation. A scene startup must not send a gift automatically.
+
 ## Hello horizOn Example
 
 The plugin ships `AHelloHorizonActor`. Set the API key and Backend Hosts in Project Settings, drop the actor into a level and press Play. It connects, signs up anonymously, submits a leaderboard score and logs the result. Per-feature example actors (`AHorizonAuthExample`, `AHorizonLeaderboardExample`, `AHorizonCloudSaveExample` and others) live in `Source/HorizonSDK/Public/Examples/`.
 
 ## Rate Limit Best Practices
 
-The rate limit counts all requests of an account per minute: **FREE 20, BASIC 120, PRO 600, ENTERPRISE 2,000** (defaults). The SDK retries HTTP 429 responses automatically.
+Read `horizon://docs/limits` and explicitly read `horizon://api/feature-limits` for
+current FREE/BASIC/PLUS/PRO/ENTERPRISE policies. Requests share the account's minute
+budget, with separate soft and hard thresholds and feature-specific budgets. On
+429 respect `Retry-After` when present. Retry behavior depends on the route and
+installed SDK. Item Gifts and other prepared mutations retain their original
+intent for explicit recovery.
 
 - Load all remote configs and localizations once at startup
 - Use the `bUseCache` parameters for leaderboards, remote config and news
@@ -291,3 +304,9 @@ The rate limit counts all requests of an account per minute: **FREE 20, BASIC 12
 ## Without the Plugin
 
 The SDK is the recommended path. If you cannot use the plugin, the App API can be called directly over HTTP with the `X-API-Key` header. See the `horizon://api/reference` resource for all endpoints.
+
+## Dashboard and self-hosting
+
+Read `horizon://docs/dashboard` for key scopes, SDK configuration and cosmetics
+administration. `horizOn_config.json` is connection configuration, not a content or
+player-data export. Read `horizon://docs/self-hosting` before changing to simpleServer.
