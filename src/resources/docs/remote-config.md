@@ -68,6 +68,24 @@ Retrieves all configuration values for the app.
 }
 ```
 
+### Filter Configs
+
+**`GET /api/v1/app/remote-config/filter?pattern=balance.*`**
+
+Send the Project API key in `X-API-Key` and URL-encode the `pattern` query value.
+Keys are matched case-sensitively. `balance.` and `balance.*` match a prefix,
+`*_de` matches a suffix, `*tutorial*` matches a substring and `level.*.gold`
+matches a glob. The server treats text outside `*` literally.
+
+Patterns can contain up to 102 characters, including at least one key
+character and up to ten non-consecutive wildcards. Key text is limited to
+100 characters and uses letters, digits, underscores, dots and hyphens.
+
+The response contains `configs` (a map of keys to string values), `total`,
+the normalized `pattern` and `matchType` (`PREFIX`, `SUFFIX`, `CONTAINS`
+or `GLOB`). An empty result returns an empty map. The MCP equivalent is
+`horizon_filter_remote_configs`.
+
 ## Code Examples
 
 ### Godot (GDScript)

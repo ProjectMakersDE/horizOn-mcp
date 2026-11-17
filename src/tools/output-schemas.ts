@@ -94,6 +94,11 @@ export const ALL_REMOTE_CONFIGS_OUTPUT = lenientObject({
   total: z.number().describe("Number of configs"),
 });
 
+export const FILTERED_REMOTE_CONFIGS_OUTPUT = ALL_REMOTE_CONFIGS_OUTPUT.extend(lenientObject({
+  pattern: z.string().describe("Normalized filter pattern"),
+  matchType: z.string().describe("PREFIX, SUFFIX, CONTAINS, or GLOB"),
+}).shape);
+
 export const LOCALIZATION_OUTPUT = lenientObject({
   localizationKey: z.string().describe("The requested key"),
   value: z.string().describe("The translated text, null when not found"),

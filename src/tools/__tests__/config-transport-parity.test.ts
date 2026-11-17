@@ -31,6 +31,18 @@ const call=(name:string,args:Record<string,unknown>)=>client.callTool({name:"hor
 const value=(result:Awaited<ReturnType<typeof call>>)=>{expect(result.isError).not.toBe(true);return result.structuredContent??JSON.parse((result.content as {text:string}[])[0].text);};
 
 describe("configured policies over real MCP and loopback HTTP",()=>{
+ it("reads matching remote configs using the exact filter query and project key", async () => {
+  const filtered = { configs: { "level.tutorial.gold": "4" }, total: 1, pattern: "level.*.gold", matchType: "GLOB" };
+  reply = () => filtered;
+  expect(value(await call("filter_remote_configs", { pattern: "level.*.gold" }))).toEqual(filtered);
+  expect(requests).toHaveLength(1);
+  const [request] = requests;
+  expect(request.method).toBe("GET");
+  expect(request.url.pathname).toBe("/api/v1/app/remote-config/filter");
+  expect(request.url.searchParams.get("pattern")).toBe(filtered.pattern);
+  expect(request.headers["x-api-key"]).toBe("fixture-project-key");
+  expect(request.headers["x-account-api-key"]).toBeUndefined();
+ });
  it("sends exact1MiB Shared bytes and Int32 owner policy, rejects frame+1, retains large reads after lowering",async()=>{
   const dataBase64=Buffer.alloc(SHARED_OBJECT_BYTES,0xa5).toString("base64");
   const definition={name:"Configured",active:true,readPolicy:"owner",writePolicy:"owner",maxObjectBytes:SHARED_OBJECT_BYTES,maxObjectsPerOwner:2147483647,ttlSeconds:null,searchFields:[],positionEnabled:false};
