@@ -30,6 +30,65 @@ afterEach(async()=>{await client?.close();server?.closeAllConnections();await ne
 const call=(name:string,args:Record<string,unknown>)=>client.callTool({name:"horizon_"+name,arguments:args});
 const value=(result:Awaited<ReturnType<typeof call>>)=>{expect(result.isError).not.toBe(true);return result.structuredContent??JSON.parse((result.content as {text:string}[])[0].text);};
 
+describe("project selection by Entity Name", () => {
+  const entityName = "World & Äventyr";
+  const listPath = "/api/v1/admin/api-keys";
+
+  it("finds the project on a later page and uses its ID for an admin write", async () => {
+    reply = ({url}) => {
+      if (url.pathname !== listPath) return { revision: 1 };
+      const id = url.searchParams.get("page") === "0" ? objectId : projectApiKeyId;
+      return { apiKeys: [{ id, entityName: id === objectId ? entityName.toLowerCase() : entityName }], totalPages: 2 };
+    };
+
+    expect(client.getInstructions()).toContain("first call horizon_admin_projects_list");
+    const resolved = value(await call("admin_projects_list", { entityName }));
+    expect(resolved).toEqual({ id: projectApiKeyId, entityName });
+    const definition = {
+      name: "World", active: true, readPolicy: "owner", writePolicy: "owner",
+      maxObjectBytes: 1000, maxObjectsPerOwner: 2, ttlSeconds: null,
+      searchFields: [], positionEnabled: false,
+    };
+    value(await call("admin_shared_collection_set", {
+      projectApiKeyId: resolved.id, collection: "world", expectedRevision: 0, definition,
+    }));
+    expect(requests.map(({method}) => method)).toEqual(["GET", "GET", "PUT"]);
+    expect(requests.slice(0, 2).map(({url}) => url.searchParams.get("page"))).toEqual(["0", "1"]);
+    expect(requests.slice(0, 2).every(({headers, url}) =>
+      headers["x-account-api-key"] === "fixture-account-key" &&
+      headers["x-api-key"] === undefined &&
+      url.searchParams.get("keyType") === "PROJECT")).toBe(true);
+    expect(requests[2].url.pathname).toBe("/api/v1/admin/shared-objects/collections/world");
+    expect(requests[2].url.searchParams.get("apiKeyId")).toBe(projectApiKeyId);
+    expect(requests[2].body).toEqual(definition);
+  });
+
+  it.each([
+    { ids: [], error: "PROJECT_NOT_FOUND" },
+    { ids: [objectId, projectApiKeyId], error: "PROJECT_NAME_AMBIGUOUS" },
+  ])("reports $error without choosing a project", async ({ ids, error }) => {
+    reply = ({url}) => {
+      const id = ids[Number(url.searchParams.get("page"))];
+      return {
+        apiKeys: id ? [{ id, entityName }] : [],
+        totalPages: ids.length,
+      };
+    };
+    const result = await call("admin_projects_list", { entityName });
+    expect(result.isError).toBe(true);
+    expect(result.content).toEqual([{ type: "text", text: expect.stringContaining(error) }]);
+    expect(requests.every(({method, url}) => method === "GET" && url.pathname === listPath)).toBe(true);
+  });
+
+  it("keeps the paginated response when no name is given", async () => {
+    const page = { apiKeys: [{ id: projectApiKeyId, entityName, isActive: true }], page: 1, size: 2, total: 3, totalPages: 2 };
+    reply = () => page;
+    expect(value(await call("admin_projects_list", { page: 1, size: 2 }))).toEqual(page);
+    expect(requests).toHaveLength(1);
+    expect(Object.fromEntries(requests[0].url.searchParams)).toEqual({ page: "1", size: "2", keyType: "PROJECT" });
+  });
+});
+
 describe("configured policies over real MCP and loopback HTTP",()=>{
  it("reads matching remote configs using the exact filter query and project key", async () => {
   const filtered = { configs: { "level.tutorial.gold": "4" }, total: 1, pattern: "level.*.gold", matchType: "GLOB" };
