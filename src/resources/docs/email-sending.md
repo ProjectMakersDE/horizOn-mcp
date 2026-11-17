@@ -6,7 +6,10 @@ Email Sending lets you send transactional and event-based emails to your registe
 
 This feature is designed for notifications, reminders, confirmations, and event-based communication. It is **not** a newsletter or marketing automation tool.
 
-**Requires:** BASIC tier or higher. SMTP credentials must be configured in the horizOn Dashboard.
+**Requires:** Project SMTP configuration and a template in the horizOn Dashboard.
+All hosted tiers can send immediately. Scheduled delivery requires a positive
+`emailScheduled` quota, which is zero on the current FREE tier. Read
+<horizon://api/feature-limits> for scheduling, template and retention limits.
 
 ## Key Concepts
 
@@ -167,6 +170,6 @@ curl "https://horizon.pm/api/v1/app/email-sending/EMAIL_UUID" \
 | 400 | Template not found | Verify the template slug exists for this API key |
 | 400 | User has no verified email | Ensure the user has verified their email address |
 | 400 | Missing required variable | Provide all variables the template expects |
-| 403 | Feature not available | Upgrade from FREE tier to BASIC or higher |
+| 403 | Scheduled delivery is disabled for the tier | Check `emailScheduled` or send immediately |
 | 404 | Email not found | Verify the email ID and API key ownership |
 | 429 | Rate limit exceeded | Reduce request frequency |

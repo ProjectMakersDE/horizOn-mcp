@@ -29,10 +29,10 @@ Validated Actions is cloud only. The self-hosted simpleServer does not support i
 | Stage key | `^[a-z0-9][a-z0-9._-]{0,31}$` |
 | Leaderboard key | `^[a-z0-9_-]{1,64}$` |
 | Runs per player and hour | Rule set, default 60 (`RUN_RATE_LIMITED`) |
-| Runs per account and UTC hour | FREE 300, BASIC 3,000, PRO 20,000, ENTERPRISE 200,000 (`RUN_CAPACITY_REACHED`) |
+| Runs per account and UTC hour | `validatedRunsPerHour` in <horizon://api/feature-limits> (`RUN_CAPACITY_REACHED`) |
 | Value key | `^[a-z0-9][a-z0-9._-]{0,23}$` |
 | Earned values per run | At most 64, each key once |
-| Value keys per API key | FREE 8, BASIC 16, PRO 32, ENTERPRISE 64 |
+| Value keys per API key | `validatedStateKeys` in <horizon://api/feature-limits> |
 | Amounts and balances | At most 9,007,199,254,740,991 in magnitude |
 
 Rule sets are configured per API key in the Dashboard (global fields, defaults, per-leaderboard blocks, stage rules, values). The mcp admin tools cover the rules, the run capacity, recent runs, player values (read and correction) and the evidence review (see [MCP tools](#mcp-tools)); leaderboard moderation (bans, shadow bans, reset with archive) is done in the Dashboard.
@@ -208,7 +208,7 @@ The hash is the SHA-256 of the **raw bytes** of the input log, written as 64 low
 The server requests the input log of a run when the run became the player's row on a board and is **flagged** (soft rule) or lands in the board's visible **top N** (`evidenceTopN`, set per board in the Dashboard, `0` = off), and for every **sus** run. The submit result then carries `evidence.required = true`; the SDKs upload the log automatically (`AutoUploadEvidence`), agents call `horizon_upload_evidence`.
 
 - **One slot per player and board.** A new improving run replaces the old evidence. Rows pushed out of the top N lose unflagged evidence at once.
-- **Quota per account** (`evidenceSlots`: FREE 50, BASIC 500, PRO 2,500, ENTERPRISE 25,000), shared by all API keys and boards. When it is full no log is requested. The sum of `evidenceTopN` over all boards must stay within the slots (`409 EVIDENCE_QUOTA_EXCEEDED` when saving a board).
+- **Quota per account** (`evidenceSlots` in <horizon://api/feature-limits>), shared by all API keys and boards. When it is full no log is requested. The sum of `evidenceTopN` over all boards must stay within the slots (`409 EVIDENCE_QUOTA_EXCEEDED` when saving a board).
 - **Upload window 24 hours.** A request that is never uploaded frees its slot. Uploaded evidence stays until it is deleted in the review (or its row is removed, the board deleted or reset).
 - **Review** in the Dashboard or with the admin API: list, metadata with `seed` and `logHash` for a local replay, log download, package export, delete.
 

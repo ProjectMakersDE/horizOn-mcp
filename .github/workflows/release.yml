@@ -39,6 +39,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Verify App API reference against hosted OpenAPI
+        run: npm run docs:check:live
+
       - name: Install semantic-release plugins
         run: |
           npm install -g semantic-release \

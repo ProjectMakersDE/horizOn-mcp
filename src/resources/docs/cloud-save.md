@@ -9,16 +9,9 @@ Cloud Save allows players to persist their game data across devices and sessions
 
 ## Tier Limits
 
-Data size is limited by the account's pricing tier:
-
-| Tier | Max Save Size |
-|------|--------------|
-| FREE | 1 KB |
-| BASIC | 5 KB |
-| PRO | 20 KB |
-| ENTERPRISE | 250 KB |
-
-If the save data exceeds the tier limit, the save request will fail with a `403` error.
+Read `cloudSaveBytes` for the hosted account's tier in <horizon://api/feature-limits>.
+An oversized save returns `403`. See <horizon://docs/limits> for account quotas
+and <horizon://docs/self-hosting> for simpleServer limits.
 
 ## Endpoints
 

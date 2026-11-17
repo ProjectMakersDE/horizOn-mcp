@@ -4,7 +4,9 @@
 
 User Logs allow you to track player events, errors, and actions on the server. This is useful for debugging, analytics, and monitoring player behavior. Log entries are viewable per-user in the horizOn Dashboard.
 
-**Important:** User Logs require **BASIC tier or higher**. The feature is not available on the FREE tier and will return a `403` error.
+Hosted accounts can submit logs while their tier has a positive `userLogs` quota.
+The current hosted FREE tier has a positive quota. Read <horizon://api/feature-limits>
+for the current value.
 
 ## Endpoints
 
@@ -127,12 +129,8 @@ curl -X POST https://horizon.pm/api/v1/app/user-logs/create \
 
 ## Tier Requirements
 
-| Tier | User Logs Available |
-|------|-------------------|
-| FREE | No (returns 403) |
-| BASIC | Yes |
-| PRO | Yes |
-| ENTERPRISE | Yes |
+The hosted service retains up to the tier's configured `userLogs` count.
+The server removes older entries to enforce that quota.
 
 ## Common Errors
 
@@ -140,5 +138,5 @@ curl -X POST https://horizon.pm/api/v1/app/user-logs/create \
 |--------|-------|----------|
 | 400 | Missing required fields | Ensure `message`, `type`, and `userId` are provided |
 | 401 | Invalid API key | Check `X-API-Key` header |
-| 403 | FREE tier account | Upgrade to BASIC or higher |
+| 403 | Logging disabled by quota, or the player is outside the project | Check `userLogs` and use the Project API key that owns the player |
 | 429 | Rate limit exceeded | Throttle log submissions |

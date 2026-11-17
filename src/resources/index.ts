@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import { registerAppOpenApi } from "./app-openapi.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -94,7 +95,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "Authentication",
       description:
-        "Authentication methods (Anonymous, Email, Google), endpoints, SDK code examples, and common errors.",
+        "Player login (guest, email, Google, Apple), persistent sessions, and SDK integration.",
       mimeType: "text/markdown",
     },
     () => ({
@@ -346,7 +347,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "App API Reference",
       description:
-        "Complete API reference for all horizOn App API endpoints with request/response schemas.",
+        "OpenAPI-generated index of App API operations with links to scoped schemas and integration guides.",
       mimeType: "text/markdown",
     },
     () => ({
@@ -359,6 +360,32 @@ export function registerAllResources(server: McpServer): void {
       ],
     }),
   );
+
+  registerAppOpenApi(server, () => loadDoc("api/app-openapi.json"));
+
+  const limitsUri = "horizon://api/feature-limits";
+  server.registerResource("api-feature-limits", limitsUri, {
+    title: "Live hosted feature limits",
+    description: "The current quotas published by horizOn for FREE, BASIC, PLUS, PRO and ENTERPRISE.",
+    mimeType: "application/json",
+  }, async () => {
+    const response = await fetch("https://horizon.pm/api/v1/public/system/feature-limits", {
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) throw new Error(`Could not read hosted horizOn feature limits (HTTP ${response.status}).`);
+    return { contents: [{ uri: limitsUri, mimeType: "application/json", text: JSON.stringify(await response.json()) }] };
+  });
+
+  const guides = [
+    ["dashboard", "Dashboard and API credentials", "Project and Account Keys, scopes, SDK settings and Dashboard workflows."],
+    ["limits", "Plans, quotas and rate limits", "Five tiers, live limit lookup and handling rate limits in games."],
+    ["self-hosting", "Self-hosted simpleServer", "Cloud compatibility, setup, operation and project content migration."],
+  ] as const;
+  for (const [name, title, description] of guides) {
+    const uri = `horizon://docs/${name}`;
+    server.registerResource(`docs-${name}`, uri, { title, description, mimeType: "text/markdown" },
+      () => ({ contents: [{ uri, mimeType: "text/markdown", text: loadDoc(`docs/${name}.md`) }] }));
+  }
 
   // Quickstart: Godot
   server.registerResource(
