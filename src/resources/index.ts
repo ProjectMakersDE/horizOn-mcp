@@ -305,7 +305,7 @@ export function registerAllResources(server: McpServer): void {
     {
       title: "User Logs",
       description:
-        "Server-side event and error tracking. Requires BASIC tier or higher. SDK examples.",
+        "Player event and error logs, current plan quotas and SDK examples.",
       mimeType: "text/markdown",
     },
     () => ({

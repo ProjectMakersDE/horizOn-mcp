@@ -51,7 +51,7 @@ feature requires it. Do not infer unlimited access from a missing field or zero.
 | `usersTempOverflow`, `usersOverflowGraceDays` | Temporary player overflow and its configured grace period. These are not permanent extra seats |
 | `rateLimitSoft`, `rateLimitHard` | Shared account request thresholds per minute, across projects, pods and regions |
 | `leaderboardEntries` | Account score-row slots across its boards and projects. `maxLeaderboardsPerApiKey` is a separate per-project board cap |
-| `remoteConfigEntries`, `remoteConfigChars` | Remote Config count and per-value character policy |
+| `remoteConfigEntries`, `remoteConfigChars` | Remote Config entries per account and characters per entry (key plus value) |
 | `playerProfileCosmetics` | Catalog capacity per Project API Key, not the number a player has equipped |
 | `itemCatalog`, `itemInventory`, `itemReceipts` | Separate catalog, per-player inventory and receipt capacities. Read `horizon://docs/items` |
 | `statisticsKeys` | Statistic definition capacity per project |
