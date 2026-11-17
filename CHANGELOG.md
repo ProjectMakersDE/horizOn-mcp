@@ -1,3 +1,10 @@
+## [1.11.1](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.11.0...v1.11.1) (2026-11-17)
+
+
+### Bug Fixes
+
+* **admin:** resolve project keys by entity name ([2f173d4](https://github.com/ProjectMakersDE/horizOn-mcp/commit/2f173d41e48301933101378bfca8c67584b9f799))
+
 # [1.11.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.10.0...v1.11.0) (2026-11-17)
 
 
