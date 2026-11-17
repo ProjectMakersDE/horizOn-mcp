@@ -30,7 +30,7 @@ Add to your MCP client configuration (Claude Desktop, Cursor, etc.):
 
 ## Features
 
-The server exposes **31 documentation resources, 126 player tools and 4 workflow prompts**. An Account Key enables additional scoped admin tools. These counts come from the registered MCP resources, tools and prompts.
+The server exposes documentation resources, App API tools and workflow prompts. A configured Account Key enables additional scoped admin tools. The MCP client can discover the current registrations.
 
 ### Resources
 
@@ -52,7 +52,10 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/statistics` | Atomic session counters, safe integer batches, explicit original IDs and cache/UTC recovery. SDK and admin examples |
 | `horizon://docs/player-values` | Atomic balances and offers, stable operation IDs, all three SDKs, safe retries and support corrections |
 | `horizon://overview` | What is horizOn, core concepts (Account vs User), features, tier system, API structure, and SDKs |
-| `horizon://docs/auth` | Authentication methods (Anonymous, Email, Google), endpoints, SDK code examples, and common errors |
+| `horizon://docs/auth` | Guest, email, Google and Apple login, 30-day refresh sessions, and logout |
+| `horizon://docs/dashboard` | Dashboard workflows, Project and Account Key permissions, SDK settings and cosmetics |
+| `horizon://docs/limits` | Plan quotas and rate-limit behavior |
+| `horizon://docs/self-hosting` | simpleServer compatibility, setup and project content migration |
 | `horizon://docs/leaderboard` | Leaderboard score submission, top entries, user rank, entries around user, player profile per entry, validated only boards, with SDK examples |
 | `horizon://docs/cloud-save` | Cloud save/load for JSON and binary data, tier size limits, SDK examples |
 | `horizon://docs/remote-config` | Server-side key-value configuration: feature flags, game balance, A/B testing. SDK examples |
@@ -62,9 +65,11 @@ Documentation resources are served directly from the MCP server. No API key requ
 | `horizon://docs/player-profile` | Player avatar, frame and badges from a per-project cosmetics catalog, unlocks via gift code grants, profile in leaderboard entries. SDK examples |
 | `horizon://docs/validated-actions` | Server-checked runs: single-use run tickets with a server seed, SHA-256 input log hash, server-only rules, validated only leaderboards, server-owned player state, start context, evidence upload, admin evidence review with sus packages and package export, rejection codes. SDK examples |
 | `horizon://docs/feedback` | Bug reports, feature requests, and general feedback submission. SDK examples |
-| `horizon://docs/user-logs` | Server-side event and error tracking. Requires BASIC tier or higher. SDK examples |
+| `horizon://docs/user-logs` | Player event and error logs, current plan quotas and SDK examples |
 | `horizon://docs/crash-reporting` | Crash report submission, session tracking, fingerprinting, breadcrumbs, and auto-regression detection. SDK examples |
-| `horizon://api/reference` | Complete API reference for all horizOn App API endpoints with request/response schemas |
+| `horizon://api/reference` | OpenAPI-generated index of hosted App API operations and their integration guides |
+| `horizon://api/openapi/{family}` | Bundled OpenAPI schemas for an endpoint family listed in the index |
+| `horizon://api/feature-limits` | Live hosted quotas for all five plans. A read fetches the public limits once |
 | `horizon://quickstart/godot` | Step-by-step guide to integrate horizOn in Godot with GDScript examples |
 | `horizon://quickstart/unity` | Step-by-step guide to integrate horizOn in Unity with C# examples |
 | `horizon://docs/email-sending` | Transactional and event-based email delivery to registered users. Templates, scheduling, status tracking, and SMTP integration. SDK examples |
@@ -77,6 +82,10 @@ Live API tools that call the horizOn backend. Requires a valid API key.
 `horizon_submit_score`, `horizon_save_cloud_data`, `horizon_load_cloud_data`, `horizon_prepare_gift_code`, `horizon_redeem_gift_code`, `horizon_get_profile`, `horizon_set_profile`, `horizon_start_run`, `horizon_submit_validated`, `horizon_get_state` and `horizon_upload_evidence` also need the player's session: sign in first and pass the returned `accessToken` as `sessionToken`.
 
 The four player-value tools also require the same player session. Never generate another operation ID automatically after an uncertain result.
+
+The Auth guide covers provider login tools, `includeRefreshToken`, the single-use
+`horizon_refresh_session`, `horizon_signout`, email verification and password recovery.
+`horizon_filter_remote_configs` reads config keys by prefix or wildcard.
 
 Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`), so clients can tell reads from writes. Examples of destructive tools include `horizon_save_cloud_data` (replaces the save), `horizon_set_profile` (replaces the whole profile), `horizon_submit_validated` (consumes the ticket, can spend balances) and `horizon_cancel_email`, plus `horizon_purchase_player_value_offer` and `horizon_adjust_player_value` (debit or credit exactly once per persisted operation ID). Many read tools that return an object also declare an `outputSchema` and return `structuredContent` next to the JSON text. Each description names when to use the tool, which sibling to use instead, what it returns and how to recover from its errors.
 
@@ -354,6 +363,18 @@ npm run build
 # Run tests
 npm test
 ```
+
+### Update the App API reference
+
+Run `npm run docs:update` against the hosted App OpenAPI and review the generated
+changes under `src/resources/api/`. Add or update the integration guide for any
+new endpoint family. Keep protocol behavior, SDK notes and Dashboard permissions
+in the feature guides.
+
+CI checks the offline snapshot and verifies that every operation and its guide
+are readable through MCP. Before npm publication, the release workflow also runs
+`npm run docs:check:live`. If the hosted contract changed, update and review the
+snapshot on Develop before releasing.
 
 ## License
 
