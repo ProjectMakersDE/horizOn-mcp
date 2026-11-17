@@ -1,3 +1,21 @@
+# [1.11.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.10.0...v1.11.0) (2026-11-17)
+
+
+### Bug Fixes
+
+* complete player auth tools and session guidance ([ab48e75](https://github.com/ProjectMakersDE/horizOn-mcp/commit/ab48e75045da5b0fdaeefcd02f8095b4a34a3f80))
+* **docs:** align quota metadata with server enforcement ([2597e7a](https://github.com/ProjectMakersDE/horizOn-mcp/commit/2597e7ab5170286424a3ed293d62e1fac726a240))
+* **docs:** describe OpenAPI refresh and release verification ([34aa557](https://github.com/ProjectMakersDE/horizOn-mcp/commit/34aa55715eccf5ee57b82d6b0484c9d073764688))
+* document current realtime socket and SDK contracts ([d849873](https://github.com/ProjectMakersDE/horizOn-mcp/commit/d8498737aa206cf8692152979a57dac07b7869a8))
+* refresh plan limits and integration guidance ([239401d](https://github.com/ProjectMakersDE/horizOn-mcp/commit/239401d8f8b793305e3fd844096638112fd8d958))
+* **test:** cover remote config filter tool metadata ([eb21034](https://github.com/ProjectMakersDE/horizOn-mcp/commit/eb21034cf916f5ac05c46d330263994237334ce2))
+
+
+### Features
+
+* **docs:** derive MCP API reference and quotas from hosted sources ([81ba8b4](https://github.com/ProjectMakersDE/horizOn-mcp/commit/81ba8b4ba50b7f13054834ac42954c41af0f6dad))
+* **remote-config:** expose project key filtering in MCP ([13bceaf](https://github.com/ProjectMakersDE/horizOn-mcp/commit/13bceaf0b5dae3d9825fb83a4e098c45be1570ec))
+
 # [1.10.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.9.2...v1.10.0) (2026-11-16)
 
 
