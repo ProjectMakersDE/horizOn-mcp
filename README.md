@@ -30,7 +30,7 @@ Add to your MCP client configuration (Claude Desktop, Cursor, etc.):
 
 ## Features
 
-The server exposes **30 documentation resources, 126 player tools and 4 workflow prompts**. An Account Key enables additional scoped admin tools. These counts come from the registered MCP resources, tools and prompts.
+The server exposes **31 documentation resources, 126 player tools and 4 workflow prompts**. An Account Key enables additional scoped admin tools. These counts come from the registered MCP resources, tools and prompts.
 
 ### Resources
 
@@ -40,8 +40,9 @@ Documentation resources are served directly from the MCP server. No API key requ
 |-----|-------------|
 | `horizon://docs/marketplace` | Atomic original-item escrow, exact prices, protected Inbox returns and scoped recovery. |
 | `horizon://docs/item-gifts` | Private one-item gifts through the Inbox, fixed sender fee, seven-day offers and protected returns. |
-| `horizon://docs/chat` | Direct/group/project text, metadata-only realtime, incremental snapshots, original receipts and scoped moderation. |
+| `horizon://docs/chat` | Direct/group/project text, pushed realtime content, incremental snapshots, original receipts and scoped moderation. |
 | `horizon://docs/matches` | Opaque turn state, exact revisions, immutable reports, bounded deadlines and original ranked-run recovery. |
+| `horizon://docs/realtime` | Hosted Chat/Matches WebSocket auth, pushed content, snapshots, socket sends, reconnect and verified SDK APIs. |
 | `horizon://docs/shared-objects` | Opaque bounded world data, current permissions, exact revisions and trusted ordinary game notices. |
 | `horizon://docs/items` | Unique inventory, bounded item properties and atomic server-owned purchases |
 | `horizon://docs/groups` | Guilds, roles, bounded member pages and revision-safe membership actions |
@@ -176,7 +177,7 @@ Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempot
 | `horizon_start_match_ranked_run` | Creates or recovers one original match-bound validated run after complete consensus. |
 | `horizon_get_chat_limits` | Reads five-tier bounds, current moderation and hosted capabilities. |
 | `horizon_open_chat_channel` | Opens deterministic direct, group or project chat under current permissions. |
-| `horizon_sync_chat_channel` | Reads an authorized incremental snapshot after subscription resync/event or explicit user action. |
+| `horizon_sync_chat_channel` | Reads an authorized incremental snapshot for missing/unusable realtime content, resync, HTTP polling or explicit user action. |
 | `horizon_send_chat_message` | Sends plain text once or explicitly replays the exact original operation. |
 | `horizon_get_chat_operation` | Reads the current player's retained original send receipt. |
 | `horizon_report_chat_message` | Reports one currently visible message with the original reason. |
@@ -319,7 +320,7 @@ Core features:
 - Friends, blocklists and groups
 - Item catalogs, unique inventory, marketplace escrow/trades and private item gifts
 - Shared objects with scoped permissions and asynchronous matches
-- Hosted chat, with realtime managers provided by the native SDKs
+- Hosted Chat and Matches, with optional realtime managers provided by the native SDKs
 - Validated Actions (server-checked runs, validated only leaderboards, server-owned currency)
 - User Feedback
 - User Logs
@@ -437,7 +438,9 @@ receipt reconciliation and reporting. Twelve CHAT-scoped admin tools expose word
 metadata/messages, report moderation, mute/ban and bounded cleanup. Read
 `horizon://docs/chat`; engine prompts accept `feature=chat`. simpleServer explicitly returns
 501 NOT_SUPPORTED for chat. These HTTP tools do not create a background WebSocket connection
-or polling loop. Use the existing native realtime managers for interactive feeds.
+or polling loop. Use the native realtime managers for interactive feeds. Hosted Chat also supports
+HTTP sync/polling; the game chooses its transport. Read `horizon://docs/realtime` for the handshake,
+content/snapshot behavior and exact SDK versions and limitations.
 
 ## Marketplace
 

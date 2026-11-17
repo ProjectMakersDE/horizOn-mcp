@@ -14,7 +14,7 @@ export function registerInboxTools(server: McpServer): void {
   server.registerTool("horizon_get_inbox", {
     title: "Get Player Inbox",
     description: describeTool({ summary: "Reads targeted messages and eligible project broadcasts, counters and server polling interval.",
-      use: "displaying notifications or refreshing after realtime invalidation.", avoid: "choosing rewards or writing messages from the player client.", requires: SESSION_REQUIRED,
+      use: "displaying notifications or refreshing on open, explicit action or the returned polling cadence; Inbox has no WebSocket topic.", avoid: "choosing rewards or writing messages from the player client.", requires: SESSION_REQUIRED,
       effects: "None (read only).", returns: "{userId,cursor,revision,broadcastRevision,serverTime,pollAfterSeconds,unchanged,entries,counts,limits}. unchanged=true has empty entries: keep the cached entries. A changed snapshot replaces them completely. Entries of type item_gift and item_gift_return carry attachment.itemGift {giftId,instanceId,itemKey,direction}; decline an offer with horizon_decline_item_gift.", errors }),
     inputSchema: { ...session, since: z.string().max(128).regex(/^[A-Za-z0-9:_-]*$/).optional().describe("Opaque cursor from this same player/project; omit for a full snapshot") }, annotations: READ_ONLY,
   }, async ({ userId, sessionToken, since }) => {

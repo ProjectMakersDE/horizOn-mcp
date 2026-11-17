@@ -49,12 +49,19 @@ There are no automatic match rewards. simpleServer supports ordinary REST and ex
 501 FEATURE_NOT_SUPPORTED for ranked creation/run start. Its realtime and matchesRanked capabilities
 are false. Check capabilities before offering ranked controls.
 
-Every write uses one HTTP attempt. 409 STATE_CONFLICT/REVISION_CONFLICT or a lost response requires
+Every MCP write uses one HTTP attempt. Native SDK join/decline/start/turn/timeout/leave/cancel
+can use the ready socket and resolve an unknown outcome through HTTP with the original revision.
+Create, result reports and ranked-run start remain HTTP. 409 STATE_CONFLICT/REVISION_CONFLICT or a lost response requires
 explicit reconciliation. Do not silently replace the original revision or repeat a move.
 Turn notices are ordinary Inbox messages with durable per-turn identities. A full mailbox leaves
 the latest notice pending without undoing the committed move. A newer turn supersedes it and
-the original deadline ends delivery. Realtime topic matches:<UUID> carries participant-only
-metadata, no payload. Completed detail duration/count are current administrator policies; FREE
+the original deadline ends delivery. Realtime topic matches:<UUID> is participant-only, available
+after accepting/joining. Subscribed snapshots contain the normal MatchRead envelope. Events
+normally carry the MatchView itself, including state, with ownRankedRunId=null. Keep original
+ranked-run bindings separately. Apply usable pushed state without a duplicate reload; missing
+payloads (including payloads over 32,768 JSON characters), resync or unsupported SDK payload access
+require one authorized HTTP read. See horizon://docs/realtime for SDK differences and fallback.
+Completed detail duration/count are current administrator policies; FREE
 defaults to zero completed details. Minimal source fields needed by an outstanding valuable result
 or original run remain independently protected. After completion/expiry a detail read may return
 MATCH_NOT_FOUND and never authorizes a new action/reward. Lobbies last24h and active matches at
