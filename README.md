@@ -96,6 +96,9 @@ Every tool declares MCP annotations (`readOnlyHint`, `destructiveHint`, `idempot
 | `horizon_signup_email` | Create a new user account with email and password |
 | `horizon_signin_email` | Sign in with email and password |
 | `horizon_signin_anonymous` | Sign in with an anonymous token |
+| `horizon_link_email` | Convert a signed-in guest into an email account, same user ID |
+| `horizon_link_google` | Convert a signed-in guest into a Google account, same user ID |
+| `horizon_link_apple` | Convert a signed-in guest into an Apple account, same user ID |
 | `horizon_check_auth` | Check whether a user session is still valid |
 | `horizon_list_leaderboards` | List available leaderboard boards for multi-board calls |
 | `horizon_submit_score` | Submit a score to the leaderboard (403 `VALIDATED_SUBMIT_REQUIRED` on validated only boards) |

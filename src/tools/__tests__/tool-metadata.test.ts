@@ -98,6 +98,9 @@ const PLAYER_TOOLS = [
   "horizon_refresh_session",
   "horizon_signout",
   "horizon_change_name",
+  "horizon_link_email",
+  "horizon_link_google",
+  "horizon_link_apple",
   "horizon_verify_email",
   "horizon_forgot_password",
   "horizon_reset_password",
@@ -287,7 +290,7 @@ describe("player tool metadata", () => {
       .map(([name]) => name)
       .sort();
     expect(destructive).toEqual(
-      ["horizon_refresh_session", "horizon_signout", "horizon_change_name", "horizon_reset_password", "horizon_create_marketplace_listing", "horizon_buy_marketplace_listing", "horizon_cancel_marketplace_listing", "horizon_send_item_gift", "horizon_decline_item_gift", "horizon_send_chat_message", "horizon_decline_match_invite", "horizon_start_match", "horizon_submit_match_turn", "horizon_advance_match_timeout", "horizon_leave_match", "horizon_cancel_match", "horizon_update_shared_object", "horizon_delete_shared_object", "horizon_adjust_item", "horizon_equip_item", "horizon_discard_item", "horizon_update_group", "horizon_accept_group_invite", "horizon_decline_group_invite", "horizon_cancel_group_invite", "horizon_accept_group_request", "horizon_decline_group_request", "horizon_cancel_group_request", "horizon_leave_group", "horizon_remove_group_member", "horizon_set_group_member_role", "horizon_transfer_group_leadership", "horizon_delete_group", "horizon_accept_friend_request", "horizon_decline_friend_request", "horizon_cancel_friend_request", "horizon_remove_friend", "horizon_block_player", "horizon_unblock_player", "horizon_mark_inbox_read", "horizon_claim_inbox", "horizon_remove_inbox", "horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_update_statistics", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
+      ["horizon_refresh_session", "horizon_signout", "horizon_change_name", "horizon_link_email", "horizon_link_google", "horizon_link_apple", "horizon_reset_password", "horizon_create_marketplace_listing", "horizon_buy_marketplace_listing", "horizon_cancel_marketplace_listing", "horizon_send_item_gift", "horizon_decline_item_gift", "horizon_send_chat_message", "horizon_decline_match_invite", "horizon_start_match", "horizon_submit_match_turn", "horizon_advance_match_timeout", "horizon_leave_match", "horizon_cancel_match", "horizon_update_shared_object", "horizon_delete_shared_object", "horizon_adjust_item", "horizon_equip_item", "horizon_discard_item", "horizon_update_group", "horizon_accept_group_invite", "horizon_decline_group_invite", "horizon_cancel_group_invite", "horizon_accept_group_request", "horizon_decline_group_request", "horizon_cancel_group_request", "horizon_leave_group", "horizon_remove_group_member", "horizon_set_group_member_role", "horizon_transfer_group_leadership", "horizon_delete_group", "horizon_accept_friend_request", "horizon_decline_friend_request", "horizon_cancel_friend_request", "horizon_remove_friend", "horizon_block_player", "horizon_unblock_player", "horizon_mark_inbox_read", "horizon_claim_inbox", "horizon_remove_inbox", "horizon_cancel_email", "horizon_save_cloud_data", "horizon_set_profile", "horizon_submit_validated", "horizon_update_statistics", "horizon_purchase_player_value_offer", "horizon_adjust_player_value"].sort(),
     );
   });
 

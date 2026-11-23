@@ -165,6 +165,7 @@ than looping refresh attempts.
 | `horizon_check_auth` | `POST /check-auth` `{userId, sessionToken}` | 200 `{userId?, isAuthenticated, authStatus, message?}`; valid checks renew access idle time |
 | `horizon_signout` | `POST /signout`, **Bearer accessToken**, `{allSessions: false}` | Empty **204** (`null`); revokes current access/refresh family; explicit `true` revokes all user sessions |
 | `horizon_change_name` | `POST /change-name` `{userId, sessionToken, newName}` | 200 AuthStatusResponse; new name 1-50 characters |
+| `horizon_link_email` / `horizon_link_google` / `horizon_link_apple` | `POST /link` `{userId, sessionToken, type, ...credentials}` | 200 with `isAnonymous: false` and the same userId; EMAIL answers USER_NOT_VERIFIED, GOOGLE and APPLE AUTHENTICATED; the guest anonymous token is deleted; 409 when taken or not a guest |
 | `horizon_verify_email` | `POST /verify-email` `{token}` | Empty 200 (`null`); consumes verification token |
 | `horizon_forgot_password` | `POST /forgot-password` `{email}` | Empty 200 (`null`) even for unknown emails; may send reset email, never proves delivery/existence |
 | `horizon_reset_password` | `POST /reset-password` `{token, newPassword}` | Empty 200 (`null`); single-use reset, password 8-128 characters, revokes all sessions/refresh families |
