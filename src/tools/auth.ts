@@ -27,6 +27,7 @@ const sessionTokenSchema = z.string().min(1).max(256).describe("Player accessTok
 const googleCodeSchema = z.string().min(1).max(2000).describe("Fresh single-use Google authorization code obtained by the player's OAuth consent flow (max 2000 characters)");
 const googleRedirectSchema = z.string().max(500).describe("Exact redirect URI used to obtain the Google authorization code; empty string for configured native flows (max 500 characters)");
 const appleTokenSchema = z.string().min(1).max(4096).describe("Apple identity-token JWT obtained after player consent, with audience matching this project's configured Services ID or Bundle ID");
+const preferredLanguageSchema = z.string().min(2).max(10).optional().describe("Optional language code for the account, such as en or de (max 10 characters)");
 const emailTokenSchema = z.string().min(1).max(256).describe("Single-use token from the player's verification or password-reset email (max 256 characters)");
 
 // An upstream validation error must not echo credentials into the MCP error text.
@@ -357,6 +358,95 @@ export function registerAuthTools(server: McpServer): void {
     if (!client) return noApiKeyResponse();
     try { return jsonResponse(await client.post("/api/v1/app/user-management/change-name", { userId, sessionToken, newName })); }
     catch (error) { return authErrorResponse(error, sessionToken); }
+  });
+
+  server.registerTool("horizon_link_email", {
+    title: "Link Guest Account to Email",
+    description: describeTool({
+      summary: "Converts a signed-in guest player into an email account while keeping the same user ID.",
+      use: "a guest player explicitly chooses to secure the account with an email and password.",
+      avoid: "new players (use horizon_signup_email), existing email accounts (use horizon_signin_email) and accounts that are not guests.",
+      requires: "a signed-in guest player: the userId and current accessToken from horizon_signup_anonymous or horizon_signin_anonymous.",
+      effects: "turns the guest into an EMAIL account with the same userId and sends the verification email. The current session keeps working and the guest anonymous token is deleted on the server, so horizon_signin_anonymous no longer works for this player.",
+      returns: "200 with userId, email, isAnonymous: false, isVerified: false and authStatus: USER_NOT_VERIFIED. Use horizon_verify_email, then horizon_signin_email.",
+      errors: "409 when the email already belongs to another account or the account is not a guest: do not retry, ask the player. 401 for an invalid session: sign in again. 400 for invalid input. 404 or 403 for other failures.",
+    }),
+    inputSchema: {
+      userId: userIdSchema,
+      sessionToken: sessionTokenSchema,
+      email: z.string().email().max(40).describe("Player email address (valid format, max 40 characters); must not be registered yet"),
+      password: z.string().min(8).max(128).describe("Password, 8 to 128 characters; common passwords are rejected. Sent to the API only, never returned"),
+      preferredLanguage: preferredLanguageSchema,
+    },
+    annotations: DESTRUCTIVE_NON_IDEMPOTENT,
+  }, async ({ userId, sessionToken, email, password, preferredLanguage }) => {
+    const client = createApiClientFromEnv();
+    if (!client) return noApiKeyResponse();
+    try {
+      return jsonResponse(await client.post("/api/v1/app/user-management/link", {
+        userId, sessionToken, type: "EMAIL", email, password,
+        ...(preferredLanguage === undefined ? {} : { preferredLanguage }),
+      }));
+    } catch (error) { return authErrorResponse(error, sessionToken, password); }
+  });
+
+  server.registerTool("horizon_link_google", {
+    title: "Link Guest Account to Google",
+    description: describeTool({
+      summary: "Converts a signed-in guest player into a Google account while keeping the same user ID.",
+      use: "a guest player completes Google OAuth and explicitly chooses to link the account.",
+      avoid: "new players (use horizon_signup_google), existing google accounts (use horizon_signin_google) and accounts that are not guests.",
+      requires: "a signed-in guest player: the userId and current accessToken from horizon_signup_anonymous or horizon_signin_anonymous.",
+      effects: "exchanges the single-use Google code once and turns the guest into a GOOGLE account with the same userId. The current session keeps working and the guest anonymous token is deleted on the server.",
+      returns: "200 with userId, email, googleId, isAnonymous: false, isVerified and authStatus: AUTHENTICATED. Use horizon_signin_google on other devices.",
+      errors: "409 when the Google account already belongs to another account or the account is not a guest: do not retry, ask the player. 401 for an invalid session: sign in again. 400 for invalid input. 404 or 403 for other failures.",
+    }),
+    inputSchema: {
+      userId: userIdSchema,
+      sessionToken: sessionTokenSchema,
+      googleAuthorizationCode: googleCodeSchema,
+      googleRedirectUri: googleRedirectSchema,
+      preferredLanguage: preferredLanguageSchema,
+    },
+    annotations: DESTRUCTIVE_NON_IDEMPOTENT,
+  }, async ({ userId, sessionToken, googleAuthorizationCode, googleRedirectUri, preferredLanguage }) => {
+    const client = createApiClientFromEnv();
+    if (!client) return noApiKeyResponse();
+    try {
+      return jsonResponse(await client.post("/api/v1/app/user-management/link", {
+        userId, sessionToken, type: "GOOGLE", googleAuthorizationCode, googleRedirectUri,
+        ...(preferredLanguage === undefined ? {} : { preferredLanguage }),
+      }));
+    } catch (error) { return authErrorResponse(error, sessionToken, googleAuthorizationCode); }
+  });
+
+  server.registerTool("horizon_link_apple", {
+    title: "Link Guest Account to Apple",
+    description: describeTool({
+      summary: "Converts a signed-in guest player into an Apple account while keeping the same user ID.",
+      use: "a guest player completes Apple Sign-In and explicitly chooses to link the account.",
+      avoid: "new players (use horizon_signup_apple), existing apple accounts (use horizon_signin_apple) and accounts that are not guests.",
+      requires: "a signed-in guest player: the userId and current accessToken from horizon_signup_anonymous or horizon_signin_anonymous.",
+      effects: "verifies the identity token and turns the guest into an APPLE account with the same userId. The current session keeps working and the guest anonymous token is deleted on the server.",
+      returns: "200 with userId, appleUserId, isPrivateRelayEmail, isAnonymous: false, isVerified and authStatus: AUTHENTICATED. Use horizon_signin_apple on other devices.",
+      errors: "409 when the Apple account already belongs to another account or the account is not a guest: do not retry, ask the player. 401 for an invalid session: sign in again. 400 for invalid input. 404 or 403 for other failures.",
+    }),
+    inputSchema: {
+      userId: userIdSchema,
+      sessionToken: sessionTokenSchema,
+      appleIdentityToken: appleTokenSchema,
+      preferredLanguage: preferredLanguageSchema,
+    },
+    annotations: DESTRUCTIVE_NON_IDEMPOTENT,
+  }, async ({ userId, sessionToken, appleIdentityToken, preferredLanguage }) => {
+    const client = createApiClientFromEnv();
+    if (!client) return noApiKeyResponse();
+    try {
+      return jsonResponse(await client.post("/api/v1/app/user-management/link", {
+        userId, sessionToken, type: "APPLE", appleIdentityToken,
+        ...(preferredLanguage === undefined ? {} : { preferredLanguage }),
+      }));
+    } catch (error) { return authErrorResponse(error, sessionToken, appleIdentityToken); }
   });
 
   server.registerTool("horizon_verify_email", {
