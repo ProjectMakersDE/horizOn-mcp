@@ -579,12 +579,19 @@
       },
       "DiscardItemRequest": {
         "properties": {
+          "count": {
+            "format": "int64",
+            "type": "integer"
+          },
           "expectedRevision": {
             "format": "int64",
             "type": "integer"
           },
           "instanceId": {
             "format": "uuid",
+            "type": "string"
+          },
+          "itemKey": {
             "type": "string"
           },
           "userId": {
@@ -594,7 +601,6 @@
         },
         "required": [
           "expectedRevision",
-          "instanceId",
           "userId"
         ],
         "type": "object"
@@ -675,6 +681,9 @@
             "format": "uuid",
             "type": "string"
           },
+          "itemKey": {
+            "type": "string"
+          },
           "userId": {
             "format": "uuid",
             "type": "string"
@@ -683,7 +692,6 @@
         "required": [
           "equipped",
           "expectedRevision",
-          "instanceId",
           "userId"
         ],
         "type": "object"
@@ -1021,6 +1029,27 @@
         ],
         "type": "object"
       },
+      "ItemStackGrant": {
+        "properties": {
+          "count": {
+            "format": "int64",
+            "type": "integer"
+          },
+          "itemKey": {
+            "type": "string"
+          },
+          "quantity": {
+            "format": "int32",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count",
+          "itemKey",
+          "quantity"
+        ],
+        "type": "object"
+      },
       "JsonNode": {},
       "LeaderboardListResponseV2": {
         "properties": {
@@ -1104,6 +1133,116 @@
           "sortOrder",
           "updatedAt",
           "validatedOnly"
+        ],
+        "type": "object"
+      },
+      "LinkAccountRequest": {
+        "properties": {
+          "appleIdentityToken": {
+            "maxLength": 4096,
+            "minLength": 0,
+            "type": "string"
+          },
+          "email": {
+            "format": "email",
+            "maxLength": 255,
+            "minLength": 0,
+            "type": "string"
+          },
+          "googleAuthorizationCode": {
+            "maxLength": 2000,
+            "minLength": 0,
+            "type": "string"
+          },
+          "googleRedirectUri": {
+            "maxLength": 500,
+            "minLength": 0,
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "preferredLanguage": {
+            "maxLength": 35,
+            "minLength": 0,
+            "type": "string"
+          },
+          "sessionToken": {
+            "maxLength": 256,
+            "minLength": 0,
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "ANONYMOUS",
+              "EMAIL",
+              "GOOGLE",
+              "APPLE"
+            ],
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "sessionToken",
+          "type",
+          "userId"
+        ],
+        "type": "object"
+      },
+      "LinkAccountResponse": {
+        "properties": {
+          "appleUserId": {
+            "type": "string"
+          },
+          "authStatus": {
+            "enum": [
+              "AUTHENTICATED",
+              "USER_NOT_FOUND",
+              "USER_ALREADY_EXISTS",
+              "INVALID_CREDENTIALS",
+              "USER_NOT_VERIFIED",
+              "USER_DEACTIVATED",
+              "USER_DELETED",
+              "TOKEN_EXPIRED",
+              "INVALID_TOKEN",
+              "INVALID_APPLE_TOKEN",
+              "APPLE_EMAIL_CONFLICT",
+              "APPLE_NOT_CONFIGURED"
+            ],
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "googleId": {
+            "type": "string"
+          },
+          "isAnonymous": {
+            "type": "boolean"
+          },
+          "isPrivateRelayEmail": {
+            "type": "boolean"
+          },
+          "isVerified": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string"
+          },
+          "userId": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authStatus",
+          "isAnonymous",
+          "isPrivateRelayEmail",
+          "isVerified"
         ],
         "type": "object"
       },
@@ -2699,6 +2838,12 @@
           },
           "replayed": {
             "type": "boolean"
+          },
+          "stacks": {
+            "items": {
+              "$ref": "#/components/schemas/ItemStackGrant"
+            },
+            "type": "array"
           }
         },
         "required": [
@@ -2706,7 +2851,8 @@
           "applied",
           "items",
           "operationId",
-          "replayed"
+          "replayed",
+          "stacks"
         ],
         "type": "object"
       },
@@ -7545,6 +7691,78 @@
           }
         },
         "summary": "Forgot Password - Request password reset",
+        "tags": [
+          "User Management"
+        ]
+      }
+    },
+    "/api/v1/app/user-management/link": {
+      "post": {
+        "description": "\nTurns the signed-in guest into an EMAIL, GOOGLE or APPLE account. The user ID, scores,\ncloud saves and all other player data stay because the same user is updated. The guest\ntoken stops working afterwards, the current session keeps working.\n\nEMAIL needs `email` and `password` and sends a verification email. GOOGLE needs\n`googleAuthorizationCode` and `googleRedirectUri`. APPLE needs `appleIdentityToken`.\n\nReturns 409 when the email or provider account is already registered for this project,\nor when the account is not a guest.\n        ",
+        "operationId": "linkAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LinkAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkAccountResponse"
+                }
+              }
+            },
+            "description": "Guest linked"
+          },
+          "400": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkAccountResponse"
+                }
+              }
+            },
+            "description": "Invalid request data, password or provider token"
+          },
+          "401": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkAccountResponse"
+                }
+              }
+            },
+            "description": "Invalid or expired session"
+          },
+          "409": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkAccountResponse"
+                }
+              }
+            },
+            "description": "Email or account already registered, or account is not a guest"
+          },
+          "429": {
+            "content": {
+              "*/*": {
+                "schema": {
+                  "$ref": "#/components/schemas/LinkAccountResponse"
+                }
+              }
+            },
+            "description": "Rate limit exceeded"
+          }
+        },
+        "summary": "Link Account - Switch the signed-in guest to email, Google or Apple",
         "tags": [
           "User Management"
         ]

@@ -77,6 +77,38 @@ describe("items through actual MCP transport", () => {
     expect((await call("equip_item", { ...session, instanceId, expectedRevision: 7, equipped: "false" })).isError).toBe(true);
     expect(request).not.toHaveBeenCalled();
   });
+  it("sends stack equip and discard by itemKey and rejects ambiguous targets before HTTP", async () => {
+    await call("equip_item", { ...session, itemKey: "potion", expectedRevision: 7, equipped: true });
+    await call("discard_item", { ...session, itemKey: "potion", expectedRevision: 7, count: 3 });
+    await call("discard_item", { ...session, itemKey: "potion", expectedRevision: 7 });
+    expect(calls().map(([url, options]) => [new URL(url).pathname, JSON.parse(options.body as string)])).toEqual([
+      ["/api/v1/app/items/equip", { userId, itemKey: "potion", expectedRevision: 7, equipped: true }],
+      ["/api/v1/app/items/discard", { userId, itemKey: "potion", expectedRevision: 7, count: 3 }],
+      ["/api/v1/app/items/discard", { userId, itemKey: "potion", expectedRevision: 7 }],
+    ]);
+    for (const args of [{ expectedRevision: 7 }, { instanceId, itemKey: "potion", expectedRevision: 7 }, { instanceId, expectedRevision: 7, count: 1 },
+      { itemKey: "potion", expectedRevision: 7, count: 0 }, { itemKey: "potion", expectedRevision: 7, count: 1000000 }, { itemKey: "potion", expectedRevision: 7, count: 1.5 },
+      { itemKey: "Potion", expectedRevision: 7 }]) {
+      expect((await call("discard_item", { ...session, ...args })).isError).toBe(true);
+    }
+    for (const args of [{ equipped: true, expectedRevision: 7 }, { instanceId, itemKey: "potion", expectedRevision: 7, equipped: true }]) {
+      expect((await call("equip_item", { ...session, ...args })).isError).toBe(true);
+    }
+    expect((await call("adjust_item", { ...session, itemKey: "potion", expectedRevision: 7, changes: [{ key: "damage", amount: 1 }] })).isError).toBe(true);
+    expect(request).toHaveBeenCalledTimes(3);
+  });
+  it("accepts stack templates and rejects invalid mode combinations before HTTP", async () => {
+    const stack = { ...definition, propertyRules: [], mode: "stack", maxStack: 500 };
+    expect((await set(stack)).isError).not.toBe(true);
+    expect(JSON.parse(calls()[0][1].body as string)).toEqual(stack);
+    expect((await set({ ...definition, mode: "unique" })).isError).not.toBe(true);
+    expect((await set({ ...stack, maxStack: undefined })).isError).not.toBe(true);
+    for (const change of [{ mode: "stack" }, { maxStack: 5 }, { mode: "unique", maxStack: 5 }, { mode: "bundle" }]) {
+      expect((await set({ ...definition, ...change })).isError).toBe(true);
+    }
+    for (const maxStack of [0, 1000000, 1.5, "5"]) expect((await set({ ...stack, maxStack })).isError).toBe(true);
+    expect(request).toHaveBeenCalledTimes(3);
+  });
   it("preserves template data and If-Match with only scoped admin authentication", async () => {
     await set(definition);
     const [url, options] = calls()[0];
