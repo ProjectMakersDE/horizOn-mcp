@@ -1,3 +1,15 @@
+# [1.13.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.12.0...v1.13.0) (2026-11-24)
+
+
+### Bug Fixes
+
+* **items:** live API snapshot with stacks, stack items refused for market and gifts (TASK-1152) ([c05b716](https://github.com/ProjectMakersDE/horizOn-mcp/commit/c05b716e27b44885ef0ae3b4464c8d0b8ced5c15))
+
+
+### Features
+
+* **items:** stack templates and stack equip/discard (TASK-1152) ([7b4a86a](https://github.com/ProjectMakersDE/horizOn-mcp/commit/7b4a86a91d7217843582b53b803be4212544ecfd))
+
 # [1.12.0](https://github.com/ProjectMakersDE/horizOn-mcp/compare/v1.11.1...v1.12.0) (2026-11-23)
 
 
