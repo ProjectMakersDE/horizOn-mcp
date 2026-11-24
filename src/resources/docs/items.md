@@ -14,12 +14,20 @@ with the configured project API key. Account Keys cannot impersonate a player se
 | horizon_get_items | GET / | none |
 | horizon_get_item_catalog | GET /catalog | optional afterKey, limit 1..50, catalogRevision |
 | horizon_adjust_item | POST /adjust | instanceId, expectedRevision, changes:[{key,amount}] |
-| horizon_equip_item | POST /equip | instanceId, expectedRevision, equipped:boolean |
-| horizon_discard_item | POST /discard | instanceId, expectedRevision |
+| horizon_equip_item | POST /equip | instanceId or itemKey, expectedRevision, equipped:boolean |
+| horizon_discard_item | POST /discard | instanceId or itemKey, expectedRevision, optional count 1..999999 (itemKey only) |
 
 Inventory reads and edits return `{userId,revision,instances,limits,serverTime}`. Each instance is
 `{instanceId,itemKey,properties,equipped,createdAt}`. Replace only the matching host/project/player
 snapshot, guarded against logout and session A→B→A changes. No background polling.
+
+Stacks: a template with `mode:"stack"` is held as one counter per player instead of instances. The
+snapshot lists them in `stacks:[{itemKey,count,equipped}]` (absent means empty); their values come
+from the catalog template. Equip and discard take `itemKey` instead of `instanceId` for a stack;
+discard removes `count` items (default 1) and drops an emptied stack. Purchases report granted stacks
+in `operation.stacks:[{itemKey,quantity,count}]`. Errors: `STACK_LIMIT_REACHED` (stack full or no
+free stack slot), `ITEM_STACK_TOO_SMALL` (discard count too large), `ITEM_MODE_LOCKED` (mode change),
+`ITEM_NOT_TRADABLE` (stacks cannot be listed or gifted). Adjust stays unique only.
 
 Catalog pages return `{revision,definitions,nextAfterKey,total,limits,serverTime}`. Request each page
 explicitly with the first page's `catalogRevision` and previous `nextAfterKey`. A null cursor ends
@@ -38,7 +46,8 @@ An Account Key needs `ITEMS` and access to the selected project. Four admin tool
 `horizon_admin_items_player_get` and `horizon_admin_items_limits`.
 Catalog set writes one template at `/api/v1/admin/items/catalog/{key}?apiKeyId=...`, with the reviewed
 catalog revision in `If-Match`. Its `definition` contains name, type, rarity, active, baseProperties
-and propertyRules. It returns `{revision,definition,limits,serverTime}`. Player inspection returns
+and propertyRules, plus optional `mode` (`unique` or `stack`, set only on create) and `maxStack`
+(1..999999, stack only, default 99). A stack template has empty propertyRules. It returns `{revision,definition,limits,serverTime}`. Player inspection returns
 `{inventory,receipts}`; new source-owned grants create no recipient receipt copy. Legacy originals
 remain migration-owned until source protection is transferred atomically. There is no admin tool to mint or delete a player's items.
 

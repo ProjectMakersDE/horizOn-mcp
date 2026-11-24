@@ -18,7 +18,10 @@ export const itemTemplate = z.object({
   name: unicode.min(1).refine(value => value.trim().length > 0 && Buffer.byteLength(value, "utf8") <= 120, "Nonblank name, at most 120 UTF-8 bytes"),
   type: itemKey, rarity: itemKey, active: z.boolean(), baseProperties: properties,
   propertyRules: z.array(z.object({ key: itemKey, min: itemInteger, max: itemInteger, maxChangePerCall: itemInteger.min(1) }).strict()).max(16),
-}).strict().refine(value => new Set(value.propertyRules.map(rule => rule.key)).size === value.propertyRules.length && value.propertyRules.every(rule => {
+  mode: z.enum(["unique", "stack"]).optional().describe("Set only on create (default unique); omit on update to keep it, a different mode returns ITEM_MODE_LOCKED"),
+  maxStack: z.number().int().min(1).max(999999).optional().describe("Stack templates only, default 99; omit on update to keep it"),
+}).strict().refine(value => value.mode === "stack" ? value.propertyRules.length === 0 : value.maxStack === undefined,
+  "Stack templates have no propertyRules; maxStack requires mode stack").refine(value => new Set(value.propertyRules.map(rule => rule.key)).size === value.propertyRules.length && value.propertyRules.every(rule => {
   const initial = value.baseProperties[rule.key];
   return typeof initial === "number" && rule.min <= rule.max && initial >= rule.min && initial <= rule.max;
 }), "Unique rules require an existing integer base property within min/max");
