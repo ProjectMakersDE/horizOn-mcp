@@ -29,7 +29,7 @@ export function registerItemGiftTools(server: McpServer): void {
       try { return jsonResponse(await client.get(base + path + (args as Record<string, string>)[field], { userId: args.userId }, sessionHeaders(args.sessionToken))); } catch (e) { return errorResponse(e); }
     });
   server.registerTool("horizon_send_item_gift", { title: "Send Original Item as Gift", description: doc("Sends one original unequipped item privately to another player under the confirmed fee configuration.",
-    "One HTTP attempt. Persist all seven original fields before sending under project/player/feature. Atomically moves the exact inventory instance into escrow, charges the fixed sender fee (never refunded) and delivers an Inbox offer that expires after seven days. Resolve a friend code with horizon_find_player first. Never recalculate revisions after a lost response.",
+    "One HTTP attempt. Persist all seven original fields before sending under project/player/feature. Atomically moves the exact inventory instance into escrow, charges the fixed sender fee (never refunded) and delivers an Inbox offer that expires after seven days. Stack items are refused with ITEM_NOT_TRADABLE. Resolve a friend code with horizon_find_player first. Never recalculate revisions after a lost response.",
     "{receipt,gift,replayed,serverTime}; 201 new, 200 identical replay"),
     inputSchema: { ...session, operationId: giftId.describe("Persisted original operation UUID, never replaced after uncertainty"), issuedAt: giftTime,
       recipientId: giftId.describe("Recipient player ID, resolved from a friend code with horizon_find_player"), instanceId: giftId.describe("Exact original unequipped item instance ID"),
